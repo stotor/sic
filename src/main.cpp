@@ -10,12 +10,27 @@
 
 #define PI (4 * atan(1.0))
 
+void write_data(std::vector<double> &array, std::ofstream &file, int n_values)
+{
+  for (int i = 0; i < n_values; i++) {
+    file << array[i] << " ";
+  }
+  file << std::endl;
+  return;
+};
+
+int mod(int a, int b)
+{
+  return (a%b + b) % b;
+};
+
 ////////////////////////////////////////////////////////////////
 // Particles
 
 class ParticleSpecies {
 public:
   ParticleSpecies(int n_p);
+  ~ParticleSpecies();
   // Simulation box parameters
   double dt, dx;
   int n_g;
@@ -36,6 +51,39 @@ public:
 			std::vector<double> &b_z_tavg);
   void deposit_j_x(std::vector<double> &j_x);
   void deposit_j_y(std::vector<double> &j_y);
+  void write_phase(std::ofstream &x_ofstream, 
+		   std::ofstream &u_x_ofstream, std::ofstream &u_y_ofstream);
+
+};
+
+ParticleSpecies::~ParticleSpecies()
+{
+};
+
+double put_in_box(double x, double box_length)
+{
+  if (x < 0.0) {
+    x = x + box_length;
+  } 
+  else if (x >= box_length) {
+    x = x - box_length;
+  }
+  return x;
+};
+
+
+void ParticleSpecies::write_phase(std::ofstream &x_ofstream, 
+				  std::ofstream &u_x_ofstream, std::ofstream &u_y_ofstream)
+{
+  std::vector<double> x_in_box(n_p);
+  for (int i = 0; i< n_p; i++) {
+    x_in_box[i] = put_in_box(x[i], n_g*dx);
+  }
+
+  write_data(x_in_box, x_ofstream, n_p);
+  write_data(u_x, u_x_ofstream, n_p);
+  write_data(u_y, u_y_ofstream, n_p);
+  return;
 };
 
 ParticleSpecies::ParticleSpecies(int n_p)
@@ -49,6 +97,8 @@ ParticleSpecies::ParticleSpecies(int n_p)
   u_y_old.resize(n_p);
   charge.resize(n_p);
   rqm.resize(n_p);
+
+
   return;
 };
 
@@ -60,10 +110,10 @@ double interpolate_field_integer(std::vector<double> &field, double x, double dx
   // Normalize x to cell length
   x = x / dx;
   // index of left bounding gridpoint
-  i_lower = int(x);
+  i_lower = floor(x);
   alpha = 1.0 - (x - i_lower);
   beta = 1.0 - alpha;
-  return (alpha * field[i_lower%n_g]) + (beta * field[(i_lower+1)%n_g]);
+  return (alpha * field[mod(i_lower,n_g)]) + (beta * field[mod((i_lower+1),n_g)]);
 };
 
 double interpolate_field_half_integer(std::vector<double> &field, double x, double dx, 
@@ -76,28 +126,28 @@ double interpolate_field_half_integer(std::vector<double> &field, double x, doub
   // Normalize x to cell length
   x = x / dx;
   // Index of left bounding gridpoint
-  i_lower = int(x);
+  i_lower = floor(x);
   alpha = 1.0 - (x - i_lower);
   beta = 1.0 - alpha;
-  return (alpha * field[i_lower%n_g]) + (beta * field[(i_lower+1)%n_g]);
+  return (alpha * field[mod(i_lower,n_g)]) + (beta * field[mod((i_lower+1),n_g)]);
 };
 
 void ParticleSpecies::deposit_j_x(std::vector<double> &j_x)
 {
-  double x_a, x_b;
+  double x_initial, x_final;
   for (int i = 0; i < n_p; i++) {
-      x_a = x_old[i] / dx;
-      x_b = x[i] / dx;
-      if (int(x_a)==int(x_b)) {
-	j_x[int(x_a)%n_g] += charge[i] * (x_b - x_a) * (dx / dt);
+      x_initial = x_old[i] / dx;
+      x_final = x[i] / dx;
+      if (floor(x_initial)==floor(x_final)) {
+	j_x[mod(floor(x_initial),n_g)] += charge[i] * (x_final - x_initial) * (dx / dt);
       } 
-      else if (int(x_a) < int(x_b)) {
-	j_x[int(x_a)%n_g] += charge[i] * (1.0 - (x_a - int(x_a))) * (dx / dt);
-	j_x[int(x_b)%n_g] += charge[i] * (x_b - int(x_b)) * (dx / dt);
+      else if (floor(x_initial) < floor(x_final)) {
+	j_x[mod(floor(x_initial),n_g)] += charge[i] * (1.0 - (x_initial - floor(x_initial))) * (dx / dt);
+	j_x[mod(floor(x_final),n_g)] += charge[i] * (x_final - floor(x_final)) * (dx / dt);
       }
       else {
-	j_x[int(x_a)%n_g] += charge[i] * (int(x_a) - x_a) * (dx / dt);
-	j_x[int(x_b)%n_g] += charge[i] * (1.0 - (x_b - int(x_b))) * (dx / dt);
+	j_x[mod(floor(x_initial),n_g)] += charge[i] * (floor(x_initial) - x_initial) * (dx / dt);
+	j_x[mod(floor(x_final),n_g)] += charge[i] * ((x_final - floor(x_final)) - 1.0) * (dx / dt);
       }
   }
   return;
@@ -110,13 +160,13 @@ void ParticleSpecies::deposit_j_y(std::vector<double> &j_y)
   for (int i = 0; i < n_p; i++) {
     x_tavg = (x[i] + x_old[i]) / 2.0;
     x_tavg = x_tavg / dx;
-    i_lower = int(x_tavg);
+    i_lower = floor(x_tavg);
     alpha = 1.0 - (x_tavg - i_lower);
     beta = 1.0 - alpha;
 
     gamma = sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0));
-    j_y[i_lower%n_g] += alpha * charge[i] * u_y[i] / gamma;
-    j_y[(i_lower+1)%n_g] += beta * charge[i] * u_y[i] / gamma;
+    j_y[mod(i_lower,n_g)] += alpha * charge[i] * u_y[i] / gamma;
+    j_y[mod((i_lower+1),n_g)] += beta * charge[i] * u_y[i] / gamma;
   }
   return;
 };
@@ -166,16 +216,6 @@ void ParticleSpecies::advance_velocity(std::vector<double> &e_x,
   return;
 };
 
-double put_in_box(double x, double box_length)
-{
-  if (x < 0.0) {
-    x = x + box_length;
-  } 
-  else if (x >= box_length) {
-    x = x - box_length;
-  }
-  return x;
-};
 
 void ParticleSpecies::advance_x()
 {
@@ -228,15 +268,6 @@ void advance_e_y(std::vector<double> &e_y, std::vector<double> &b_z,
   return;
 };
 
-void write_data(std::vector<double> &array, std::ofstream &file, int n_values)
-{
-  for (int i = 0; i < n_values; i++) {
-    file << array[i] << " ";
-  }
-  file << std::endl;
-  return;
-};
-
 void write_data_tavg(std::vector<double> &array, std::vector<double> &array_old, std::ofstream &file, 
 		     int n_values)
 {
@@ -267,9 +298,9 @@ int main(int argc, char *argv[])
   int n_g = 100;
 
   double dx = 0.5;
-  double dt = 0.5;
+  double dt = 0.45;
 
-  int n_species = 2;
+  int n_species = 1;
   int n_p = 10000;
 
   // Initialize
@@ -292,31 +323,39 @@ int main(int argc, char *argv[])
   // Initialize output file streams
   std::ofstream e_x_ofstream, e_y_ofstream, b_z_ofstream, j_x_ofstream, 
     j_y_ofstream;
+
+  std::ofstream x_ofstream, u_x_ofstream, u_y_ofstream;
+
   e_x_ofstream.open("e_x");
   e_y_ofstream.open("e_y");
   b_z_ofstream.open("b_z");
   j_x_ofstream.open("j_x");
   j_y_ofstream.open("j_y");
 
+  x_ofstream.open("x");
+  u_x_ofstream.open("u_x");
+  u_y_ofstream.open("u_y");
+
+
   // Initialize EM fields
   // EM wave
-  int mode = 4;
-  for (int i = 0; i < n_g; i++) {
-    e_x[i] = 0.0;
-    e_y[i] = cos(double(mode) * 2.0 * PI * (double(i) / double(n_g)));
-    b_z[i] = cos(double(mode) * 2.0 * PI * (double(i) / double(n_g)));
-    // BELOW FOR TESTING EM WAVE
-    j_x[i] = 0.0;
-    j_y[i] = 0.0;
-  }
-  // Zero
+  // int mode = 4;
   // for (int i = 0; i < n_g; i++) {
   //   e_x[i] = 0.0;
-  //   e_y[i] = 0.0;
-  //   b_z[i] = 0.0;
+  //   e_y[i] = cos(double(mode) * 2.0 * PI * (double(i) / double(n_g)));
+  //   b_z[i] = cos(double(mode) * 2.0 * PI * (double(i) / double(n_g)));
+  //   // BELOW FOR TESTING EM WAVE
   //   j_x[i] = 0.0;
   //   j_y[i] = 0.0;
   // }
+  // Zero
+  for (int i = 0; i < n_g; i++) {
+    e_x[i] = 0.0;
+    e_y[i] = 0.0;
+    b_z[i] = 0.0;
+    j_x[i] = 0.0;
+    j_y[i] = 0.0;
+  }
 
   // Initialize species numerical parameters
   for (int i = 0; i < n_species; i++) {
@@ -327,12 +366,12 @@ int main(int argc, char *argv[])
   }
   std::cout << "Initialized" << std::endl;
   // Initialize charge, x, u_x, and u_y at t = 0
-  double u_y_drift[2] = {-0.0, 0.0};
+  double u_y_drift[2] = {0.0, 0.0};
   for (int i_species = 0; i_species < n_species; i_species++) {
     for (int i_particle = 0; i_particle < species[i_species].n_p; i_particle++) {
-      species[i_species].charge[i_particle] = 0.0;//double(n_g) / n_p;
-      species[i_species].rqm[i_particle] = 0.0; //-1.0;
-      species[i_species].u_x[i_particle] = 0.1 * cos(2.0 * PI * double(i_particle) / double(n_p));
+      species[i_species].charge[i_particle] = (-1.0) * double(n_g) / n_p;
+      species[i_species].rqm[i_particle] = -1.0;
+      species[i_species].u_x[i_particle] = 0.001 * cos(5.0 * 2.0 * PI * double(i_particle) / double(n_p));
       species[i_species].u_y[i_particle] = u_y_drift[i_species];
       species[i_species].x[i_particle] = (double(i_particle) / species[i_species].n_p) * n_g * dx;
       
@@ -346,6 +385,7 @@ int main(int argc, char *argv[])
   // MAIN LOOP
 
   for (int t = 0; t < n_t; t++) {
+    species[0].write_phase(x_ofstream, u_x_ofstream, u_y_ofstream);
     // Print diagnostics for e_x, e_y, and x
     write_data(e_x, e_x_ofstream, n_g);
     write_data(e_y, e_y_ofstream, n_g);
@@ -420,6 +460,11 @@ int main(int argc, char *argv[])
   e_y_ofstream.close();
   b_z_ofstream.close();
   j_y_ofstream.close();
+
+  x_ofstream.close();
+  u_x_ofstream.close();
+  u_y_ofstream.close();
+
 
   return 0;
 
