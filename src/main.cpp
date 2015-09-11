@@ -50,10 +50,54 @@ public:
   void advance_velocity(std::vector<double> &e_x, std::vector<double> &e_y, 
 			std::vector<double> &b_z_tavg);
   void deposit_j_x(std::vector<double> &j_x);
+  void deposit_j_x_segments_zero(std::vector<double> &j_x);
   void deposit_j_y(std::vector<double> &j_y);
   void write_phase(std::ofstream &x_ofstream, 
 		   std::ofstream &u_x_ofstream, std::ofstream &u_y_ofstream);
 
+};
+
+void ParticleSpecies::deposit_j_x_segments_zero(std::vector<double> &j_x)
+{
+  double left_initial, right_initial, left_final, right_final, length_initial, length_final,
+    charge_initial, charge_final, cell_boundary;
+  int bound_left, bound_right;
+  for (int i = 0; i < n_p; i++) {
+    left_initial = fmin(x_old[i], x_old[i+1]) / dx;
+    right_initial = fmax(x_old[i], x_old[i+1]) / dx;
+    length_initial = right_initial - left_initial;
+    left_final = fmin(x[i], x[i+1]) / dx;
+    right_final = fmax(x[i], x[i+1]) / dx;
+    length_final = right_final - left_final;
+    bound_left = floor(fmin(left_initial,left_final));
+    bound_right = ceil(fmax(right_initial,right_final));
+    // Loop over cell boundaries that could be affected
+    for (int cell = bound_left; cell < bound_right; cell++) {
+      // Calculate charge initially to the left of the current cell's right boundary
+      cell_boundary = cell + 0.5;
+      if (right_initial <= cell) {
+	charge_initial = 1.0;
+      } 
+      else if (left_initial >= cell) {
+	charge_initial = 0.0;
+      }
+      else {
+	charge_initial = (cell - left_initial) / length_initial;
+      }
+      // Calculate charge finally to the left of the current cell's right boundary
+      if (right_final <= cell) {
+	charge_final = 1.0;
+      } 
+      else if (left_initial >= cell) {
+	charge_final = 0.0;
+      }
+      else {
+	charge_final = (cell - left_final) / length_final;
+      }
+      j_x[mod(cell,n_g)] += charge[i] * (charge_initial - charge_final) * (dx / dt);
+    }
+  }
+  return;
 };
 
 ParticleSpecies::~ParticleSpecies()
@@ -294,14 +338,16 @@ int main(int argc, char *argv[])
   // INITIALIZATION
 
   // Define simulation parameters
-  int n_t = 10000;
-  int n_g = 100;
+  int n_t = 8400;
+  int n_g = 512;
 
-  double dx = 0.1;
-  double dt = 0.099;
+  double dx = 0.024;
+  double dt = 0.0239;
 
   int n_species = 2;
-  int n_p = 10000;
+  int n_p = 512*100;
+
+  bool line_segments = true;
 
   // Initialize
   std::vector<double> e_x(n_g);
@@ -373,8 +419,18 @@ int main(int argc, char *argv[])
       species[i_species].rqm[i_particle] = -1.0;
       species[i_species].u_x[i_particle] = 0.01 * ((double) rand() / (RAND_MAX));
       species[i_species].u_y[i_particle] = u_y_drift[i_species];
-      species[i_species].x[i_particle] = (double(i_particle) / species[i_species].n_p) * n_g * dx;
-      
+      species[i_species].x[i_particle] = (double(i_particle) / species[i_species].n_p) * n_g * dx;      
+    }
+  }
+
+  if (line_segments) {
+    for (int i = 0; i < n_species; i++) {
+      species[i].charge.push_back(0.0);
+      species[i].rqm.push_back(species[i].rqm[0]);
+      species[i].u_x.push_back(species[i].u_x[0]);
+      species[i].u_y.push_back(species[i].u_y[0]);
+      species[i].x.push_back(species[i].x[0] + n_g*dx);
+      species[i].n_p += 1;
     }
   }
 
@@ -437,7 +493,7 @@ int main(int argc, char *argv[])
     }
     // Deposit the current from each species
     for (int i = 0; i < n_species; i++) {
-      species[i].deposit_j_x(j_x);
+      species[i].deposit_j_x_segments_zero(j_x);
       species[i].deposit_j_y(j_y);
     }
 
