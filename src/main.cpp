@@ -294,13 +294,13 @@ int main(int argc, char *argv[])
   // INITIALIZATION
 
   // Define simulation parameters
-  int n_t = 1000;
+  int n_t = 10000;
   int n_g = 100;
 
-  double dx = 0.5;
-  double dt = 0.45;
+  double dx = 0.1;
+  double dt = 0.099;
 
-  int n_species = 1;
+  int n_species = 2;
   int n_p = 10000;
 
   // Initialize
@@ -366,12 +366,12 @@ int main(int argc, char *argv[])
   }
   std::cout << "Initialized" << std::endl;
   // Initialize charge, x, u_x, and u_y at t = 0
-  double u_y_drift[2] = {0.0, 0.0};
+  double u_y_drift[2] = {-0.1, 0.1};
   for (int i_species = 0; i_species < n_species; i_species++) {
     for (int i_particle = 0; i_particle < species[i_species].n_p; i_particle++) {
       species[i_species].charge[i_particle] = (-1.0) * double(n_g) / n_p;
       species[i_species].rqm[i_particle] = -1.0;
-      species[i_species].u_x[i_particle] = 0.001 * cos(5.0 * 2.0 * PI * double(i_particle) / double(n_p));
+      species[i_species].u_x[i_particle] = 0.01 * ((double) rand() / (RAND_MAX));
       species[i_species].u_y[i_particle] = u_y_drift[i_species];
       species[i_species].x[i_particle] = (double(i_particle) / species[i_species].n_p) * n_g * dx;
       
@@ -385,7 +385,7 @@ int main(int argc, char *argv[])
   // MAIN LOOP
 
   for (int t = 0; t < n_t; t++) {
-    species[0].write_phase(x_ofstream, u_x_ofstream, u_y_ofstream);
+    //    species[0].write_phase(x_ofstream, u_x_ofstream, u_y_ofstream);
     // Print diagnostics for e_x, e_y, and x
     write_data(e_x, e_x_ofstream, n_g);
     write_data(e_y, e_y_ofstream, n_g);
