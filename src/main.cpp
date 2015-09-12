@@ -10,6 +10,31 @@
 
 #define PI (4 * atan(1.0))
 
+// Initialize EM fields
+void initialize_fields(std::vector<double> e_x, std::vector<double> e_y, std::vector<double> b_z, std::vector<double> j_x,
+		       std::vector<double> j_y, int n_g)
+{
+  // EM wave
+  // int mode = 4;
+  // for (int i = 0; i < n_g; i++) {
+  //   e_x[i] = 0.0;
+  //   e_y[i] = cos(double(mode) * 2.0 * PI * (double(i) / double(n_g)));
+  //   b_z[i] = cos(double(mode) * 2.0 * PI * (double(i) / double(n_g)));
+  //   // BELOW FOR TESTING EM WAVE
+  //   j_x[i] = 0.0;
+  //   j_y[i] = 0.0;
+  // }
+  // Zero
+  for (int i = 0; i < n_g; i++) {
+    e_x[i] = 0.0;
+    e_y[i] = 0.0;
+    b_z[i] = 0.0;
+    j_x[i] = 0.0;
+    j_y[i] = 0.0;
+  }
+};
+
+
 void write_data(std::vector<double> &array, std::ofstream &file, int n_values)
 {
   for (int i = 0; i < n_values; i++) {
@@ -62,37 +87,40 @@ void ParticleSpecies::deposit_j_x_segments_zero(std::vector<double> &j_x)
   double left_initial, right_initial, left_final, right_final, length_initial, length_final,
     charge_initial, charge_final, cell_boundary;
   int bound_left, bound_right;
-  for (int i = 0; i < n_p; i++) {
+  for (int i = 0; i < (n_p-1); i++) {
+    // Initial line segment
     left_initial = fmin(x_old[i], x_old[i+1]) / dx;
     right_initial = fmax(x_old[i], x_old[i+1]) / dx;
     length_initial = right_initial - left_initial;
+    // Final line segment
     left_final = fmin(x[i], x[i+1]) / dx;
     right_final = fmax(x[i], x[i+1]) / dx;
     length_final = right_final - left_final;
+    // Bounding box
     bound_left = floor(fmin(left_initial,left_final));
     bound_right = ceil(fmax(right_initial,right_final));
     // Loop over cell boundaries that could be affected
     for (int cell = bound_left; cell < bound_right; cell++) {
       // Calculate charge initially to the left of the current cell's right boundary
       cell_boundary = cell + 0.5;
-      if (right_initial <= cell) {
+      if (right_initial <= cell_boundary) {
 	charge_initial = 1.0;
       } 
-      else if (left_initial >= cell) {
+      else if (left_initial >= cell_boundary) {
 	charge_initial = 0.0;
       }
       else {
-	charge_initial = (cell - left_initial) / length_initial;
+	charge_initial = (cell_boundary - left_initial) / length_initial;
       }
       // Calculate charge finally to the left of the current cell's right boundary
-      if (right_final <= cell) {
+      if (right_final <= cell_boundary) {
 	charge_final = 1.0;
       } 
-      else if (left_initial >= cell) {
+      else if (left_final >= cell_boundary) {
 	charge_final = 0.0;
       }
       else {
-	charge_final = (cell - left_final) / length_final;
+	charge_final = (cell_boundary - left_final) / length_final;
       }
       j_x[mod(cell,n_g)] += charge[i] * (charge_initial - charge_final) * (dx / dt);
     }
@@ -120,7 +148,7 @@ void ParticleSpecies::write_phase(std::ofstream &x_ofstream,
 				  std::ofstream &u_x_ofstream, std::ofstream &u_y_ofstream)
 {
   std::vector<double> x_in_box(n_p);
-  for (int i = 0; i< n_p; i++) {
+  for (int i = 0; i < n_p; i++) {
     x_in_box[i] = put_in_box(x[i], n_g*dx);
   }
 
@@ -141,7 +169,6 @@ ParticleSpecies::ParticleSpecies(int n_p)
   u_y_old.resize(n_p);
   charge.resize(n_p);
   rqm.resize(n_p);
-
 
   return;
 };
@@ -338,16 +365,16 @@ int main(int argc, char *argv[])
   // INITIALIZATION
 
   // Define simulation parameters
-  int n_t = 8400;
-  int n_g = 512;
+  int n_t = 1000;
+  int n_g = 200;
 
-  double dx = 0.024;
-  double dt = 0.0239;
+  double dx = 0.5;
+  double dt = 0.45;
 
-  int n_species = 2;
-  int n_p = 512*100;
+  int n_species = 1;
+  int n_p = 20;
 
-  bool line_segments = true;
+  bool line_segments = false;
 
   // Initialize
   std::vector<double> e_x(n_g);
@@ -364,6 +391,9 @@ int main(int argc, char *argv[])
   std::vector<ParticleSpecies> species;
   for (int i = 0; i < n_species; i++) {
     species.push_back(ParticleSpecies(n_p));
+    species[i].dt = dt;
+    species[i].dx = dx;
+    species[i].n_g = n_g;
   }
   
   // Initialize output file streams
@@ -382,43 +412,32 @@ int main(int argc, char *argv[])
   u_x_ofstream.open("u_x");
   u_y_ofstream.open("u_y");
 
+  initialize_fields(e_x, e_y, b_z, j_x, j_y, n_g);
+  // Particle initialization
+  // Electrostatic wave, electromagnetic wave, Weibel
 
-  // Initialize EM fields
-  // EM wave
-  // int mode = 4;
-  // for (int i = 0; i < n_g; i++) {
-  //   e_x[i] = 0.0;
-  //   e_y[i] = cos(double(mode) * 2.0 * PI * (double(i) / double(n_g)));
-  //   b_z[i] = cos(double(mode) * 2.0 * PI * (double(i) / double(n_g)));
-  //   // BELOW FOR TESTING EM WAVE
-  //   j_x[i] = 0.0;
-  //   j_y[i] = 0.0;
-  // }
-  // Zero
-  for (int i = 0; i < n_g; i++) {
-    e_x[i] = 0.0;
-    e_y[i] = 0.0;
-    b_z[i] = 0.0;
-    j_x[i] = 0.0;
-    j_y[i] = 0.0;
-  }
-
-  // Initialize species numerical parameters
-  for (int i = 0; i < n_species; i++) {
-    species[i].dt = dt;
-    species[i].dx = dx;
-    species[i].n_g = n_g;
-    species[i].n_p = n_p;
-  }
-  std::cout << "Initialized" << std::endl;
   // Initialize charge, x, u_x, and u_y at t = 0
-  double u_y_drift[2] = {-0.1, 0.1};
+  // Weibel initialization
+  // double u_y_drift[2] = {-0.1, 0.1};
+  // for (int i_species = 0; i_species < n_species; i_species++) {
+  //   for (int i_particle = 0; i_particle < species[i_species].n_p; i_particle++) {
+  //     species[i_species].charge[i_particle] = (-1.0) * double(n_g) / n_p;
+  //     species[i_species].rqm[i_particle] = -1.0;
+  //     species[i_species].u_x[i_particle] = 0.01 * ((double) rand() / (RAND_MAX));
+  //     species[i_species].u_y[i_particle] = u_y_drift[i_species];
+  //     species[i_species].x[i_particle] = (double(i_particle) / species[i_species].n_p) * n_g * dx;      
+  //   }
+  // }
+
+  // Electrostatic wave initialization
+  double wave_amplitude = 0.01;
+  int wave_mode = 4;
   for (int i_species = 0; i_species < n_species; i_species++) {
     for (int i_particle = 0; i_particle < species[i_species].n_p; i_particle++) {
       species[i_species].charge[i_particle] = (-1.0) * double(n_g) / n_p;
       species[i_species].rqm[i_particle] = -1.0;
-      species[i_species].u_x[i_particle] = 0.01 * ((double) rand() / (RAND_MAX));
-      species[i_species].u_y[i_particle] = u_y_drift[i_species];
+      species[i_species].u_x[i_particle] = wave_amplitude * cos(2.0 * PI * double(wave_mode) * (double(i_particle) / species[i_species].n_p));      
+      species[i_species].u_y[i_particle] = 0.0;
       species[i_species].x[i_particle] = (double(i_particle) / species[i_species].n_p) * n_g * dx;      
     }
   }
@@ -439,9 +458,11 @@ int main(int argc, char *argv[])
 
   ////////////////////////////////////////
   // MAIN LOOP
-
+  int ndump_phase = 10;
   for (int t = 0; t < n_t; t++) {
-    //    species[0].write_phase(x_ofstream, u_x_ofstream, u_y_ofstream);
+    if (t % ndump_phase == 0) {
+      species[0].write_phase(x_ofstream, u_x_ofstream, u_y_ofstream);
+    }
     // Print diagnostics for e_x, e_y, and x
     write_data(e_x, e_x_ofstream, n_g);
     write_data(e_y, e_y_ofstream, n_g);
@@ -493,7 +514,8 @@ int main(int argc, char *argv[])
     }
     // Deposit the current from each species
     for (int i = 0; i < n_species; i++) {
-      species[i].deposit_j_x_segments_zero(j_x);
+      //species[i].deposit_j_x_segments_zero(j_x);
+      species[i].deposit_j_x(j_x);
       species[i].deposit_j_y(j_y);
     }
 
