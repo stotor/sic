@@ -76,10 +76,68 @@ public:
 			std::vector<double> &b_z_tavg);
   void deposit_j_x(std::vector<double> &j_x);
   void deposit_j_x_segments_zero(std::vector<double> &j_x);
+  void deposit_j_x_segments_linear(std::vector<double> &j_x);
   void deposit_j_y(std::vector<double> &j_y);
   void write_phase(std::ofstream &x_ofstream, 
 		   std::ofstream &u_x_ofstream, std::ofstream &u_y_ofstream);
 
+};
+
+
+void deposit_charge_to_left_segment_linear(std::vector<double> &j_x, double x_tracer_a, 
+					   double x_tracer_b, double charge, int n_g, double dx, int right_max)
+{
+  double left, right, length, midpoint, charge_fraction, weight;
+  int bound_left, bound_right;
+  left = fmin(x_tracer_a, x_tracer_b) / dx;
+  right = fmax(x_tracer_a, x_tracer_b) / dx;
+  length = right - left;
+  bound_left = floor(left);
+  bound_right = ceil(right);
+
+  // If tracers are between two gridpoints
+  if (bound_right == (bound_left + 1)) {
+    midpoint = (left + right) / 2.0;
+    charge_fraction = 1.0;
+    weight = bound_right - midpoint;
+    j_x[mod(bound_left,n_g)] += charge * charge_fraction * weight;
+  }
+  else {
+    // Left end
+    midpoint = (left + bound_left + 1) / 2.0;
+    charge_fraction = (bound_left + 1 - left) / length;
+    weight = (bound_left + 1 - midpoint);
+    for (int cell = bound_left; cell < bound_right; cell++) {
+      j_x[mod(cell,n_g)] += charge * charge_fraction * weight;
+
+    }
+
+    // Pieces connecting two gridpoints
+    charge_fraction = (1.0) / length;
+    weight = 0.5;
+    for (int cell = (bound_left+1); cell < (bound_right-1); cell++) {
+      for (int boundary = cell; boundary < bound_right; boundary++) {
+	j_x[mod(boundary,n_g)] += charge * charge_fraction * weight;
+      }
+    }
+    
+    // Right end
+    midpoint = (right + bound_right - 1) / 2.0;
+    charge_fraction = (right - (bound_right - 1)) / length;
+    weight = bound_right - midpoint;
+    j_x[mod((bound_right-1),n_g)] += charge * charge_fraction * weight;
+  }
+  return;
+};
+
+void ParticleSpecies::deposit_j_x_segments_linear(std::vector<double> &j_x)
+{
+  for (int i = 0; i < (n_p-1); i++) {
+    // Initial line segment
+    deposit_charge_to_left_segment_linear(j_x, x_old[i], x_old[i+1], (charge[i] * (dx / dt)), n_g, dx);
+    deposit_charge_to_left_segment_linear(j_x, x[i], x[i+1], (-1.0) * (charge[i] * (dx / dt)), n_g, dx);
+  }
+  return;
 };
 
 void ParticleSpecies::deposit_j_x_segments_zero(std::vector<double> &j_x)
@@ -372,9 +430,9 @@ int main(int argc, char *argv[])
   double dt = 0.45;
 
   int n_species = 1;
-  int n_p = 20;
+  int n_p = 20000;
 
-  bool line_segments = false;
+  bool line_segments = true;
 
   // Initialize
   std::vector<double> e_x(n_g);
@@ -458,11 +516,11 @@ int main(int argc, char *argv[])
 
   ////////////////////////////////////////
   // MAIN LOOP
-  int ndump_phase = 10;
+  int ndump_phase = 0;
   for (int t = 0; t < n_t; t++) {
-    if (t % ndump_phase == 0) {
-      species[0].write_phase(x_ofstream, u_x_ofstream, u_y_ofstream);
-    }
+    // if (t % ndump_phase == 0) {
+    //   species[0].write_phase(x_ofstream, u_x_ofstream, u_y_ofstream);
+    // }
     // Print diagnostics for e_x, e_y, and x
     write_data(e_x, e_x_ofstream, n_g);
     write_data(e_y, e_y_ofstream, n_g);
@@ -515,7 +573,8 @@ int main(int argc, char *argv[])
     // Deposit the current from each species
     for (int i = 0; i < n_species; i++) {
       //species[i].deposit_j_x_segments_zero(j_x);
-      species[i].deposit_j_x(j_x);
+      species[i].deposit_j_x_segments_linear(j_x);
+      //species[i].deposit_j_x(j_x);
       species[i].deposit_j_y(j_y);
     }
 
