@@ -74,6 +74,9 @@ public:
   void advance_x();
   void advance_velocity(std::vector<double> &e_x, std::vector<double> &e_y, 
 			std::vector<double> &b_z_tavg);
+  void deposit_rho(std::vector<double> &rho);
+  void deposit_rho_segments_zero(std::vector<double> &rho);
+  void deposit_rho_segments_linear(std::vector<double> &rho);
   void deposit_j_x(std::vector<double> &j_x);
   void deposit_j_x_segments_zero(std::vector<double> &j_x);
   void deposit_j_x_segments_linear(std::vector<double> &j_x);
@@ -81,6 +84,92 @@ public:
   void write_phase(std::ofstream &x_ofstream, 
 		   std::ofstream &u_x_ofstream, std::ofstream &u_y_ofstream);
 
+};
+
+
+void deposit_rho_segment_linear(std::vector<double> &rho, double x_tracer_a, 
+				double x_tracer_b, double charge, int n_g, double dx)
+{
+  double left, right, length, midpoint, charge_fraction, weight;
+  int bound_left, bound_right;
+  left = fmin(x_tracer_a, x_tracer_b) / dx;
+  right = fmax(x_tracer_a, x_tracer_b) / dx;
+  length = right - left;
+  bound_left = floor(left);
+  bound_right = ceil(right);
+
+  // If tracers are between two gridpoints
+  if (bound_right == (bound_left + 1)) {
+    midpoint = (left + right) / 2.0;
+    charge_fraction = 1.0;
+    weight = bound_right - midpoint;
+    rho[mod(bound_left,n_g)] += charge * charge_fraction * weight;
+    rho[mod((bound_left+1),n_g)] += charge * charge_fraction * (1.0 - weight);
+  }
+  else {
+    // Left end
+    midpoint = (left + bound_left + 1) / 2.0;
+    charge_fraction = (bound_left + 1 - left) / length;
+    weight = (bound_left + 1 - midpoint);
+    rho[mod(bound_left,n_g)] += charge * charge_fraction * weight;
+    rho[mod((bound_left+1),n_g)] += charge * charge_fraction * (1.0 - weight);
+
+    // Pieces connecting two gridpoints
+    charge_fraction = (1.0) / length;
+
+    weight = 0.5;
+    for (int cell = (bound_left+1); cell < (bound_right-1); cell++) {
+      rho[mod(cell,n_g)] += charge * charge_fraction * weight;
+      rho[mod((cell+1),n_g)] += charge * charge_fraction * (1.0 - weight);
+    }
+    
+    // Right end
+    midpoint = (right + bound_right - 1) / 2.0;
+    charge_fraction = (right - (bound_right - 1)) / length;
+    weight = bound_right - midpoint;
+    rho[mod((bound_right-1),n_g)] += charge * charge_fraction * weight;
+    rho[mod(bound_right,n_g)] += charge * charge_fraction * (1.0-weight);
+  }
+  return;
+};
+
+void deposit_rho_segment_zero(std::vector<double> &rho, double x_tracer_a, 
+			      double x_tracer_b, double charge, int n_g, double dx)
+{
+  double left, right, length, charge_fraction;
+  int bound_left, bound_right;
+  left = fmin(x_tracer_a, x_tracer_b) / dx;
+  right = fmax(x_tracer_a, x_tracer_b) / dx;
+  length = right - left;
+
+  // Shift tracer positions so that 0 is the left bounary of cell zero
+  left = left + 0.5;
+  right = right + 0.5;
+
+  bound_left = floor(left);
+  bound_right = ceil(right);
+
+  if (bound_right == (bound_left + 1)) {
+    // If tracers are between two gridpoints
+    charge_fraction = 1.0;
+    rho[mod(bound_left,n_g)] += charge * charge_fraction;
+  }
+  else {
+    // Left end
+    charge_fraction = (bound_left + 1.0 - left) / length;
+    rho[mod(bound_left,n_g)] += charge * charge_fraction;
+
+    // Pieces connecting two gridpoints
+    charge_fraction = (1.0) / length;
+    for (int cell = (bound_left+1); cell < (bound_right-1); cell++) {
+      rho[mod(cell,n_g)] += charge * charge_fraction;
+    }
+    
+    // Right end
+    charge_fraction = (right - (bound_right - 1)) / length;
+    rho[mod((bound_right-1),n_g)] += charge * charge_fraction;
+  }
+  return;
 };
 
 
@@ -138,6 +227,7 @@ void deposit_charge_to_left_segment_linear(std::vector<double> &j_x, double x_tr
   return;
 };
 
+
 void ParticleSpecies::deposit_j_x_segments_linear(std::vector<double> &j_x)
 {
   double right_max;
@@ -153,6 +243,23 @@ void ParticleSpecies::deposit_j_x_segments_linear(std::vector<double> &j_x)
   }
   return;
 };
+
+void ParticleSpecies::deposit_rho_segments_zero(std::vector<double> &rho)
+{
+  for (int i = 0; i < (n_p-1); i++) {    
+    deposit_rho_segment_zero(rho, x[i], x[i+1], charge[i], n_g, dx);
+  }
+  return;
+};
+
+void ParticleSpecies::deposit_rho_segments_linear(std::vector<double> &rho)
+{
+  for (int i = 0; i < (n_p-1); i++) {    
+    deposit_rho_segment_linear(rho, x[i], x[i+1], charge[i], n_g, dx);
+  }
+  return;
+};
+
 
 void ParticleSpecies::deposit_j_x_segments_zero(std::vector<double> &j_x)
 {
@@ -273,6 +380,20 @@ double interpolate_field_half_integer(std::vector<double> &field, double x, doub
   alpha = 1.0 - (x - i_lower);
   beta = 1.0 - alpha;
   return (alpha * field[mod(i_lower,n_g)]) + (beta * field[mod((i_lower+1),n_g)]);
+};
+
+void ParticleSpecies::deposit_rho(std::vector<double> &rho)
+{
+  double lower_weight, x_normalized;
+  int lower;
+  for (int i = 0; i < n_p; i++) {
+    x_normalized = x[i] / dx;
+    lower = floor(x_normalized);
+    lower_weight = double(lower) + 1.0 - x_normalized;
+    rho[mod(floor(lower),n_g)] += charge[i] * lower_weight;
+    rho[mod(floor(lower+1),n_g)] += charge[i] * (1.0 - lower_weight);
+  }
+  return;
 };
 
 void ParticleSpecies::deposit_j_x(std::vector<double> &j_x)
@@ -444,7 +565,7 @@ int main(int argc, char *argv[])
   double dt = 0.2;
 
   int n_species = 1;
-  int n_p = 20000;
+  int n_ppc = 10;
 
   bool line_segments = true;
 
@@ -454,6 +575,7 @@ int main(int argc, char *argv[])
   std::vector<double> b_z(n_g); 
   std::vector<double> j_y(n_g); 
   std::vector<double> j_x(n_g); 
+  std::vector<double> rho(n_g); 
   std::vector<double> b_z_old(n_g);
   std::vector<double> j_y_old(n_g);
   std::vector<double> j_x_old(n_g);
@@ -470,7 +592,7 @@ int main(int argc, char *argv[])
   
   // Initialize output file streams
   std::ofstream e_x_ofstream, e_y_ofstream, b_z_ofstream, j_x_ofstream, 
-    j_y_ofstream;
+    j_y_ofstream, rho_ofstream;
 
   std::ofstream x_ofstream, u_x_ofstream, u_y_ofstream;
 
@@ -479,6 +601,7 @@ int main(int argc, char *argv[])
   b_z_ofstream.open("b_z");
   j_x_ofstream.open("j_x");
   j_y_ofstream.open("j_y");
+  rho_ofstream.open("rho");
 
   x_ofstream.open("x");
   u_x_ofstream.open("u_x");
@@ -502,11 +625,11 @@ int main(int argc, char *argv[])
   // }
 
   // Electrostatic wave initialization
-  double wave_amplitude = 0.01;
+  double wave_amplitude = 0.001;
   int wave_mode = 4;
   for (int i_species = 0; i_species < n_species; i_species++) {
     for (int i_particle = 0; i_particle < species[i_species].n_p; i_particle++) {
-      species[i_species].charge[i_particle] = (-1.0) * double(n_g) / n_p;
+      species[i_species].charge[i_particle] = (-1.0) * (1.0 / n_ppc);
       species[i_species].rqm[i_particle] = -1.0;
       species[i_species].u_x[i_particle] = wave_amplitude * cos(2.0 * PI * double(wave_mode) * (double(i_particle) / species[i_species].n_p));      
       species[i_species].u_y[i_particle] = 0.0;
@@ -538,6 +661,18 @@ int main(int argc, char *argv[])
     // Print diagnostics for e_x, e_y, and x
     write_data(e_x, e_x_ofstream, n_g);
     write_data(e_y, e_y_ofstream, n_g);
+
+    // Deposit the charge from each species
+    // First set rho to zero
+    for (int i = 0; i < n_g; i++) {
+      rho[i] = 0.0;
+    }
+    for (int i = 0; i < n_species; i++) {
+      //species[i].deposit_rho(rho);
+      //species[i].deposit_rho_segments_linear(rho);
+      species[i].deposit_rho_segments_zero(rho);
+    }
+    write_data(rho, rho_ofstream, n_g);
 
     // Save b_z_old
     save_old_values(b_z, b_z_old, n_g);
@@ -586,8 +721,8 @@ int main(int argc, char *argv[])
     }
     // Deposit the current from each species
     for (int i = 0; i < n_species; i++) {
-      //species[i].deposit_j_x_segments_zero(j_x);
-      species[i].deposit_j_x_segments_linear(j_x);
+      species[i].deposit_j_x_segments_zero(j_x);
+      //species[i].deposit_j_x_segments_linear(j_x);
       //species[i].deposit_j_x(j_x);
       species[i].deposit_j_y(j_y);
     }
@@ -611,6 +746,7 @@ int main(int argc, char *argv[])
   e_y_ofstream.close();
   b_z_ofstream.close();
   j_y_ofstream.close();
+  rho_ofstream.close();
 
   x_ofstream.close();
   u_x_ofstream.close();
