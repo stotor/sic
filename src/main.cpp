@@ -101,23 +101,28 @@ void deposit_charge_to_left_segment_linear(std::vector<double> &j_x, double x_tr
     charge_fraction = 1.0;
     weight = bound_right - midpoint;
     j_x[mod(bound_left,n_g)] += charge * charge_fraction * weight;
+    for (int cell = (bound_left+1); cell < right_max; cell++) {
+      j_x[mod(cell,n_g)] += charge * charge_fraction;
+    }
   }
   else {
     // Left end
     midpoint = (left + bound_left + 1) / 2.0;
     charge_fraction = (bound_left + 1 - left) / length;
     weight = (bound_left + 1 - midpoint);
-    for (int cell = bound_left; cell < bound_right; cell++) {
-      j_x[mod(cell,n_g)] += charge * charge_fraction * weight;
-
+    j_x[mod(bound_left,n_g)] += charge * charge_fraction * weight;
+    for (int cell = (bound_left+1); cell < right_max; cell++) {
+      j_x[mod(cell,n_g)] += charge * charge_fraction;
     }
 
     // Pieces connecting two gridpoints
     charge_fraction = (1.0) / length;
+
     weight = 0.5;
     for (int cell = (bound_left+1); cell < (bound_right-1); cell++) {
-      for (int boundary = cell; boundary < bound_right; boundary++) {
-	j_x[mod(boundary,n_g)] += charge * charge_fraction * weight;
+      j_x[mod(cell,n_g)] += charge * charge_fraction * weight;
+      for (int boundary = (cell+1); boundary < right_max; boundary++) {
+	j_x[mod(boundary,n_g)] += charge * charge_fraction;
       }
     }
     
@@ -126,16 +131,25 @@ void deposit_charge_to_left_segment_linear(std::vector<double> &j_x, double x_tr
     charge_fraction = (right - (bound_right - 1)) / length;
     weight = bound_right - midpoint;
     j_x[mod((bound_right-1),n_g)] += charge * charge_fraction * weight;
+    for (int cell = (bound_right); cell < right_max; cell++) {
+      j_x[mod(cell,n_g)] += charge * charge_fraction;
+    }
   }
   return;
 };
 
 void ParticleSpecies::deposit_j_x_segments_linear(std::vector<double> &j_x)
 {
+  double right_max;
   for (int i = 0; i < (n_p-1); i++) {
+    // Index of right bounding gridpoint
+    right_max = fmax(fmax(x_old[i], x_old[i+1]),fmax(x[i],x[i+1]));
+    right_max = right_max / dx;
+    right_max = ceil(right_max);
+    
     // Initial line segment
-    deposit_charge_to_left_segment_linear(j_x, x_old[i], x_old[i+1], (charge[i] * (dx / dt)), n_g, dx);
-    deposit_charge_to_left_segment_linear(j_x, x[i], x[i+1], (-1.0) * (charge[i] * (dx / dt)), n_g, dx);
+    deposit_charge_to_left_segment_linear(j_x, x_old[i], x_old[i+1], (charge[i] * (dx / dt)), n_g, dx, right_max);
+    deposit_charge_to_left_segment_linear(j_x, x[i], x[i+1], (-1.0) * (charge[i] * (dx / dt)), n_g, dx, right_max);
   }
   return;
 };
@@ -423,11 +437,11 @@ int main(int argc, char *argv[])
   // INITIALIZATION
 
   // Define simulation parameters
-  int n_t = 1000;
+  int n_t = 10000;
   int n_g = 200;
 
   double dx = 0.5;
-  double dt = 0.45;
+  double dt = 0.2;
 
   int n_species = 1;
   int n_p = 20000;
@@ -516,7 +530,7 @@ int main(int argc, char *argv[])
 
   ////////////////////////////////////////
   // MAIN LOOP
-  int ndump_phase = 0;
+  int ndump_phase = 1;
   for (int t = 0; t < n_t; t++) {
     // if (t % ndump_phase == 0) {
     //   species[0].write_phase(x_ofstream, u_x_ofstream, u_y_ofstream);
