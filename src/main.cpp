@@ -11,27 +11,6 @@
 #include "fields.hpp"
 #include "utilities.hpp"
 
-
-void write_data_tavg(std::vector<double> &array, std::vector<double> &array_old, std::ofstream &file, 
-		     int n_values)
-{
-  for (int i = 0; i < n_values; i++) {
-    file << (array[i] + array_old[i]) / 2.0 << " ";
-  }
-  file << std::endl;
-  return;
-};
-
-void calc_tavg_arry(std::vector<double> &array_tavg, std::vector<double> &array, 
-		    std::vector<double> &array_old, 
-		    int n_values)
-{
-  for (int i = 0; i < n_values; i++) {
-    array_tavg[i] = (array[i] + array_old[i]) / 2.0;
-  }
-  return;
-};
-
 int main(int argc, char *argv[])
 {
   ///////////////////////////////
@@ -233,7 +212,6 @@ int main(int argc, char *argv[])
   x_ofstream.close();
   u_x_ofstream.close();
   u_y_ofstream.close();
-
 
   return 0;
 
