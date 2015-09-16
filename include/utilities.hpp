@@ -17,4 +17,8 @@ void calc_tavg_arry(std::vector<double> &array_tavg, std::vector<double> &array,
 		    std::vector<double> &array_old, 
 		    int n_values);
 
+void half_int_to_int(std::vector<double> &field, 
+		     std::vector<double> &shifted_field, 
+		     int n_g);
+
 #endif /* utilities_hpp */

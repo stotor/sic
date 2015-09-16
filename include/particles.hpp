@@ -25,7 +25,7 @@ public:
 
   // Methods
   void advance_x();
-  void advance_velocity(std::vector<double> &e_x, std::vector<double> &e_y, 
+  void advance_velocity(std::vector<double> &e_x_int, std::vector<double> &e_y, 
 			std::vector<double> &b_z_tavg);
   void deposit_rho(std::vector<double> &rho);
   void deposit_rho_segments_zero(std::vector<double> &rho);

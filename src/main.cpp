@@ -17,21 +17,30 @@ int main(int argc, char *argv[])
   // INITIALIZATION
 
   // Define simulation parameters
-  int n_t = 10000;
+  int n_t = 501;
   int n_g = 200;
 
   double dx = 0.5;
   double dt = 0.2;
 
   int n_species = 1;
-  int n_ppc = 10;
+  double n_ppc = 1.0 / 10.0;
 
   int n_p = n_g * n_ppc;
 
-  bool line_segments = true;
+  int method = 0;
+
+  bool line_segments;
+  if (method==0) {
+    line_segments = false;
+  } else {
+    line_segments = true;
+  }
+
 
   // Initialize
   std::vector<double> e_x(n_g);
+  std::vector<double> e_x_int(n_g);
   std::vector<double> e_y(n_g);
   std::vector<double> b_z(n_g); 
   std::vector<double> j_y(n_g); 
@@ -87,14 +96,15 @@ int main(int argc, char *argv[])
 
   // Electrostatic wave initialization
   double wave_amplitude = 0.001;
-  int wave_mode = 4;
+  int wave_mode = 1;
   for (int i_species = 0; i_species < n_species; i_species++) {
     for (int i_particle = 0; i_particle < species[i_species].n_p; i_particle++) {
       species[i_species].charge[i_particle] = (-1.0) * (1.0 / n_ppc);
       species[i_species].rqm[i_particle] = -1.0;
-      species[i_species].u_x[i_particle] = wave_amplitude * cos(2.0 * PI * double(wave_mode) * (double(i_particle) / species[i_species].n_p));      
+      species[i_species].x[i_particle] = (double(i_particle) / n_p) * n_g * dx + (double(n_g) * dx / double(n_p)) / 2.0;
+      species[i_species].u_x[i_particle] = wave_amplitude * cos(2.0 * PI * double(wave_mode) * species[i_species].x[i_particle] / (n_g * dx));
       species[i_species].u_y[i_particle] = 0.0;
-      species[i_species].x[i_particle] = (double(i_particle) / species[i_species].n_p) * n_g * dx;      
+
     }
   }
 
@@ -129,9 +139,15 @@ int main(int argc, char *argv[])
       rho[i] = 0.0;
     }
     for (int i = 0; i < n_species; i++) {
-      //species[i].deposit_rho(rho);
-      //species[i].deposit_rho_segments_linear(rho);
-      species[i].deposit_rho_segments_zero(rho);
+      if (method==0) { 
+	species[i].deposit_rho(rho);
+      }
+      else if (method==1) { 
+	species[i].deposit_rho_segments_zero(rho);
+      }
+      else if (method==2) { 
+	species[i].deposit_rho_segments_linear(rho);
+      }
     }
     write_data(rho, rho_ofstream, n_g);
 
@@ -152,10 +168,13 @@ int main(int argc, char *argv[])
       save_old_values(species[i].u_x, species[i].u_x_old, species[i].n_p);
       save_old_values(species[i].u_y, species[i].u_y_old, species[i].n_p);
     }
+    
+    // Calculated e_x at integer values to eliminate self force
+    half_int_to_int(e_x, e_x_int, n_g);
 
     // Calculate u_x and u_y, at t+1/2
     for (int i = 0; i < n_species; i++) {
-      species[i].advance_velocity(e_x, e_y, b_z_tavg);
+      species[i].advance_velocity(e_x_int, e_y, b_z_tavg);
     }
 
     // Print diagnostics for u_x and u_y
@@ -182,9 +201,15 @@ int main(int argc, char *argv[])
     }
     // Deposit the current from each species
     for (int i = 0; i < n_species; i++) {
-      species[i].deposit_j_x_segments_zero(j_x);
-      //species[i].deposit_j_x_segments_linear(j_x);
-      //species[i].deposit_j_x(j_x);
+      if (method==0) { 
+	species[i].deposit_j_x(j_x);
+      }
+      else if (method==1) {
+	species[i].deposit_j_x_segments_zero(j_x);
+      }
+      else if (method==2) {
+	species[i].deposit_j_x_segments_linear(j_x);
+      }
       species[i].deposit_j_y(j_y);
     }
 

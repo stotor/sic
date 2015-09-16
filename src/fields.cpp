@@ -23,7 +23,7 @@ void initialize_fields(std::vector<double> e_x, std::vector<double> e_y, std::ve
     j_x[i] = 0.0;
     j_y[i] = 0.0;
   }
-};
+}
 
 ////////////////////////////////////////////////////////////////
 // Fields
@@ -34,7 +34,7 @@ void save_old_values(std::vector<double> &array, std::vector<double> &array_old,
     array_old[i] = array[i];
   }
   return;
-};
+}
 
 void advance_b_z(std::vector<double> &b_z, std::vector<double> &e_y, double dt, 
 		 double dx, int n_g)
@@ -44,7 +44,7 @@ void advance_b_z(std::vector<double> &b_z, std::vector<double> &e_y, double dt,
   }
   b_z[n_g-1] = b_z[n_g-1] - (dt / dx) * (e_y[0] - e_y[n_g-1]);
   return;
-};
+}
 
 void advance_e_x(std::vector<double> &e_x, std::vector<double> &j_x, double dt, 
 		 double dx, int n_g)
@@ -53,7 +53,7 @@ void advance_e_x(std::vector<double> &e_x, std::vector<double> &j_x, double dt,
     e_x[i] = e_x[i] - dt * j_x[i];
   }
   return;
-};
+}
 
 void advance_e_y(std::vector<double> &e_y, std::vector<double> &b_z, 
 		 std::vector<double> &j_y, double dt, 
@@ -64,4 +64,4 @@ void advance_e_y(std::vector<double> &e_y, std::vector<double> &b_z,
     e_y[i] = e_y[i] - (dt / dx) * (b_z[i] - b_z[i-1]) - dt * j_y[i];
   }
   return;
-};
+}

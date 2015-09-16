@@ -381,7 +381,7 @@ void boris_push(double &u_x, double &u_y, double rqm, double e_x, double e_y,
   return;
 }
 
-void ParticleSpecies::advance_velocity(std::vector<double> &e_x, 
+void ParticleSpecies::advance_velocity(std::vector<double> &e_x_int, 
 				       std::vector<double> &e_y, 
 				       std::vector<double> &b_z_tavg)
 {
@@ -389,7 +389,7 @@ void ParticleSpecies::advance_velocity(std::vector<double> &e_x,
 
   for (int i = 0; i < n_p; i++) {
     // Weight fields to the particle location
-    e_x_particle = interpolate_field_half_integer(e_x, x[i], dx, n_g);
+    e_x_particle = interpolate_field_integer(e_x_int, x[i], dx, n_g);
     e_y_particle = interpolate_field_integer(e_y, x[i], dx, n_g);
     b_z_particle = interpolate_field_half_integer(b_z_tavg, x[i], dx, n_g);
     // Update velocities
