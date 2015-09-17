@@ -28,7 +28,7 @@ int main(int argc, char *argv[])
 
   int n_p = n_g * n_ppc;
 
-  int method = 0;
+  int method = 2;
 
   bool line_segments;
   if (method==0) {

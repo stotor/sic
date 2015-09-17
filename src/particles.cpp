@@ -52,6 +52,84 @@ void deposit_rho_segment_linear(std::vector<double> &rho, double x_tracer_a,
   return;
 }
 
+double interpolate_segment_velocity(double v_left, double v_right, 
+				    double length, double distance_from_left)
+{
+  return v_left + (distance_from_left / length) * (v_right - v_left);
+}
+
+void deposit_j_y_segment_zero(std::vector<double> &j_y, double left, 
+			      double right, double v_y_left, 
+			      double v_y_right, 
+			      double charge, int n_g, double dx)
+{
+  double length, charge_fraction, avg_velocity, midpoint, distance_from_left;
+  int bound_left, bound_right;
+  left = left / dx;
+  right = right / dx;
+  length = right - left;
+
+  // Shift tracer positions so that 0 is the left bounary of cell zero
+  left = left + 0.5;
+  right = right + 0.5;
+
+  bound_left = floor(left);
+  bound_right = ceil(right);
+
+  if (bound_right == (bound_left + 1)) {
+    // If tracers are between two gridpoints
+    charge_fraction = 1.0;
+    avg_velocity = (v_y_left + v_y_right) / 2.0;
+    j_y[mod(bound_left,n_g)] += charge * charge_fraction * avg_velocity;
+  }
+  else {
+    // Left end
+    charge_fraction = (bound_left + 1.0 - left) / length;
+    midpoint = (bound_left + 1.0 + left) / 2.0;
+    distance_from_left = left - midpoint;
+    avg_velocity = interpolate_segment_velocity(v_y_left, v_y_right, length, distance_from_left);
+    j_y[mod(bound_left,n_g)] += charge * charge_fraction * avg_velocity;
+    // Pieces connecting two gridpoints
+    charge_fraction = (1.0) / length;
+    for (int cell = (bound_left+1); cell < (bound_right-1); cell++) {
+      distance_from_left = cell + 0.5 - left;
+      avg_velocity = interpolate_segment_velocity(v_y_left, v_y_right, length, distance_from_left);
+      j_y[mod(cell,n_g)] += charge * charge_fraction * avg_velocity;
+    }
+    // Right end
+    charge_fraction = (right - (bound_right - 1)) / length;
+    midpoint = (right + bound_right) / 2.0;
+    distance_from_left = midpoint - left;
+    avg_velocity = interpolate_segment_velocity(v_y_left, v_y_right, length, distance_from_left);
+    j_y[mod((bound_right-1),n_g)] += charge * charge_fraction * avg_velocity;
+  }
+  return;
+}
+
+void ParticleSpecies::deposit_j_y_segments_zero(std::vector<double> &j_y)
+{
+  double x_i_tavg, x_ip1_tavg, left, right, v_y_left, v_y_right;
+  for (int i = 0; i < (n_p-1); i++) {
+    x_i_tavg = (x_old[i] + x[i]) / 2.0;
+    x_ip1_tavg = (x_old[i+1] + x[i+1]) / 2.0;
+    if (x_ip1_tavg >= x_i_tavg) {
+      left = x_i_tavg;
+      right = x_ip1_tavg;
+      v_y_left = u_y[i] / sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0));
+      v_y_right = u_y[i+1] / sqrt(1.0 + pow(u_x[i+1], 2.0) + pow(u_y[i+1], 2.0));
+    }
+    else {
+      left = x_ip1_tavg;
+      right = x_i_tavg;
+      v_y_left = u_y[i+1] / sqrt(1.0 + pow(u_x[i+1], 2.0) + pow(u_y[i+1], 2.0));
+      v_y_right = u_y[i] / sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0));
+    }
+    deposit_j_y_segment_zero(j_y, left, right, v_y_left, v_y_right, charge[i], n_g, dx);
+  }
+  return;
+}
+
+
 void deposit_rho_segment_zero(std::vector<double> &rho, double x_tracer_a, 
 			      double x_tracer_b, double charge, int n_g, double dx)
 {
