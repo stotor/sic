@@ -432,7 +432,7 @@ void ParticleSpecies::deposit_j_y(std::vector<double> &j_y)
   return;
 }
 
-void boris_push(double &u_x, double &u_y, double rqm, double e_x, double e_y,
+void boris_push_rel(double &u_x, double &u_y, double rqm, double e_x, double e_y,
 		double b_z, double dt)
 {  
   // Variables necessary for intermediate steps of the calculation
@@ -459,6 +459,32 @@ void boris_push(double &u_x, double &u_y, double rqm, double e_x, double e_y,
   return;
 }
 
+void boris_push_nonrel(double &u_x, double &u_y, double rqm, double e_x, 
+		       double e_y, double b_z, double dt)
+{  
+  // Variables necessary for intermediate steps of the calculation
+  double t, s;
+
+  // First half electric impulse
+  u_x = u_x + rqm * e_x * (dt / 2.0);
+  u_y = u_y + rqm * e_y * (dt / 2.0);
+
+  // Velocity rotation from magnetic field
+  t = rqm * b_z * dt / (2.0);
+  s = (2.0 * t) / (1.0 + pow(t, 2.0));
+
+  u_x = u_x + u_y * t;
+  u_y = u_y - u_x * s;
+  u_x = u_x + u_y * t;
+  
+  // Second half electric impulse
+  u_x = u_x + rqm * e_x * (dt / 2.0);
+  u_y = u_y + rqm * e_y * (dt / 2.0);
+
+  return;
+}
+
+
 void ParticleSpecies::advance_velocity(std::vector<double> &e_x_int, 
 				       std::vector<double> &e_y, 
 				       std::vector<double> &b_z_tavg)
@@ -471,19 +497,29 @@ void ParticleSpecies::advance_velocity(std::vector<double> &e_x_int,
     e_y_particle = interpolate_field_integer(e_y, x[i], dx, n_g);
     b_z_particle = interpolate_field_half_integer(b_z_tavg, x[i], dx, n_g);
     // Update velocities
-    boris_push(u_x[i], u_y[i], rqm[i], e_x_particle, e_y_particle, 
-	       b_z_particle, dt);
+    if (relativistic) {
+      boris_push_rel(u_x[i], u_y[i], rqm[i], e_x_particle, e_y_particle, 
+		 b_z_particle, dt);
+    } else {
+      boris_push_nonrel(u_x[i], u_y[i], rqm[i], e_x_particle, e_y_particle, 
+		 b_z_particle, dt);
+    }   
   }
   return;
 }
 
-
 void ParticleSpecies::advance_x()
 {
-  double gamma;
-  for (int i = 0; i < n_p; i++) {
-    gamma = sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0));
-    x[i] = x[i] + dt * u_x[i] / gamma;
+  if (relativistic) {
+    double gamma;
+    for (int i = 0; i < n_p; i++) {
+      gamma = sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0));
+      x[i] = x[i] + dt * u_x[i] / gamma;
+    } 
+  } else {
+    for (int i = 0; i < n_p; i++) {
+      x[i] = x[i] + dt * u_x[i];
+    }
   }
   return;
 }

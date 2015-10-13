@@ -16,6 +16,7 @@ public:
   // Attributes
   // Number of particles
   int n_p;
+  bool relativistic;
 
   // Particle phase space attributes
   std::vector<double> x, u_x, u_y, x_old, u_x_old, u_y_old;
