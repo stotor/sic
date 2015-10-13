@@ -28,7 +28,7 @@ int main(int argc, char *argv[])
 
   int n_p = n_g * n_ppc;
 
-  int method = 2;
+  int method = 0;
 
   bool line_segments;
   if (method==0) {
@@ -46,6 +46,7 @@ int main(int argc, char *argv[])
   std::vector<double> j_y(n_g); 
   std::vector<double> j_x(n_g); 
   std::vector<double> rho(n_g); 
+  std::vector<double> phi(n_g); 
   std::vector<double> b_z_old(n_g);
   std::vector<double> j_y_old(n_g);
   std::vector<double> j_x_old(n_g);
@@ -62,7 +63,7 @@ int main(int argc, char *argv[])
   
   // Initialize output file streams
   std::ofstream e_x_ofstream, e_y_ofstream, b_z_ofstream, j_x_ofstream, 
-    j_y_ofstream, rho_ofstream;
+    j_y_ofstream, rho_ofstream, phi_ofstream;
 
   std::ofstream x_ofstream, u_x_ofstream, u_y_ofstream;
 
@@ -72,6 +73,7 @@ int main(int argc, char *argv[])
   j_x_ofstream.open("j_x");
   j_y_ofstream.open("j_y");
   rho_ofstream.open("rho");
+  phi_ofstream.open("phi");
 
   x_ofstream.open("x");
   u_x_ofstream.open("u_x");
@@ -95,7 +97,7 @@ int main(int argc, char *argv[])
   // }
 
   // Electrostatic wave initialization
-  double wave_amplitude = 0.001;
+  double wave_amplitude = 0.1;
   int wave_mode = 1;
   for (int i_species = 0; i_species < n_species; i_species++) {
     for (int i_particle = 0; i_particle < species[i_species].n_p; i_particle++) {
@@ -104,7 +106,6 @@ int main(int argc, char *argv[])
       species[i_species].x[i_particle] = (double(i_particle) / n_p) * n_g * dx + (double(n_g) * dx / double(n_p)) / 2.0;
       species[i_species].u_x[i_particle] = wave_amplitude * cos(2.0 * PI * double(wave_mode) * species[i_species].x[i_particle] / (n_g * dx));
       species[i_species].u_y[i_particle] = 0.0;
-
     }
   }
 
@@ -119,6 +120,23 @@ int main(int argc, char *argv[])
     }
   }
 
+  // Calculate e_x at t = 0 from Poisson's equation
+  for (int i = 0; i < n_g; i++) {
+    rho[i] = 1.0;
+  }
+  for (int i = 0; i < n_species; i++) {
+    if (method==0) { 
+      species[i].deposit_rho(rho);
+    }
+    else if (method==1) { 
+      species[i].deposit_rho_segments_zero(rho);
+    }
+    else if (method==2) { 
+      species[i].deposit_rho_segments_linear(rho);
+    }
+  }
+  initialize_e_x(rho, e_x, dx, n_g);
+
   // Calculate b_z, u_x, and u_y at t = - 1/2
   advance_b_z(b_z, e_y, (-0.5 * dt), dx, n_g);
 
@@ -126,17 +144,17 @@ int main(int argc, char *argv[])
   // MAIN LOOP
   int ndump_phase = 1;
   for (int t = 0; t < n_t; t++) {
-    // if (t % ndump_phase == 0) {
-    //   species[0].write_phase(x_ofstream, u_x_ofstream, u_y_ofstream);
-    // }
+    if (t % ndump_phase == 0) {
+      species[0].write_phase(x_ofstream, u_x_ofstream, u_y_ofstream);
+    }
     // Print diagnostics for e_x, e_y, and x
     write_data(e_x, e_x_ofstream, n_g);
     write_data(e_y, e_y_ofstream, n_g);
 
     // Deposit the charge from each species
-    // First set rho to zero
+    // First set rho to background charge density
     for (int i = 0; i < n_g; i++) {
-      rho[i] = 0.0;
+      rho[i] = 1.0;
     }
     for (int i = 0; i < n_species; i++) {
       if (method==0) { 
@@ -233,6 +251,7 @@ int main(int argc, char *argv[])
   b_z_ofstream.close();
   j_y_ofstream.close();
   rho_ofstream.close();
+  phi_ofstream.close();
 
   x_ofstream.close();
   u_x_ofstream.close();

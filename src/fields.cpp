@@ -36,6 +36,52 @@ void save_old_values(std::vector<double> &array, std::vector<double> &array_old,
   return;
 }
 
+// Initialize e_x
+void initialize_e_x(std::vector<double> &rho, std::vector<double> &e_x, 
+		    double dx, int n_g)
+{
+  double e_x_ave = 0.0;
+  e_x[0] = 0.0;
+  for (int i = 1; i < n_g; i++) {
+    e_x[i] = e_x[i-1] + dx * rho[i];
+  }
+
+  // Subtract average field
+  for (int i = 0; i < n_g; i++) {
+    e_x_ave = e_x_ave + e_x[i];
+  }
+  e_x_ave = e_x_ave / double(n_g);
+  for (int i = 0; i < n_g; i++) {
+    e_x[i] = e_x[i] - e_x_ave;
+  }
+
+  return;
+}
+
+// Not currently used
+void e_x_poisson_solve(std::vector<double> &rho, std::vector<double> &e_x, 
+		       double dx, int n_g, std::vector<double> &phi)
+{
+  // Calculate electric potential
+  phi[0] = 0;
+  for (int i = 0; i < n_g; i++) {
+    phi[0] = phi[0] + (i+1) * rho[i];
+  }
+  phi[0] = phi[0] / double(n_g);
+  phi[1] = rho[0] + 2.0 * phi[0];
+
+  for (int i = 2; i < n_g; i++) {
+    phi[i] = rho[i-1] + 2.0 * phi[i-1] - phi[i-2];
+  }
+
+  // Calculate e_x from phi
+  for (int i = 0; i < (n_g-1); i++) {
+    e_x[i] = (-1.0 * dx) * (phi[i+1] - phi[i]);
+  }
+  e_x[n_g-1] = (-1.0 * dx) * (phi[0] - phi[n_g-1]);
+  return;
+}
+
 void advance_b_z(std::vector<double> &b_z, std::vector<double> &e_y, double dt, 
 		 double dx, int n_g)
 {
