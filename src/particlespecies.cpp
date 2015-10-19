@@ -1,6 +1,10 @@
 #include <vector>
 #include <cmath>
-#include "particles.hpp"
+#include <string>
+#include <sstream>
+#include <fstream>
+
+#include "particlespecies.hpp"
 #include "utilities.hpp"
 
 ////////////////////////////////////////////////////////////////
@@ -304,10 +308,6 @@ void ParticleSpecies::deposit_j_x_segments_zero(std::vector<double> &j_x)
   return;
 }
 
-ParticleSpecies::~ParticleSpecies()
-{
-}
-
 double put_in_box(double x, double box_length)
 {
   if (x < 0.0) {
@@ -333,22 +333,6 @@ void ParticleSpecies::write_phase(std::ofstream &x_ofstream,
   write_data(u_y, u_y_ofstream, n_p);
   return;
 }
-
-ParticleSpecies::ParticleSpecies(int n_p)
-{
-  this->n_p = n_p;
-  x.resize(n_p);
-  u_x.resize(n_p);
-  u_y.resize(n_p);
-  x_old.resize(n_p);
-  u_x_old.resize(n_p);
-  u_y_old.resize(n_p);
-  charge.resize(n_p);
-  rqm.resize(n_p);
-
-  return;
-}
-
 
 double interpolate_field_integer(std::vector<double> &field, double x, double dx, int n_g)
 {

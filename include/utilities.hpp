@@ -6,6 +6,10 @@
 
 #define PI (4 * atan(1.0))
 
+void save_old_values(std::vector<double> &array, std::vector<double> &array_old,
+		     int n_values);
+
+
 void write_data(std::vector<double> &array, std::ofstream &file, int n_values);
 
 int mod(int a, int b);

@@ -2,6 +2,15 @@
 #include <fstream>
 #include "utilities.hpp"
 
+void save_old_values(std::vector<double> &array, std::vector<double> &array_old,
+		     int n_values)
+{
+  for (int i = 0; i < n_values; i++) {
+    array_old[i] = array[i];
+  }
+  return;
+}
+
 void write_data(std::vector<double> &array, std::ofstream &file, int n_values)
 {
   for (int i = 0; i < n_values; i++) {

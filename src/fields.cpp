@@ -1,5 +1,26 @@
 #include <vector>
 #include "fields.hpp"
+#include "utilities.hpp"
+
+void Field::write_field()
+{
+  write_data(field, output_stream, n_g);
+  return;
+}
+
+void Field::write_field_tavg()
+{
+  write_data(field_tavg, output_stream, n_g);
+  return;
+}
+
+void Field::set_field_to_zero()
+{
+  for (int i = 0; i < n_g; i++) {
+    field[i] = 0.0;
+  }
+  return;
+}
 
 // Initialize EM fields
 void initialize_fields(std::vector<double> e_x, std::vector<double> e_y, std::vector<double> b_z, std::vector<double> j_x,
@@ -25,16 +46,10 @@ void initialize_fields(std::vector<double> e_x, std::vector<double> e_y, std::ve
   }
 }
 
+
+
 ////////////////////////////////////////////////////////////////
 // Fields
-void save_old_values(std::vector<double> &array, std::vector<double> &array_old,
-		     int n_values)
-{
-  for (int i = 0; i < n_values; i++) {
-    array_old[i] = array[i];
-  }
-  return;
-}
 
 // Initialize e_x
 void initialize_e_x(std::vector<double> &rho, std::vector<double> &e_x, 

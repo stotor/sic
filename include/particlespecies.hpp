@@ -1,14 +1,33 @@
-#ifndef particles_hpp
-#define particles_hpp
+#ifndef particlespecies_hpp
+#define particlespecies_hpp
 
 #include <vector>
 #include <fstream>
 
-
 class ParticleSpecies {
 public:
-  ParticleSpecies(int n_p);
-  ~ParticleSpecies();
+  ParticleSpecies(int n_p, double dt, double dx, int n_g)
+  {
+    this->n_p = n_p;
+    this->dt = dt;
+    this->dx = dx;
+    this->n_g = n_g;
+    x.resize(n_p);
+    u_x.resize(n_p);
+    u_y.resize(n_p);
+    x_old.resize(n_p);
+    u_x_old.resize(n_p);
+    u_y_old.resize(n_p);
+    charge.resize(n_p);
+    charge.resize(n_p);
+    rqm.resize(n_p);
+    return;
+  }
+
+  ~ParticleSpecies()
+  {
+  }
+
   // Simulation box parameters
   double dt, dx;
   int n_g;
@@ -41,4 +60,4 @@ public:
 
 };
 
-#endif /* particles_hpp */
+#endif /* particlespecies_hpp */
