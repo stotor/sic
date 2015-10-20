@@ -14,9 +14,9 @@ void save_old_values(std::vector<double> &array, std::vector<double> &array_old,
 void write_data(std::vector<double> &array, std::ofstream &file, int n_values)
 {
   for (int i = 0; i < n_values; i++) {
-    file << array[i] << " ";
+    //    file << array[i];
+    file.write((char *) &array[i], sizeof(double));
   }
-  file << std::endl;
   return;
 }
 
@@ -29,9 +29,9 @@ void write_data_tavg(std::vector<double> &array, std::vector<double> &array_old,
 		     int n_values)
 {
   for (int i = 0; i < n_values; i++) {
-    file << (array[i] + array_old[i]) / 2.0 << " ";
+    //file.write((char *) &(array[i] + array_old[i]) / 2.0, sizeof(double));
+    file << (array[i] + array_old[i]) / 2.0;
   }
-  file << std::endl;
   return;
 }
 

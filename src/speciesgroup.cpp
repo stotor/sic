@@ -3,6 +3,7 @@
 #include <string>
 #include <sstream>
 #include <fstream>
+#include <iostream>
 
 #include "speciesgroup.hpp"
 #include "particlespecies.hpp"
@@ -94,11 +95,11 @@ void SpeciesGroup::initialize_species(int n_g, double n_ppc, double dx)
   // }
 
   // Electrostatic wave initialization
-  double wave_amplitude = 0.1;
+  double wave_amplitude = 0.025;
   int wave_mode = 1;
   for (int i_species = 0; i_species < n_species; i_species++) {
     for (int i_particle = 0; i_particle < species[i_species].n_p; i_particle++) {
-      species[i_species].relativistic = false;
+      species[i_species].relativistic = true;
       species[i_species].charge[i_particle] = (-1.0) * (1.0 / n_ppc);
       species[i_species].rqm[i_particle] = -1.0;
       species[i_species].x[i_particle] = (double(i_particle) / species[i_species].n_p) * n_g * dx + (double(n_g) * dx / double(species[i_species].n_p)) / 2.0;
@@ -115,8 +116,13 @@ void SpeciesGroup::initialize_species(int n_g, double n_ppc, double dx)
       species[i].u_y.push_back(species[i].u_y[0]);
       species[i].x.push_back(species[i].x[0] + n_g*dx);
       species[i].n_p += 1;
+
+      species[i].x_old.push_back(0);
+      species[i].u_x_old.push_back(0);
+      species[i].u_y_old.push_back(0);
     }
   }
+
   return;
 }
 

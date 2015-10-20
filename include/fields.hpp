@@ -10,7 +10,7 @@ public:
   Field(int n_g, std::string field_name) : field(n_g), field_old(n_g), field_tavg(n_g), field_int(n_g) 
   {
     this->n_g = n_g;
-    output_stream.open(field_name.c_str());
+    output_stream.open(field_name.c_str(), std::ios::binary);
   }
   
   ~Field() {

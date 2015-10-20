@@ -3,6 +3,7 @@
 #include <string>
 #include <sstream>
 #include <fstream>
+#include <iostream>
 
 #include "particlespecies.hpp"
 #include "utilities.hpp"
@@ -489,6 +490,7 @@ void ParticleSpecies::advance_velocity(std::vector<double> &e_x_int,
 		 b_z_particle, dt);
     }   
   }
+
   return;
 }
 

@@ -23,23 +23,20 @@ int main(int argc, char *argv[])
     return 1;
   }
 
-
   std::stringstream ss;
 
   ss << argv[1];
   int method;
   ss >> method;
-  std::cout << method << std::endl;
 
   ss.str(std::string());
   ss.clear();
   double n_ppc;
   ss << argv[2];
   ss >> n_ppc;
-  std::cout << n_ppc << std::endl;
 
   int n_t = 101;
-  int n_g = 10;
+  int n_g = 100;
   double dx = 0.5;
   double dt = 0.2;
 
@@ -68,10 +65,16 @@ int main(int argc, char *argv[])
   // Calculate b_z, u_x, and u_y at t = - 1/2
   advance_b_z(b_z.field, e_y.field, (-0.5 * dt), dx, n_g);
 
+  std::ofstream x("x");
+  std::ofstream u_x("u_x");
+
   ////////////////////////////////////////
   // MAIN LOOP
   for (int t = 0; t < n_t; t++) {
     // Print diagnostics for e_x, e_y, and x
+    write_data(particles.species[0].x, x, n_p+1);
+    write_data(particles.species[0].u_x, u_x, n_p+1);
+
     e_x.write_field();
     e_y.write_field();
 
@@ -92,6 +95,7 @@ int main(int argc, char *argv[])
     b_z.write_field_tavg();
 
     particles.save_u_x_old();
+
     particles.save_u_y_old();
 
     // Calculated e_x at integer values to eliminate self force
@@ -126,6 +130,9 @@ int main(int argc, char *argv[])
     std::cout << t << std::endl;
   }
   
+  x.close();
+  u_x.close();
+
   return 0;
 
 }   
