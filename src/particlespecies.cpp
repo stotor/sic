@@ -11,6 +11,58 @@
 ////////////////////////////////////////////////////////////////
 // Particles
 
+void deposit_rho_segment_zero_new(std::vector<double> &rho, double x_tracer_a, 
+				double x_tracer_b, double charge, int n_g, double dx)
+{
+  double left, right, length, charge_fraction;
+  int bound_left, bound_right;
+  left = fmin(x_tracer_a, x_tracer_b) / dx;
+  right = fmax(x_tracer_a, x_tracer_b) / dx;
+  length = right - left;
+  bound_left = floor(left);
+  bound_right = ceil(right);
+
+  // If tracers are between two gridpoints
+  if (bound_right == (bound_left + 1)) {
+    if ((left == bound_left + 0.5) && (right == bound_left + 0.5)) {
+      rho[mod((bound_right),n_g)] += charge;
+    } else if (left >= (bound_left + 0.5)) {
+      rho[mod((bound_right),n_g)] += charge;
+    } else if (right <= (bound_left + 0.5)) {
+      rho[mod((bound_left),n_g)] += charge;
+    } else {
+      rho[mod((bound_left),n_g)] += (bound_left + 0.5 - left) / length * charge;
+      rho[mod((bound_right),n_g)] += (right - (bound_left + 0.5)) / length * charge;
+    }
+  }
+  else {
+    // Left end
+    if (left < bound_left + 0.5) {
+      rho[mod(bound_left,n_g)] += charge * (bound_left + 0.5 - left) / length;
+      rho[mod((bound_left+1),n_g)] += charge * (0.5) / length;
+    } else { 
+      rho[mod(bound_left+1,n_g)] += charge * (bound_left + 1.0 - left) / length;
+    }
+
+    // Pieces connecting two gridpoints
+    charge_fraction = (1.0) / length;
+    for (int cell = (bound_left+1); cell < (bound_right-1); cell++) {
+      rho[mod(cell,n_g)] += charge * charge_fraction * 0.5;
+      rho[mod((cell+1),n_g)] += charge * charge_fraction * 0.5;
+    }
+    
+    // Right end
+    if (right > bound_right - 0.5) {
+      rho[mod(bound_right-1,n_g)] += charge * (0.5) / length;
+      rho[mod(bound_right,n_g)] += charge * (right - (bound_right-0.5)) / length;
+    } else { 
+      rho[mod(bound_right-1,n_g)] += charge * (right - (bound_right-1.0)) / length;
+    }
+  }
+  return;
+}
+
+
 void deposit_rho_segment_linear(std::vector<double> &rho, double x_tracer_a, 
 				double x_tracer_b, double charge, int n_g, double dx)
 {
@@ -145,8 +197,6 @@ void deposit_rho_segment_zero(std::vector<double> &rho, double x_tracer_a,
   length = right - left;
 
   // Shift tracer positions so that 0 is the left bounary of cell zero
-  left = left + 0.5;
-  right = right + 0.5;
 
   bound_left = floor(left);
   bound_right = ceil(right);
@@ -157,6 +207,7 @@ void deposit_rho_segment_zero(std::vector<double> &rho, double x_tracer_a,
     rho[mod(bound_left,n_g)] += charge * charge_fraction;
   }
   else {
+
     // Left end
     charge_fraction = (bound_left + 1.0 - left) / length;
     rho[mod(bound_left,n_g)] += charge * charge_fraction;
@@ -249,7 +300,8 @@ void ParticleSpecies::deposit_j_x_segments_linear(std::vector<double> &j_x)
 void ParticleSpecies::deposit_rho_segments_zero(std::vector<double> &rho)
 {
   for (int i = 0; i < (n_p-1); i++) {    
-    deposit_rho_segment_zero(rho, x[i], x[i+1], charge[i], n_g, dx);
+    //deposit_rho_segment_zero(rho, x[i], x[i+1], charge[i], n_g, dx);
+    deposit_rho_segment_zero_new(rho, x[i], x[i+1], charge[i], n_g, dx);
   }
   return;
 }
