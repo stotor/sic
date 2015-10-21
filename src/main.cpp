@@ -36,7 +36,7 @@ int main(int argc, char *argv[])
   ss >> n_ppc;
 
   int n_t = 101;
-  int n_g = 100;
+  int n_g = 200;
   double dx = 0.5;
   double dt = 0.2;
 
@@ -55,7 +55,8 @@ int main(int argc, char *argv[])
   // Define species
   SpeciesGroup particles(n_species, method, n_p, dt, dx, n_g);
 
-  initialize_fields(e_x.field, e_y.field, b_z.field, j_x.field, j_y.field, n_g);
+  initialize_fields(e_x.field, e_y.field, b_z.field, j_x.field, j_y.field, n_g, dx);
+
   particles.initialize_species(n_g, n_ppc, dx);
 
   // Calculate e_x at t = 0 from Poisson's equation

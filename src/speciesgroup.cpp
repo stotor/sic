@@ -93,9 +93,23 @@ void SpeciesGroup::initialize_species(int n_g, double n_ppc, double dx)
   //     species[i_species].x[i_particle] = (double(i_particle) / species[i_species].n_p) * n_g * dx;      
   //   }
   // }
-
+  
   // Electrostatic wave initialization
-  double wave_amplitude = 0.025;
+  // double wave_amplitude = 0.025;
+  // int wave_mode = 1;
+  // for (int i_species = 0; i_species < n_species; i_species++) {
+  //   for (int i_particle = 0; i_particle < species[i_species].n_p; i_particle++) {
+  //     species[i_species].relativistic = true;
+  //     species[i_species].charge[i_particle] = (-1.0) * (1.0 / n_ppc);
+  //     species[i_species].rqm[i_particle] = -1.0;
+  //     species[i_species].x[i_particle] = (double(i_particle) / species[i_species].n_p) * n_g * dx + (double(n_g) * dx / double(species[i_species].n_p)) / 2.0;
+  //     species[i_species].u_x[i_particle] = wave_amplitude * cos(2.0 * PI * double(wave_mode) * species[i_species].x[i_particle] / (n_g * dx));
+  //     species[i_species].u_y[i_particle] = 0.0;
+  //   }
+  // }
+
+  // Electromagnetic wave initialization
+  double v1 = 0.0025;
   int wave_mode = 1;
   for (int i_species = 0; i_species < n_species; i_species++) {
     for (int i_particle = 0; i_particle < species[i_species].n_p; i_particle++) {
@@ -103,11 +117,13 @@ void SpeciesGroup::initialize_species(int n_g, double n_ppc, double dx)
       species[i_species].charge[i_particle] = (-1.0) * (1.0 / n_ppc);
       species[i_species].rqm[i_particle] = -1.0;
       species[i_species].x[i_particle] = (double(i_particle) / species[i_species].n_p) * n_g * dx + (double(n_g) * dx / double(species[i_species].n_p)) / 2.0;
-      species[i_species].u_x[i_particle] = wave_amplitude * cos(2.0 * PI * double(wave_mode) * species[i_species].x[i_particle] / (n_g * dx));
-      species[i_species].u_y[i_particle] = 0.0;
+      species[i_species].u_x[i_particle] = 0.0;
+      species[i_species].u_y[i_particle] = v1 * sin(2.0 * PI * double(wave_mode) * species[i_species].x[i_particle] / (n_g * dx));
+
     }
   }
 
+  // Add ghost tracer particle if using line segments
   if ((method==1)||(method==2)) {
     for (int i = 0; i < n_species; i++) {
       species[i].charge.push_back(0.0);
