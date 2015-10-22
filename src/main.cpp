@@ -35,10 +35,10 @@ int main(int argc, char *argv[])
   ss << argv[2];
   ss >> n_ppc;
 
-  int n_t = 101;
-  int n_g = 200;
-  double dx = 0.5;
-  double dt = 0.2;
+  int n_t = 2000;
+  int n_g = 5000;
+  double dx = 0.01;
+  double dt = 0.0095;
 
   int n_species = 1;
 
@@ -73,9 +73,6 @@ int main(int argc, char *argv[])
   // MAIN LOOP
   for (int t = 0; t < n_t; t++) {
     // Print diagnostics for e_x, e_y, and x
-    write_data(particles.species[0].x, x, n_p+1);
-    write_data(particles.species[0].u_x, u_x, n_p+1);
-
     e_x.write_field();
     e_y.write_field();
 

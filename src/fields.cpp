@@ -48,11 +48,12 @@ void initialize_fields(std::vector<double> &e_x, std::vector<double> &e_y, std::
   // }
   double v1 = 0.0025;
   double k = 2.0 * PI / (n_g * dx);
+  double omega = 1.0 + k*k;
   int wave_mode = 1;
   for (int i = 0; i < n_g; i++) {
     e_x[i] = 0.0;
-    e_y[i] = v1 * cos(2.0 * PI * wave_mode * (i * dx) / (n_g * dx));
-    b_z[i] = k * v1 * cos(2.0 * PI * wave_mode * ((i + 0.5) * dx) / (n_g * dx));
+    e_y[i] = omega * v1 * cos(2.0 * PI * wave_mode * (i * dx) / (n_g * dx));
+    b_z[i] = (k / omega) * v1 * cos(2.0 * PI * wave_mode * ((i + 0.5) * dx) / (n_g * dx));
     j_x[i] = 0.0;
     j_y[i] = 0.0;
   }
