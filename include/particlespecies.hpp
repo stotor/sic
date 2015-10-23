@@ -47,6 +47,9 @@ public:
   void advance_x();
   void advance_velocity(std::vector<double> &e_x_int, std::vector<double> &e_y, 
 			std::vector<double> &b_z_tavg);
+  void initial_velocity_deceleration(std::vector<double> &e_x_int, 
+				     std::vector<double> &e_y,
+				     std::vector<double> &b_z_tavg);
   void deposit_rho(std::vector<double> &rho);
   void deposit_rho_segments_zero(std::vector<double> &rho);
   void deposit_rho_segments_linear(std::vector<double> &rho);
@@ -55,8 +58,9 @@ public:
   void deposit_j_x_segments_linear(std::vector<double> &j_x);
   void deposit_j_y(std::vector<double> &j_y);
   void deposit_j_y_segments_zero(std::vector<double> &j_y);
-  void write_phase(std::ofstream &x_ofstream, 
-		   std::ofstream &u_x_ofstream, std::ofstream &u_y_ofstream);
+  void deposit_j_y_segments_linear(std::vector<double> &j_y);
+  void write_phase(std::ofstream &x_ofstream, std::ofstream &u_x_ofstream, 
+		   std::ofstream &u_y_ofstream);
 
 };
 

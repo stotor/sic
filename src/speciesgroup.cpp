@@ -9,6 +9,16 @@
 #include "particlespecies.hpp"
 #include "utilities.hpp"
 
+void SpeciesGroup::initial_velocity_deceleration(std::vector<double> &e_x_int, 
+						 std::vector<double> &e_y,
+						 std::vector<double> &b_z_tavg)
+{
+  for (int i = 0; i < n_species; i++) {
+    species[i].initial_velocity_deceleration(e_x_int, e_y, b_z_tavg);
+  }
+  return;
+}
+
 void SpeciesGroup::deposit_j_x(std::vector<double> &j_x)
 {
   for (int i = 0; i < n_g; i++) {
@@ -42,7 +52,7 @@ void SpeciesGroup::deposit_j_y(std::vector<double> &j_y)
       species[i].deposit_j_y_segments_zero(j_y);
     }
     else if (method==2) {
-      //species[i].deposit_j_y_segments_linear(j_y);
+      species[i].deposit_j_y_segments_linear(j_y);
     }
   }
   return;

@@ -35,10 +35,10 @@ int main(int argc, char *argv[])
   ss << argv[2];
   ss >> n_ppc;
 
-  int n_t = 2000;
-  int n_g = 5000;
-  double dx = 0.01;
-  double dt = 0.0095;
+  int n_t = 100;
+  int n_g = 500;
+  double dx = 0.1;
+  double dt = 0.095;
 
   int n_species = 1;
 
@@ -63,7 +63,11 @@ int main(int argc, char *argv[])
   particles.deposit_rho(rho.field, n_g);
   initialize_e_x(rho.field, e_x.field, dx, n_g);
 
-  // Calculate b_z, u_x, and u_y at t = - 1/2
+  // Calculate u_x, and u_y at t = - 1/2
+  half_int_to_int(e_x.field, e_x.field_int, n_g);
+  particles.initial_velocity_deceleration(e_x.field_int, e_y.field, b_z.field);
+
+  // Calculate b_z at t = - 1/2
   advance_b_z(b_z.field, e_y.field, (-0.5 * dt), dx, n_g);
 
   std::ofstream x("x");

@@ -11,6 +11,97 @@
 ////////////////////////////////////////////////////////////////
 // Particles
 
+double j_y_segment_linear_left_gridpoint(double charge, double xl, 
+					 double length, double vl, double vr, 
+					 double xa, double xb)
+{
+  double xip1 = ceil(xb);
+  double j_y = (1.0/(6.0*length*length))*charge*(xa-xb);
+  j_y = j_y * (3.0*length*vl*(xa+xb-2.0*xip1)-(vl-vr)*(2.0*xa*xa+2.0*xb*xb+6.0*xip1*xl-3.0*xb*(xip1+xl)+xa*(2.0*xb-3.0*(xip1+xl))));
+  return j_y;
+}
+
+double j_y_segment_linear_right_gridpoint(double charge, double xl, 
+					  double length, double vl, double vr, 
+					  double xa, double xb)
+{
+  double xi = floor(xa);
+  double j_y = (1.0/(6.0*length*length))*charge*(xa-xb);
+  j_y = j_y * (-3.0*length*vl*(xa+xb-2.0*xi)+(vl-vr)*(2.0*xa*xa+2.0*xb*xb+6.0*xi*xl-3.0*xb*(xi+xl)+xa*(2.0*xb-3.0*(xi+xl))));
+  return j_y;
+}
+
+void deposit_j_y_segment_linear(std::vector<double> &j_y, double xl, double xr, 
+				double vl, double vr, double charge, int n_g, 
+				double dx)
+{
+  double length, xa, xb;
+  int bound_left, bound_right;
+  xl = xl / dx;
+  xr = xr / dx;
+  length = xr - xl;
+
+  bound_left = floor(xl);
+  bound_right = ceil(xr);
+
+  // If tracers are between two gridpoints
+  if (bound_right == (bound_left + 1)) {
+    if (length==0.0) {
+      j_y[mod(bound_left,n_g)] += charge * ((vl+vr)/2.0) * (ceil(xr)-xl);
+      j_y[mod((bound_left+1),n_g)] += charge * ((vl+vr)/2.0) * (xl-floor(xl));
+    } else { 
+      xa = xl;
+      xb = xr;
+      j_y[mod(bound_left,n_g)] += j_y_segment_linear_left_gridpoint(charge, xl, length, vl, vr, xa, xb);
+      j_y[mod((bound_left+1),n_g)] += j_y_segment_linear_right_gridpoint(charge, xl, length, vl, vr, xa, xb);
+    }
+  }
+  else {
+    // Left end
+    xa = xl;
+    xb = double(bound_left+1);
+    j_y[mod(bound_left,n_g)] += j_y_segment_linear_left_gridpoint(charge, xl, length, vl, vr, xa, xb);
+    j_y[mod((bound_left+1),n_g)] += j_y_segment_linear_right_gridpoint(charge, xl, length, vl, vr, xa, xb);
+    // Portions connecting two gridpoints
+    for (int cell = (bound_left+1); cell < (bound_right-1); cell++) {
+      xa = double(cell);
+      xb = double(cell+1);
+      j_y[mod(cell,n_g)] += j_y_segment_linear_left_gridpoint(charge, xl, length, vl, vr, xa, xb);
+      j_y[mod((cell+1),n_g)] += j_y_segment_linear_right_gridpoint(charge, xl, length, vl, vr, xa, xb);
+    }
+    // Right end
+    xa = double(bound_right-1);
+    xb = xr;
+    j_y[mod((bound_right-1),n_g)] += j_y_segment_linear_left_gridpoint(charge, xl, length, vl, vr, xa, xb);
+    j_y[mod(bound_right,n_g)] += j_y_segment_linear_right_gridpoint(charge, xl, length, vl, vr, xa, xb);
+  }
+  return;
+}
+
+void ParticleSpecies::deposit_j_y_segments_linear(std::vector<double> &j_y)
+{
+  double x_i_tavg, x_ip1_tavg, left, right, v_y_left, v_y_right;
+  for (int i = 0; i < (n_p-1); i++) {
+    x_i_tavg = (x_old[i] + x[i]) / 2.0;
+    x_ip1_tavg = (x_old[i+1] + x[i+1]) / 2.0;
+    if (x_ip1_tavg >= x_i_tavg) {
+      left = x_i_tavg;
+      right = x_ip1_tavg;
+      v_y_left = u_y[i] / sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0));
+      v_y_right = u_y[i+1] / sqrt(1.0 + pow(u_x[i+1], 2.0) + pow(u_y[i+1], 2.0));
+    }
+    else {
+      left = x_ip1_tavg;
+      right = x_i_tavg;
+      v_y_left = u_y[i+1] / sqrt(1.0 + pow(u_x[i+1], 2.0) + pow(u_y[i+1], 2.0));
+      v_y_right = u_y[i] / sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0));
+    }
+    deposit_j_y_segment_linear(j_y, left, right, v_y_left, v_y_right, charge[i], n_g, dx);
+  }
+  return;
+}
+
+
 void deposit_rho_segment_zero_new(std::vector<double> &rho, double x_tracer_a, 
 				double x_tracer_b, double charge, int n_g, double dx)
 {
@@ -521,7 +612,6 @@ void boris_push_nonrel(double &u_x, double &u_y, double rqm, double e_x,
   return;
 }
 
-
 void ParticleSpecies::advance_velocity(std::vector<double> &e_x_int, 
 				       std::vector<double> &e_y, 
 				       std::vector<double> &b_z_tavg)
@@ -543,6 +633,73 @@ void ParticleSpecies::advance_velocity(std::vector<double> &e_x_int,
     }   
   }
 
+  return;
+}
+
+void initial_boris_half_push_rel(double &u_x, double &u_y, double rqm, double e_x, double e_y,
+				 double b_z, double dt)
+{  
+  // Variables necessary for intermediate steps of the calculation
+  double gamma_centered, t, s;
+
+  gamma_centered = sqrt(1.0 + pow(u_x, 2.0) + pow(u_y, 2.0));
+
+  // Velocity rotation from magnetic field
+  t = rqm * b_z * (-1.0 * dt / 2.0) / (2 * gamma_centered);
+  s = (2.0 * t) / (1.0 + pow(t, 2.0));
+
+  u_x = u_x + u_y * t;
+  u_y = u_y - u_x * s;
+  u_x = u_x + u_y * t;
+  
+  // Second half electric impulse
+  u_x = u_x + rqm * e_x * (-1.0 * dt / 2.0);
+  u_y = u_y + rqm * e_y * (-1.0 * dt / 2.0);
+
+  return;
+}
+
+void initial_boris_half_push_nonrel(double &u_x, double &u_y, double rqm, double e_x, double e_y,
+				 double b_z, double dt)
+{  
+  // Variables necessary for intermediate steps of the calculation
+  double t, s;
+
+  // Velocity rotation from magnetic field
+  t = rqm * b_z * (-1.0 * dt / 2.0) / (2.0);
+  s = (2.0 * t) / (1.0 + pow(t, 2.0));
+
+  u_x = u_x + u_y * t;
+  u_y = u_y - u_x * s;
+  u_x = u_x + u_y * t;
+  
+  // Second half electric impulse
+  u_x = u_x + rqm * e_x * (-1.0 * dt / 2.0);
+  u_y = u_y + rqm * e_y * (-1.0 * dt / 2.0);
+
+  return;
+}
+
+void ParticleSpecies::initial_velocity_deceleration(std::vector<double> &e_x_int, 
+						    std::vector<double> &e_y,
+						    std::vector<double> &b_z_tavg)
+{
+  double e_x_particle, e_y_particle, b_z_particle;
+  
+  for (int i = 0; i < n_p; i++) {
+    // Weight fields to the particle location
+    e_x_particle = interpolate_field_integer(e_x_int, x[i], dx, n_g);
+    e_y_particle = interpolate_field_integer(e_y, x[i], dx, n_g);
+    b_z_particle = interpolate_field_half_integer(b_z_tavg, x[i], dx, n_g);
+    // Update velocities
+    if (relativistic) {
+      initial_boris_half_push_rel(u_x[i], u_y[i], rqm[i], e_x_particle, e_y_particle, 
+				  b_z_particle, dt);
+    } else {
+      initial_boris_half_push_nonrel(u_x[i], u_y[i], rqm[i], e_x_particle, e_y_particle, 
+				     b_z_particle, dt);
+    }
+  }
   return;
 }
 

@@ -53,7 +53,7 @@ void initialize_fields(std::vector<double> &e_x, std::vector<double> &e_y, std::
   for (int i = 0; i < n_g; i++) {
     e_x[i] = 0.0;
     e_y[i] = omega * v1 * cos(2.0 * PI * wave_mode * (i * dx) / (n_g * dx));
-    b_z[i] = (k / omega) * v1 * cos(2.0 * PI * wave_mode * ((i + 0.5) * dx) / (n_g * dx));
+    b_z[i] = k * v1 * cos(2.0 * PI * wave_mode * ((i + 0.5) * dx) / (n_g * dx));
     j_x[i] = 0.0;
     j_y[i] = 0.0;
   }

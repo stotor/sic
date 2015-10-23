@@ -36,7 +36,9 @@ public:
 			std::vector<double> b_z_tavg);
   void deposit_j_x(std::vector<double> &j_x);
   void deposit_j_y(std::vector<double> &j_y);
-
+  void initial_velocity_deceleration(std::vector<double> &e_x_int, 
+				     std::vector<double> &e_y,
+				     std::vector<double> &b_z_tavg);
 };
 
 #endif /* speciesgroup_hpp */
