@@ -2,6 +2,15 @@
 #include <fstream>
 #include "utilities.hpp"
 
+double sum_of_squares(std::vector<double> &array, int n_values)
+{
+  double sum = 0.0;
+  for (int i = 0; i < n_values; i++) {
+    sum = sum + array[i] * array[i];
+  }
+  return sum;
+}
+
 void save_old_values(std::vector<double> &array, std::vector<double> &array_old,
 		     int n_values)
 {
@@ -35,9 +44,9 @@ void write_data_tavg(std::vector<double> &array, std::vector<double> &array_old,
   return;
 }
 
-void calc_tavg_arry(std::vector<double> &array_tavg, std::vector<double> &array,
-		    std::vector<double> &array_old, 
-		    int n_values)
+void calc_tavg_array(std::vector<double> &array_tavg, std::vector<double> &array,
+		     std::vector<double> &array_old, 
+		     int n_values)
 {
   for (int i = 0; i < n_values; i++) {
     array_tavg[i] = (array[i] + array_old[i]) / 2.0;

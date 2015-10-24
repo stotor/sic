@@ -178,3 +178,11 @@ void SpeciesGroup::deposit_rho(std::vector<double> &rho, int n_g)
   }
   return;
 }
+
+void SpeciesGroup::advance_x()
+{
+  for (int i = 0; i < n_species; i++) {
+    species[i].advance_x();
+  }
+  return;
+}

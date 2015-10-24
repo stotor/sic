@@ -30,6 +30,7 @@ public:
   void deposit_rho(std::vector<double> &rho, int n_g);
   void initialize_species(int n_g, double n_ppc, double dx);
   void save_x_old();
+  void advance_x();
   void save_u_x_old();
   void save_u_y_old();
   void advance_velocity(std::vector<double> e_x_int, std::vector<double> e_y, 

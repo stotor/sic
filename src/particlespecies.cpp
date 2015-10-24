@@ -560,145 +560,76 @@ void ParticleSpecies::deposit_j_y(std::vector<double> &j_y)
   return;
 }
 
-void boris_push_rel(double &u_x, double &u_y, double rqm, double e_x, double e_y,
-		double b_z, double dt)
-{  
-  // Variables necessary for intermediate steps of the calculation
-  double gamma_centered, t, s;
-
-  // First half electric impulse
-  u_x = u_x + rqm * e_x * (dt / 2.0);
-  u_y = u_y + rqm * e_y * (dt / 2.0);
-
-  gamma_centered = sqrt(1.0 + pow(u_x, 2.0) + pow(u_y, 2.0));
-
-  // Velocity rotation from magnetic field
-  t = rqm * b_z * dt / (2 * gamma_centered);
-  s = (2.0 * t) / (1.0 + pow(t, 2.0));
-
-  u_x = u_x + u_y * t;
-  u_y = u_y - u_x * s;
-  u_x = u_x + u_y * t;
-  
-  // Second half electric impulse
-  u_x = u_x + rqm * e_x * (dt / 2.0);
-  u_y = u_y + rqm * e_y * (dt / 2.0);
-
-  return;
-}
-
-void boris_push_nonrel(double &u_x, double &u_y, double rqm, double e_x, 
-		       double e_y, double b_z, double dt)
-{  
-  // Variables necessary for intermediate steps of the calculation
-  double t, s;
-
-  // First half electric impulse
-  u_x = u_x + rqm * e_x * (dt / 2.0);
-  u_y = u_y + rqm * e_y * (dt / 2.0);
-
-  // Velocity rotation from magnetic field
-  t = rqm * b_z * dt / (2.0);
-  s = (2.0 * t) / (1.0 + pow(t, 2.0));
-
-  u_x = u_x + u_y * t;
-  u_y = u_y - u_x * s;
-  u_x = u_x + u_y * t;
-  
-  // Second half electric impulse
-  u_x = u_x + rqm * e_x * (dt / 2.0);
-  u_y = u_y + rqm * e_y * (dt / 2.0);
-
-  return;
-}
-
-void ParticleSpecies::advance_velocity(std::vector<double> &e_x_int, 
+void ParticleSpecies::advance_velocity(std::vector<double> &e_x, 
 				       std::vector<double> &e_y, 
 				       std::vector<double> &b_z_tavg)
 {
-  double e_x_particle, e_y_particle, b_z_particle;
+  // Shift e_x integer values to eliminate self force
+  std::vector<double> e_x_int(n_g);
+  half_int_to_int(e_x, e_x_int, n_g);
 
+  double e_x_particle, e_y_particle, b_z_particle, gamma_centered, t, s;
+  double energy = 0.0;
   for (int i = 0; i < n_p; i++) {
     // Weight fields to the particle location
     e_x_particle = interpolate_field_integer(e_x_int, x[i], dx, n_g);
     e_y_particle = interpolate_field_integer(e_y, x[i], dx, n_g);
     b_z_particle = interpolate_field_half_integer(b_z_tavg, x[i], dx, n_g);
-    // Update velocities
-    if (relativistic) {
-      boris_push_rel(u_x[i], u_y[i], rqm[i], e_x_particle, e_y_particle, 
-		 b_z_particle, dt);
-    } else {
-      boris_push_nonrel(u_x[i], u_y[i], rqm[i], e_x_particle, e_y_particle, 
-		 b_z_particle, dt);
-    }   
+    // Relativistic Boris push
+    // First half electric impulse
+    u_x[i] = u_x[i] + rqm[i] * e_x_particle * (dt / 2.0);
+    u_y[i] = u_y[i] + rqm[i] * e_y_particle * (dt / 2.0);
+    
+    gamma_centered = sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0));
+
+    energy = energy + charge[i] * (pow(u_x[i], 2.0) + pow(u_y[i], 2.0)) / (1.0 + gamma_centered);
+    
+    // Velocity rotation from magnetic field
+    t = rqm[i] * b_z_particle * dt / (2.0 * gamma_centered);
+    s = (2.0 * t) / (1.0 + pow(t, 2.0));
+    
+    u_x[i] = u_x[i] + u_y[i] * t;
+    u_y[i] = u_y[i] - u_x[i] * s;
+    u_x[i] = u_x[i] + u_y[i] * t;
+    
+    // Second half electric impulse
+    u_x[i] = u_x[i] + rqm[i] * e_x_particle * (dt / 2.0);
+    u_y[i] = u_y[i] + rqm[i] * e_y_particle * (dt / 2.0);
+    
   }
-
+  energy_history.push_back(energy);
   return;
 }
 
-void initial_boris_half_push_rel(double &u_x, double &u_y, double rqm, double e_x, double e_y,
-				 double b_z, double dt)
-{  
-  // Variables necessary for intermediate steps of the calculation
-  double gamma_centered, t, s;
-
-  gamma_centered = sqrt(1.0 + pow(u_x, 2.0) + pow(u_y, 2.0));
-
-  // Velocity rotation from magnetic field
-  t = rqm * b_z * (-1.0 * dt / 2.0) / (2 * gamma_centered);
-  s = (2.0 * t) / (1.0 + pow(t, 2.0));
-
-  u_x = u_x + u_y * t;
-  u_y = u_y - u_x * s;
-  u_x = u_x + u_y * t;
-  
-  // Second half electric impulse
-  u_x = u_x + rqm * e_x * (-1.0 * dt / 2.0);
-  u_y = u_y + rqm * e_y * (-1.0 * dt / 2.0);
-
-  return;
-}
-
-void initial_boris_half_push_nonrel(double &u_x, double &u_y, double rqm, double e_x, double e_y,
-				 double b_z, double dt)
-{  
-  // Variables necessary for intermediate steps of the calculation
-  double t, s;
-
-  // Velocity rotation from magnetic field
-  t = rqm * b_z * (-1.0 * dt / 2.0) / (2.0);
-  s = (2.0 * t) / (1.0 + pow(t, 2.0));
-
-  u_x = u_x + u_y * t;
-  u_y = u_y - u_x * s;
-  u_x = u_x + u_y * t;
-  
-  // Second half electric impulse
-  u_x = u_x + rqm * e_x * (-1.0 * dt / 2.0);
-  u_y = u_y + rqm * e_y * (-1.0 * dt / 2.0);
-
-  return;
-}
-
-void ParticleSpecies::initial_velocity_deceleration(std::vector<double> &e_x_int, 
+void ParticleSpecies::initial_velocity_deceleration(std::vector<double> &e_x, 
 						    std::vector<double> &e_y,
 						    std::vector<double> &b_z_tavg)
 {
-  double e_x_particle, e_y_particle, b_z_particle;
+  // Shift e_x integer values to eliminate self force
+  std::vector<double> e_x_int(n_g);
+  half_int_to_int(e_x, e_x_int, n_g);
   
+  double e_x_particle, e_y_particle, b_z_particle, gamma_centered, t, s;
   for (int i = 0; i < n_p; i++) {
     // Weight fields to the particle location
     e_x_particle = interpolate_field_integer(e_x_int, x[i], dx, n_g);
     e_y_particle = interpolate_field_integer(e_y, x[i], dx, n_g);
     b_z_particle = interpolate_field_half_integer(b_z_tavg, x[i], dx, n_g);
+    
     // Update velocities
-    if (relativistic) {
-      initial_boris_half_push_rel(u_x[i], u_y[i], rqm[i], e_x_particle, e_y_particle, 
-				  b_z_particle, dt);
-    } else {
-      initial_boris_half_push_nonrel(u_x[i], u_y[i], rqm[i], e_x_particle, e_y_particle, 
-				     b_z_particle, dt);
-    }
+    gamma_centered = sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0));
+    
+    // Velocity rotation from magnetic field
+    t = rqm[i] * b_z_particle * (-1.0 * dt / 2.0) / (2.0 * gamma_centered);
+    s = (2.0 * t) / (1.0 + pow(t, 2.0));
+    
+    u_x[i] = u_x[i] + u_y[i] * t;
+    u_y[i] = u_y[i] - u_x[i] * s;
+    u_x[i] = u_x[i] + u_y[i] * t;
+    
+    // Half electric impulse
+    u_x[i] = u_x[i] + rqm[i] * e_x_particle * (-1.0 * dt / 2.0);
+    u_y[i] = u_y[i] + rqm[i] * e_y_particle * (-1.0 * dt / 2.0);
   }
   return;
 }

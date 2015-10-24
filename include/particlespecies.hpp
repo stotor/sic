@@ -37,17 +37,16 @@ public:
   int n_p;
   bool relativistic;
 
-  // Particle phase space attributes
-  std::vector<double> x, u_x, u_y, x_old, u_x_old, u_y_old;
+  std::vector<double> x, u_x, u_y, x_old, u_x_old, u_y_old, energy_history;
 
   // Charge to mass ratio, and particle charge divided by grid spacing
   std::vector<double> rqm, charge;
 
   // Methods
   void advance_x();
-  void advance_velocity(std::vector<double> &e_x_int, std::vector<double> &e_y, 
+  void advance_velocity(std::vector<double> &e_x, std::vector<double> &e_y, 
 			std::vector<double> &b_z_tavg);
-  void initial_velocity_deceleration(std::vector<double> &e_x_int, 
+  void initial_velocity_deceleration(std::vector<double> &e_x, 
 				     std::vector<double> &e_y,
 				     std::vector<double> &b_z_tavg);
   void deposit_rho(std::vector<double> &rho);
@@ -59,9 +58,9 @@ public:
   void deposit_j_y(std::vector<double> &j_y);
   void deposit_j_y_segments_zero(std::vector<double> &j_y);
   void deposit_j_y_segments_linear(std::vector<double> &j_y);
+  void get_energy();
   void write_phase(std::ofstream &x_ofstream, std::ofstream &u_x_ofstream, 
 		   std::ofstream &u_y_ofstream);
-
 };
 
 #endif /* particlespecies_hpp */

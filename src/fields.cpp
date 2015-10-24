@@ -1,8 +1,21 @@
 #include <vector>
 #include <cmath>
 #include <iostream>
+
 #include "fields.hpp"
 #include "utilities.hpp"
+
+void Field::calculate_energy()
+{
+  energy_history.push_back(sum_of_squares(field, n_g));
+  return;
+}
+
+void Field::calculate_energy_tavg()
+{
+  energy_history.push_back(sum_of_squares(field_tavg, n_g));
+  return;
+}
 
 void Field::write_field()
 {
@@ -25,41 +38,19 @@ void Field::set_field_to_zero()
 }
 
 // Initialize EM fields
-void initialize_fields(std::vector<double> &e_x, std::vector<double> &e_y, std::vector<double> &b_z, std::vector<double> &j_x,
-		       std::vector<double> &j_y, int n_g, double dx)
+void initialize_transverse_em_fields(std::vector<double> &e_y, 
+				     std::vector<double> &b_z, int n_g, 
+				     double dx, double e_y_1, double b_z_1,
+				     int mode)
 {
-  // EM wave
-  // int mode = 4;
-  // for (int i = 0; i < n_g; i++) {
-  //   e_x[i] = 0.0;
-  //   e_y[i] = cos(double(mode) * 2.0 * PI * (double(i) / double(n_g)));
-  //   b_z[i] = cos(double(mode) * 2.0 * PI * (double(i) / double(n_g)));
-  //   // BELOW FOR TESTING EM WAVE
-  //   j_x[i] = 0.0;
-  //   j_y[i] = 0.0;
-  // }
-  // Zero
-  // for (int i = 0; i < n_g; i++) {
-  //   e_x[i] = 0.0;
-  //   e_y[i] = 0.0;
-  //   b_z[i] = 0.0;
-  //   j_x[i] = 0.0;
-  //   j_y[i] = 0.0;
-  // }
-  double v1 = 0.0025;
-  double k = 2.0 * PI / (n_g * dx);
-  double omega = 1.0 + k*k;
-  int wave_mode = 1;
+  double k = 2.0 * PI * mode / (n_g * dx);
+  // Initialize an EM wave, use v1 = 0.0 if zero initial fields are wanted
   for (int i = 0; i < n_g; i++) {
-    e_x[i] = 0.0;
-    e_y[i] = omega * v1 * cos(2.0 * PI * wave_mode * (i * dx) / (n_g * dx));
-    b_z[i] = k * v1 * cos(2.0 * PI * wave_mode * ((i + 0.5) * dx) / (n_g * dx));
-    j_x[i] = 0.0;
-    j_y[i] = 0.0;
+    e_y[i] = e_y_1 * cos(k * i * dx);
+    b_z[i] = b_z_1 * cos(k * (i + 0.5) * dx);
   }
+  return;
 }
-
-
 
 ////////////////////////////////////////////////////////////////
 // Fields

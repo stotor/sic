@@ -17,7 +17,7 @@ int mod(int a, int b);
 void write_data_tavg(std::vector<double> &array, std::vector<double> &array_old, std::ofstream &file, 
 		     int n_values);
 
-void calc_tavg_arry(std::vector<double> &array_tavg, std::vector<double> &array, 
+void calc_tavg_array(std::vector<double> &array_tavg, std::vector<double> &array, 
 		    std::vector<double> &array_old, 
 		    int n_values);
 
