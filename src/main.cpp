@@ -35,49 +35,68 @@ int main(int argc, char *argv[])
   ss << argv[2];
   ss >> n_ppc;
 
-  int n_t = 20;
-  int n_g = 100;
-  double dx = 0.5;
-  double dt = 0.4;
 
-  int simulation_type = 1; // 0: Electrostatic wave, 1: Electromagnetic wave, 2: Weibel
+  int simulation_type = 0; // 0: Electrostatic wave, 1: Electromagnetic wave, 2: Weibel
   int n_species;
-  int n_p = n_g * n_ppc;
-  double v_x_1, v_y_1, e_y_1, b_z_1;
-
+  std::vector<double> u_x_drift, u_y_drift;
+  double u_x_1, u_y_1, e_y_1, b_z_1;
   int mode = 1;
-  double k = 2.0 * PI * mode / (n_g * dx);
-  double omega;
-  std::vector<double> u_drift_x;
-  std::vector<double> u_drift_y;
+  int n_t, n_g;
+  double k, dx, dt;
+
   switch (simulation_type) {
   case 0:
+    n_t = 501;
+    n_g = 200;
+    dx = 0.5;
+    dt = 0.2;
+    k = 2.0 * PI * mode / (n_g * dx);
     n_species = 1;
-    v_x_1 = 0.0025;
-    v_y_1 = 0.0;
-    u_drift_x.push_back(0.0);
-    u_drift_y.push_back(0.0);
+    u_x_drift.push_back(0.0);
+    u_y_drift.push_back(0.0);
+    u_x_1 = 0.001;
+    u_y_1 = 0.0;
     e_y_1 = 0.0;
-    b_z_1 = 0.0;      
+    b_z_1 = 0.0;
     break;
   case 1:
+    n_t = 200;
+    n_g = 1000;
+    dx = 0.05;
+    dt = 0.04;
+    k = 2.0 * PI * mode / (n_g * dx);
+
     n_species = 1;
-    v_x_1 = 0.0;
-    v_y_1 = 0.0025;
-    omega = sqrt(1.0 + k*k);
-    e_y_1 = v_y_1 * omega;
-    b_z_1 = v_y_1 * k;
+    u_x_drift.push_back(0.0);
+    u_y_drift.push_back(0.0);
+    u_x_1 = 0.0;
+    u_y_1 = 0.0025;
+    e_y_1 = u_y_1 * sqrt(1 + k*k);
+    b_z_1 = u_y_1 * k;
     break;
   case 2:
     // NOT READY YET
+    n_t = 200;
+    n_g = 1000;
+    dx = 0.05;
+    dt = 0.04;
+    k = 2.0 * PI * mode / (n_g * dx);
+
     n_species = 2;
-    v_y_1 = 0.0025;
+    u_x_drift.push_back(0.0);
+    u_x_drift.push_back(0.0);
+    u_y_drift.push_back(-0.1);
+    u_y_drift.push_back(0.1);
+    u_x_1 = 0.0;
+    u_y_1 = 0.0;
+    e_y_1 = 0.0;
+    b_z_1 = 0.0;
     break;
   }
   
   // Initialize particles 
-  SpeciesGroup particles(n_species, method, n_p, dt, dx, n_g);
-  particles.initialize_species(n_g, n_ppc, dx);  //v1, mode, 
+  SpeciesGroup particles(n_species, method, n_ppc, dt, dx, n_g);
+  particles.initialize_species(n_ppc, u_x_drift, u_y_drift, mode, u_x_1, u_y_1);
 
   // Initialize fields
   Field e_x(n_g, "e_x");
@@ -138,6 +157,12 @@ int main(int argc, char *argv[])
 
     std::cout << t << std::endl;
   }
+  // Write out energy diagnostics
+  e_x.write_energy_history();
+  e_y.write_energy_history();
+  b_z.write_energy_history();
+  particles.write_energy_history();
+
   return 0;
 }   
 // End of main

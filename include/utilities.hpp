@@ -6,6 +6,8 @@
 
 #define PI (4 * atan(1.0))
 
+void data_to_file(std::vector<double> data, std::string filename);
+
 void save_old_values(std::vector<double> &array, std::vector<double> &array_old,
 		     int n_values);
 

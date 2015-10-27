@@ -11,6 +11,47 @@
 ////////////////////////////////////////////////////////////////
 // Particles
 
+void ParticleSpecies::initialize_species(int species_number, 
+					 double n_ppc, 
+					 double u_x_drift, 
+					 double u_y_drift, 
+					 int mode, 
+					 double u_x_1, 
+					 double u_y_1)
+{
+  std::stringstream ss;
+  ss << "particles_";
+  ss << species_number;
+  species_name = ss.str();
+
+  double k = 2.0 * PI * double(mode) / (n_g * dx);
+  double particle_spacing = double(n_g) * dx / double(n_p);
+
+  for (int i = 0; i < n_p; i++) {
+    charge[i] = (-1.0) * (1.0 / n_ppc);
+    rqm[i] = -1.0;
+    x[i] = double(i) * particle_spacing + particle_spacing / 2.0;
+    u_x[i] = u_x_drift + u_x_1 * cos(k * x[i]);;
+    u_y[i] = u_y_drift + u_y_1 * sin(k * x[i]);
+  }
+
+  // Add ghost tracer particle if using line segments
+  if ((method==1)||(method==2)) {
+    charge.push_back(0.0);
+    rqm.push_back(rqm[0]);
+    u_x.push_back(u_x[0]);
+    u_y.push_back(u_y[0]);
+    x.push_back(x[0] + n_g*dx);
+    n_p += 1;
+    
+    x_old.push_back(0);
+    u_x_old.push_back(0);
+    u_y_old.push_back(0);
+  }
+
+  return;
+}
+
 double j_y_segment_linear_left_gridpoint(double charge, double xl, 
 					 double length, double vl, double vr, 
 					 double xa, double xb)
@@ -101,6 +142,11 @@ void ParticleSpecies::deposit_j_y_segments_linear(std::vector<double> &j_y)
   return;
 }
 
+void ParticleSpecies::write_energy_history()
+{
+  data_to_file(energy_history, (species_name+"_ene"));
+  return; 
+}
 
 void deposit_rho_segment_zero_new(std::vector<double> &rho, double x_tracer_a, 
 				double x_tracer_b, double charge, int n_g, double dx)
@@ -582,7 +628,7 @@ void ParticleSpecies::advance_velocity(std::vector<double> &e_x,
     
     gamma_centered = sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0));
 
-    energy = energy + charge[i] * (pow(u_x[i], 2.0) + pow(u_y[i], 2.0)) / (1.0 + gamma_centered);
+    energy = energy + (charge[i] / rqm[i]) * (pow(u_x[i], 2.0) + pow(u_y[i], 2.0)) / (1.0 + gamma_centered);
     
     // Velocity rotation from magnetic field
     t = rqm[i] * b_z_particle * dt / (2.0 * gamma_centered);
@@ -636,16 +682,10 @@ void ParticleSpecies::initial_velocity_deceleration(std::vector<double> &e_x,
 
 void ParticleSpecies::advance_x()
 {
-  if (relativistic) {
-    double gamma;
-    for (int i = 0; i < n_p; i++) {
-      gamma = sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0));
-      x[i] = x[i] + dt * u_x[i] / gamma;
-    } 
-  } else {
-    for (int i = 0; i < n_p; i++) {
-      x[i] = x[i] + dt * u_x[i];
-    }
-  }
+  double gamma;
+  for (int i = 0; i < n_p; i++) {
+    gamma = sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0));
+    x[i] = x[i] + dt * u_x[i] / gamma;
+  } 
   return;
 }

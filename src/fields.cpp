@@ -1,19 +1,26 @@
 #include <vector>
 #include <cmath>
 #include <iostream>
+#include <string>
 
 #include "fields.hpp"
 #include "utilities.hpp"
 
+void Field::write_energy_history()
+{
+  data_to_file(energy_history, (field_name+"_ene"));
+  return; 
+}
+
 void Field::calculate_energy()
 {
-  energy_history.push_back(sum_of_squares(field, n_g));
+  energy_history.push_back(0.5 * sum_of_squares(field, n_g));
   return;
 }
 
 void Field::calculate_energy_tavg()
 {
-  energy_history.push_back(sum_of_squares(field_tavg, n_g));
+  energy_history.push_back(0.5 * sum_of_squares(field_tavg, n_g));
   return;
 }
 

@@ -10,6 +10,7 @@ public:
   Field(int n_g, std::string field_name) : field(n_g), field_old(n_g), field_tavg(n_g)
   {
     this->n_g = n_g;
+    this->field_name = field_name;
     output_stream.open(field_name.c_str(), std::ios::binary);
   }
   
@@ -21,11 +22,13 @@ public:
   int n_g;
   std::vector<double> field, field_old, field_tavg, energy_history;
   std::ofstream output_stream;
+  std::string field_name;
   void write_field();
   void write_field_tavg();
   void set_field_to_zero();
   void calculate_energy();
   void calculate_energy_tavg();
+  void write_energy_history();
 };
 
 
