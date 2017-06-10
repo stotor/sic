@@ -60,12 +60,15 @@ public:
 				     std::vector<double> &e_y,
 				     std::vector<double> &b_z_tavg);
   void deposit_rho(std::vector<double> &rho);
+  void deposit_rho_ngp(std::vector<double> &rho);
   void deposit_rho_segments_zero(std::vector<double> &rho);
   void deposit_rho_segments_linear(std::vector<double> &rho);
   void deposit_j_x(std::vector<double> &j_x);
+  void deposit_j_x_ngp(std::vector<double> &j_x);
   void deposit_j_x_segments_zero(std::vector<double> &j_x);
   void deposit_j_x_segments_linear(std::vector<double> &j_x);
   void deposit_j_y(std::vector<double> &j_y);
+  void deposit_j_y_ngp(std::vector<double> &j_y);
   void deposit_j_y_segments_zero(std::vector<double> &j_y);
   void deposit_j_y_segments_linear(std::vector<double> &j_y);
   void write_phase(std::ofstream &x_ofstream, std::ofstream &u_x_ofstream, 

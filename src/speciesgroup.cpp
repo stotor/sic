@@ -34,6 +34,9 @@ void SpeciesGroup::deposit_j_x(std::vector<double> &j_x)
   }
  
   for (int i = 0; i < n_species; i++) {
+    if (method==-1) { 
+      species[i].deposit_j_x_ngp(j_x);
+    }
     if (method==0) { 
       species[i].deposit_j_x(j_x);
     }
@@ -53,6 +56,9 @@ void SpeciesGroup::deposit_j_y(std::vector<double> &j_y)
     j_y[i] = 0.0;
   }
   for (int i = 0; i < n_species; i++) {
+    if (method==-1) { 
+      species[i].deposit_j_y_ngp(j_y);
+    }
     if (method==0) { 
       species[i].deposit_j_y(j_y);
     }
@@ -120,6 +126,9 @@ void SpeciesGroup::deposit_rho(std::vector<double> &rho, int n_g)
     rho[i] = 1.0;
   }
   for (int i = 0; i < n_species; i++) {
+    if (method==-1) { 
+      species[i].deposit_rho_ngp(rho);
+    }
     if (method==0) { 
       species[i].deposit_rho(rho);
     }

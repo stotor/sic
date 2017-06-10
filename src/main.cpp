@@ -46,15 +46,15 @@ int main(int argc, char *argv[])
 
   switch (simulation_type) {
   case 0:
-    n_t = 501;
-    n_g = 200;
+    n_t = 201;
+    n_g = 50;
     dx = 0.5;
     dt = 0.2;
     k = 2.0 * PI * mode / (n_g * dx);
     n_species = 1;
     u_x_drift.push_back(0.0);
     u_y_drift.push_back(0.0);
-    u_x_1 = 0.001;
+    u_x_1 = 0.01;
     u_y_1 = 0.0;
     e_y_1 = 0.0;
     b_z_1 = 0.0;
@@ -92,6 +92,11 @@ int main(int argc, char *argv[])
     e_y_1 = 0.0;
     b_z_1 = 0.0;
     break;
+  }
+
+  if (fmod((n_ppc * double(n_g)), 1.0) != 0.0) {
+    std::cout << "Error: n_ppc * n_g is not an integer.";
+    return 1;
   }
   
   // Initialize particles 

@@ -31,7 +31,7 @@ void ParticleSpecies::initialize_species(int species_number,
     charge[i] = (-1.0) * (1.0 / n_ppc);
     rqm[i] = -1.0;
     x[i] = double(i) * particle_spacing + particle_spacing / 2.0;
-    u_x[i] = u_x_drift + u_x_1 * cos(k * x[i]);;
+    u_x[i] = u_x_drift + u_x_1 * sin(k * x[i]);;
     u_y[i] = u_y_drift + u_y_1 * sin(k * x[i]);
   }
 
@@ -567,6 +567,61 @@ void ParticleSpecies::deposit_rho(std::vector<double> &rho)
   return;
 }
 
+int get_nearest_gridpoint(double x)
+{
+  int nearest_gridpoint;
+  if ((x-floor(x)) <= 0.5) {
+    nearest_gridpoint = floor(x);
+  } else {
+    nearest_gridpoint = ceil(x);
+  }
+  return nearest_gridpoint;
+}
+
+void ParticleSpecies::deposit_rho_ngp(std::vector<double> &rho)
+{
+  double x_normalized;
+  int nearest_gridpoint;
+  for (int i = 0; i < n_p; i++) {
+    x_normalized = x[i] / dx;
+    nearest_gridpoint = get_nearest_gridpoint(x_normalized);
+    rho[mod(nearest_gridpoint,n_g)] += charge[i];
+  }
+  return;
+}
+
+void ParticleSpecies::deposit_j_y_ngp(std::vector<double> &j_y)
+{
+  double x_tavg, gamma;
+  int nearest_gridpoint;
+  for (int i = 0; i < n_p; i++) {
+    x_tavg = (x[i] + x_old[i]) / 2.0;
+    x_tavg = x_tavg / dx;
+    nearest_gridpoint = get_nearest_gridpoint(x_tavg);
+    gamma = sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0));
+    j_y[mod(nearest_gridpoint,n_g)] += charge[i] * u_y[i] / gamma;
+  }
+  return;
+}
+
+void ParticleSpecies::deposit_j_x_ngp(std::vector<double> &j_x)
+{
+  double x_initial, x_final;
+  int ngp_initial, ngp_final;
+  for (int i = 0; i < n_p; i++) {
+    x_initial = x_old[i] / dx;
+    x_final = x[i] / dx;
+    ngp_initial = get_nearest_gridpoint(x_initial);
+    ngp_final = get_nearest_gridpoint(x_final);
+    if (ngp_initial < ngp_final) {
+      j_x[mod(ngp_initial,n_g)] += charge[i] * (dx / dt);
+    } else if (ngp_initial > ngp_final) {
+      j_x[mod(ngp_final,n_g)] -= charge[i] * (dx / dt);
+    }
+  }
+  return;
+}
+
 void ParticleSpecies::deposit_j_x(std::vector<double> &j_x)
 {
   double x_initial, x_final;
@@ -618,9 +673,18 @@ void ParticleSpecies::advance_velocity(std::vector<double> &e_x,
   double energy = 0.0;
   for (int i = 0; i < n_p; i++) {
     // Weight fields to the particle location
-    e_x_particle = interpolate_field_integer(e_x_int, x[i], dx, n_g);
-    e_y_particle = interpolate_field_integer(e_y, x[i], dx, n_g);
-    b_z_particle = interpolate_field_half_integer(b_z_tavg, x[i], dx, n_g);
+    if (method==-2) {
+      int ngp_integer = get_nearest_gridpoint(x[i] / dx);
+      int ngp_half_integer = get_nearest_gridpoint((x[i]-0.5) / dx);
+      e_x_particle = e_x_int[mod(ngp_integer, n_g)];
+      e_y_particle = e_y[mod(ngp_integer, n_g)];
+      b_z_particle = b_z_tavg[mod(ngp_half_integer, n_g)];
+    } else {
+      e_x_particle = interpolate_field_integer(e_x_int, x[i], dx, n_g);
+      e_y_particle = interpolate_field_integer(e_y, x[i], dx, n_g);
+      b_z_particle = interpolate_field_half_integer(b_z_tavg, x[i], dx, n_g);
+    }
+
     // Relativistic Boris push
     // First half electric impulse
     u_x[i] = u_x[i] + rqm[i] * e_x_particle * (dt / 2.0);
