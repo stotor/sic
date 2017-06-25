@@ -18,21 +18,9 @@ void Field::calculate_energy()
   return;
 }
 
-void Field::calculate_energy_tavg()
-{
-  energy_history.push_back(0.5 * sum_of_squares(field_tavg, n_g));
-  return;
-}
-
 void Field::write_field()
 {
   write_data(field, output_stream, n_g);
-  return;
-}
-
-void Field::write_field_tavg()
-{
-  write_data(field_tavg, output_stream, n_g);
   return;
 }
 

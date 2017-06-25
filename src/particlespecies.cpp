@@ -663,11 +663,11 @@ void ParticleSpecies::deposit_j_y(std::vector<double> &j_y)
 
 void ParticleSpecies::advance_velocity(std::vector<double> &e_x, 
 				       std::vector<double> &e_y, 
-				       std::vector<double> &b_z_tavg)
+				       std::vector<double> &b_z)
 {
   // Shift e_x integer values to eliminate self force
-  std::vector<double> e_x_int(n_g);
-  half_int_to_int(e_x, e_x_int, n_g);
+  //  std::vector<double> e_x_int(n_g);
+  //  half_int_to_int(e_x, e_x_int, n_g);
 
   double e_x_particle, e_y_particle, b_z_particle, gamma_centered, t, s;
   double energy = 0.0;
@@ -676,13 +676,13 @@ void ParticleSpecies::advance_velocity(std::vector<double> &e_x,
     if (method==-2) {
       int ngp_integer = get_nearest_gridpoint(x[i] / dx);
       int ngp_half_integer = get_nearest_gridpoint((x[i]-0.5) / dx);
-      e_x_particle = e_x_int[mod(ngp_integer, n_g)];
+      //      e_x_particle = e_x_int[mod(ngp_integer, n_g)];
       e_y_particle = e_y[mod(ngp_integer, n_g)];
-      b_z_particle = b_z_tavg[mod(ngp_half_integer, n_g)];
+      b_z_particle = b_z[mod(ngp_half_integer, n_g)];
     } else {
-      e_x_particle = interpolate_field_integer(e_x_int, x[i], dx, n_g);
+      e_x_particle = interpolate_field_half_integer(e_x, x[i], dx, n_g);
       e_y_particle = interpolate_field_integer(e_y, x[i], dx, n_g);
-      b_z_particle = interpolate_field_half_integer(b_z_tavg, x[i], dx, n_g);
+      b_z_particle = interpolate_field_half_integer(b_z, x[i], dx, n_g);
     }
 
     // Relativistic Boris push

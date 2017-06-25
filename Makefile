@@ -12,10 +12,10 @@ SOURCES = src/main.cpp src/particlespecies.cpp \
 INCLUDE_FILES = include/particlespecies.hpp include/fields.hpp \
 	        include/speciesgroup.hpp include/utilities.hpp
 
-INCLUDE_FOLDER = /Users/stotor/Desktop/1DEM/include
+INCLUDE_FOLDER = include
 
-1DEM : $(SOURCES) $(INCLUDE_FILES)
+sic : $(SOURCES) $(INCLUDE_FILES)
 	$(CXX) $(CXXFLAGS) $(SOURCES) -o $@ -I$(INCLUDE_FOLDER)
 
 clean :
-	rm 1DEM
+	rm sic

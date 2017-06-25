@@ -1,6 +1,7 @@
 /**
- * 1DEM
- * - 1D electromagnetic code
+ * SIC
+ * - 1D electromagnetic code implementing the
+ *   simplex-in-cell current deposit
  */
 
 #include <iostream>
@@ -18,8 +19,8 @@ int main(int argc, char *argv[])
   ///////////////////////////////
   // INITIALIZATION
   // Define simulation parameters
-  if (argc != 3) {
-    std::cout << "Usage: ./1DEM <method> <n_ppc>" << std::endl;
+  if (argc != 4) {
+    std::cout << "Usage: ./sic <method> <n_ppc> <simulation_type>" << std::endl;
     return 1;
   }
 
@@ -36,7 +37,12 @@ int main(int argc, char *argv[])
   ss >> n_ppc;
 
 
-  int simulation_type = 0; // 0: Electrostatic wave, 1: Electromagnetic wave, 2: Weibel
+  ss.str(std::string());
+  ss.clear();
+  int simulation_type; // 0: Electrostatic wave, 1: Electromagnetic wave, 2: Weibel
+  ss << argv[3];
+  ss >> simulation_type;
+  
   int n_species;
   std::vector<double> u_x_drift, u_y_drift;
   double u_x_1, u_y_1, e_y_1, b_z_1;
@@ -46,8 +52,8 @@ int main(int argc, char *argv[])
 
   switch (simulation_type) {
   case 0:
-    n_t = 201;
-    n_g = 50;
+    n_t = 200;
+    n_g = 1000;
     dx = 0.5;
     dt = 0.2;
     k = 2.0 * PI * mode / (n_g * dx);
@@ -61,7 +67,7 @@ int main(int argc, char *argv[])
     break;
   case 1:
     n_t = 200;
-    n_g = 1000;
+    n_g = 100;
     dx = 0.05;
     dt = 0.04;
     k = 2.0 * PI * mode / (n_g * dx);
@@ -92,6 +98,22 @@ int main(int argc, char *argv[])
     e_y_1 = 0.0;
     b_z_1 = 0.0;
     break;
+  case 3:
+    n_t = 200;
+    n_g = 100;
+    dx = 0.05;
+    dt = 0.04;
+    k = 2.0 * PI * mode / (n_g * dx);
+
+    n_species = 1;
+    u_x_drift.push_back(0.0);
+    u_y_drift.push_back(0.0);
+    u_x_1 = 0.1;
+    u_y_1 = 0.1;
+    e_y_1 = 0.0;
+    b_z_1 = 0.0;
+    break;
+
   }
 
   if (fmod((n_ppc * double(n_g)), 1.0) != 0.0) {
@@ -115,9 +137,9 @@ int main(int argc, char *argv[])
 
   initialize_transverse_em_fields(e_y.field, b_z.field, n_g, dx, e_y_1, b_z_1, mode);
 
-  // Evolve b_z, u_x and u_y backwards in time to t = - 1/2 dt
-  particles.initial_velocity_deceleration(e_x.field, e_y.field, b_z.field);
-  advance_b_z(b_z.field, e_y.field, (-0.5 * dt), dx, n_g);
+  // Evolve u_x and u_y backwards in time to t = - 1/2 dt
+  //  particles.initial_velocity_deceleration(e_x.field, e_y.field, b_z.field);
+  //  advance_b_z(b_z.field, e_y.field, (-0.5 * dt), dx, n_g);
 
   ////////////////////////////////////////
   // MAIN LOOP
@@ -125,20 +147,17 @@ int main(int argc, char *argv[])
     // Print integer time diagnostics: e_x, e_y, rho
     e_x.write_field();
     e_y.write_field();
+    b_z.write_field();
+    particles.deposit_rho(rho.field, n_g);
     rho.write_field();
     e_x.calculate_energy();
     e_y.calculate_energy();
-
-    // Update magnetic field
-    save_old_values(b_z.field, b_z.field_old, n_g);
-    advance_b_z(b_z.field, e_y.field, dt, dx, n_g);
-    calc_tavg_array(b_z.field_tavg, b_z.field, b_z.field_old, n_g);
-    b_z.calculate_energy_tavg();
+    b_z.calculate_energy();
 
     // Calculate u_x and u_y, at t+1/2
     particles.save_u_x_old();
     particles.save_u_y_old();
-    particles.advance_velocity(e_x.field, e_y.field, b_z.field_tavg);
+    particles.advance_velocity(e_x.field, e_y.field, b_z.field);
 
     // Update particle positions to t+1
     particles.save_x_old();
@@ -149,17 +168,15 @@ int main(int argc, char *argv[])
     particles.deposit_j_y(j_y.field);
     
     // Print diagnostics for fields defined at half-integer times
-    b_z.write_field();
     j_x.write_field();
     j_y.write_field();
 
-    // Print diagnostics that are averaged to integer times: field and particle energies, phase space
-
-    // Advance e_x and e_y to t+1; calculate rho at t+1 for diagnostic purposes
+    // Update magnetic field
+    advance_b_z(b_z.field, e_y.field, dt/2.0, dx, n_g);
     advance_e_x(e_x.field, j_x.field, dt, dx, n_g);
     advance_e_y(e_y.field, b_z.field, j_y.field, dt, dx, n_g);
-    particles.deposit_rho(rho.field, n_g);
-
+    advance_b_z(b_z.field, e_y.field, dt/2.0, dx, n_g);
+    
     std::cout << t << std::endl;
   }
   // Write out energy diagnostics
