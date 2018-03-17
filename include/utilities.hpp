@@ -27,4 +27,6 @@ void half_int_to_int(std::vector<double> &field,
 		     std::vector<double> &shifted_field, 
 		     int n_g);
 
+double random_double(void);
+
 #endif /* utilities_hpp */

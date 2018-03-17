@@ -36,7 +36,6 @@ int main(int argc, char *argv[])
   ss << argv[2];
   ss >> n_ppc;
 
-
   ss.str(std::string());
   ss.clear();
   int simulation_type; // 0: Electrostatic wave, 1: Electromagnetic wave, 2: Weibel
@@ -47,6 +46,8 @@ int main(int argc, char *argv[])
   std::vector<double> u_x_drift, u_y_drift;
   double u_x_1, u_y_1, e_y_1, b_z_1;
   int mode = 1;
+  int mode_max = 32;
+  double amplitude;
   int n_t, n_g;
   double k, dx, dt;
 
@@ -104,7 +105,6 @@ int main(int argc, char *argv[])
     dx = 0.05;
     dt = 0.04;
     k = 2.0 * PI * mode / (n_g * dx);
-
     n_species = 1;
     u_x_drift.push_back(0.0);
     u_y_drift.push_back(0.0);
@@ -113,9 +113,24 @@ int main(int argc, char *argv[])
     e_y_1 = 0.0;
     b_z_1 = 0.0;
     break;
-
+  case 4:
+    n_t = 500;
+    n_g = 128;
+    dx = 0.1;
+    dt = 0.09;
+    n_species = 2;
+    u_x_drift.push_back(0.0);
+    u_x_drift.push_back(0.0);
+    u_y_drift.push_back(0.5);
+    u_y_drift.push_back(-0.5);
+    u_x_1 = 0.0;
+    u_y_1 = 0.0;
+    mode = 0;
+    mode_max = 32;
+    amplitude = pow(10.0, -6.0);
+    break;
   }
-
+  
   if (fmod((n_ppc * double(n_g)), 1.0) != 0.0) {
     std::cout << "Error: n_ppc * n_g is not an integer.";
     return 1;
@@ -132,10 +147,11 @@ int main(int argc, char *argv[])
   Field j_x(n_g, "j_x");
   Field j_y(n_g, "j_y");  
   Field rho(n_g, "rho");
-  particles.deposit_rho(rho.field, n_g);
-  initialize_e_x(rho.field, e_x.field, dx, n_g);
+  //particles.deposit_rho(rho.field, n_g);
+  //initialize_e_x(rho.field, e_x.field, dx, n_g);
 
-  initialize_transverse_em_fields(e_y.field, b_z.field, n_g, dx, e_y_1, b_z_1, mode);
+  //  initialize_transverse_em_fields(e_y.field, b_z.field, n_g, dx, e_y_1, b_z_1, mode);
+  initialize_fields_weibel(e_x.field, e_y.field, b_z.field, n_g, dx, mode_max, amplitude);
 
   // Evolve u_x and u_y backwards in time to t = - 1/2 dt
   //  particles.initial_velocity_deceleration(e_x.field, e_y.field, b_z.field);

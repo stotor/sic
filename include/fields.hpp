@@ -29,8 +29,6 @@ public:
   void write_energy_history();
 };
 
-
-// Initialize e_x
 void initialize_e_x(std::vector<double> &rho, std::vector<double> &e_x, 
 		    double dx, int n_g);
 
@@ -41,6 +39,14 @@ void initialize_transverse_em_fields(std::vector<double> &e_y,
 				     std::vector<double> &b_z, int n_g, 
 				     double dx, double e_y_1, double b_z_1,
 				     int mode);
+
+void initialize_fields_weibel(std::vector<double> &e_x,
+			      std::vector<double> &e_y, 
+			      std::vector<double> &b_z,
+			      int n_g, 
+			      double dx,
+			      int mode_max,
+			      double amplitude);
 
 void advance_b_z(std::vector<double> &b_z, std::vector<double> &e_y, double dt, 
 		 double dx, int n_g);

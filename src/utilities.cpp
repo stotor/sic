@@ -1,5 +1,6 @@
 #include <vector>
 #include <fstream>
+#include <cstdlib>
 #include "utilities.hpp"
 
 void data_to_file(std::vector<double> data, std::string filename)
@@ -73,4 +74,9 @@ void half_int_to_int(std::vector<double> &field,
     shifted_field[i] = (field[mod((i-1),n_g)] + field[i]) / 2.0;
   }
   return;
+}
+
+double random_double(void)
+{
+  return ((double) rand()) / (RAND_MAX + 1.0);
 }

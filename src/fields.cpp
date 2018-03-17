@@ -47,6 +47,31 @@ void initialize_transverse_em_fields(std::vector<double> &e_y,
   return;
 }
 
+void initialize_fields_weibel(std::vector<double> &e_x,
+			      std::vector<double> &e_y, 
+			      std::vector<double> &b_z,
+			      int n_g, 
+			      double dx,
+			      int mode_max,
+			      double amplitude)
+{
+  double k, phase;
+  for (int i = 0; i < n_g; i++) {
+    e_x[i] = 0.0;
+    e_y[i] = 0.0;
+    b_z[i] = 0.0;
+  }
+  for (int mode = 1; mode <= mode_max; mode++) {  
+    k = 2.0 * PI * mode / (n_g * dx);
+    phase = 2.0 * PI * random_double();
+    for (int i = 0; i < n_g; i++) {
+      b_z[i] += amplitude * cos(k * (i + 0.5) * dx + phase);
+    }
+  }
+  return;
+}
+
+
 ////////////////////////////////////////////////////////////////
 // Fields
 
@@ -126,42 +151,42 @@ void advance_e_y(std::vector<double> &e_y, std::vector<double> &b_z,
   return;
 }
 
-void advance_b_z_2d(std::vector<double> &b_z, std::vector<double> &e_y, double dt, 
-		    double dx, int n_g)
-{
-  for (int j = 0; j < (n_g - 1); j++) {
-    for (int i = 0; i < (n_g - 1); i++) {
-      b_z[j, i] = b_z[j, i] - (dt / dx) * (e_y[j, i+1] - e_y[j, i] - e_x[j+1, i] - e_x[j, i]);
-    }
-    b_z[j, n_g-1] = b_z[j, n_g-1] - (dt / dx) * (e_y[j, 0] - e_y[j, n_g-1] - e_x[j+1, i] - e_x[j, i]);
-  }
-  for (int i = 0; i < (n_g - 1); i++) {
-    b_z[n_g-1, i] = b_z[n_g-1, i] - (dt / dx) * (e_y[n_g-1, i+1] - e_y[n_g-1, i] - e_x[0, i] - e_x[n_g-1, i]);
-  }
-  b_z[n_g-1, n_g-1] = b_z[n_g-1, n_g-1] - (dt / dx) * (e_y[n_g-1, 0] - e_y[n_g-1, n_g-1] - e_x[0, n_g-1] - e_x[n_g-1, n_g-1]);
-  return;
-}
+// void advance_b_z_2d(std::vector<double> &b_z, std::vector<double> &e_y, double dt, 
+// 		    double dx, int n_g)
+// {
+//   for (int j = 0; j < (n_g - 1); j++) {
+//     for (int i = 0; i < (n_g - 1); i++) {
+//       b_z[j, i] = b_z[j, i] - (dt / dx) * (e_y[j, i+1] - e_y[j, i] - e_x[j+1, i] - e_x[j, i]);
+//     }
+//     b_z[j, n_g-1] = b_z[j, n_g-1] - (dt / dx) * (e_y[j, 0] - e_y[j, n_g-1] - e_x[j+1, i] - e_x[j, i]);
+//   }
+//   for (int i = 0; i < (n_g - 1); i++) {
+//     b_z[n_g-1, i] = b_z[n_g-1, i] - (dt / dx) * (e_y[n_g-1, i+1] - e_y[n_g-1, i] - e_x[0, i] - e_x[n_g-1, i]);
+//   }
+//   b_z[n_g-1, n_g-1] = b_z[n_g-1, n_g-1] - (dt / dx) * (e_y[n_g-1, 0] - e_y[n_g-1, n_g-1] - e_x[0, n_g-1] - e_x[n_g-1, n_g-1]);
+//   return;
+// }
 
-void advance_e_x_2d(std::vector<double> &e_x, std::vector<double> &j_x, double dt, 
-		    double dx, int n_g)
-{
-  for (int j = 0; j < n_g; j++) {
-      for (int i = 0; i < n_g; i++) {
-	  e_x[j, i] = e_x[j, i] - (dt / dx) * (b_z[j+1, i] - b_z[j, i]) - dt * j_x[j, i];
-      }
-  }
-  return;
-}
+// void advance_e_x_2d(std::vector<double> &e_x, std::vector<double> &j_x, double dt, 
+// 		    double dx, int n_g)
+// {
+//   for (int j = 0; j < n_g; j++) {
+//       for (int i = 0; i < n_g; i++) {
+// 	  e_x[j, i] = e_x[j, i] - (dt / dx) * (b_z[j+1, i] - b_z[j, i]) - dt * j_x[j, i];
+//       }
+//   }
+//   return;
+// }
 
-void advance_e_y_2d(std::vector<double> &e_y, std::vector<double> &b_z, 
-		    std::vector<double> &j_y, double dt, 
-		    double dx, int n_g)
-{
-  //  e_y[0] = e_y[0] - (dt / dx) * (b_z[0] - b_z[n_g-1]) - dt * j_y[0];
-  for (int j = 1; j < n_g; j++) {
-    for (int i = 1; i < n_g; i++) {
-      e_y[j, i] = e_y[j, i] - (dt / dx) * (b_z[j, i] - b_z[j, i-1]) - dt * j_y[j, i];
-    }
-  }
-  return;
-}
+// void advance_e_y_2d(std::vector<double> &e_y, std::vector<double> &b_z, 
+// 		    std::vector<double> &j_y, double dt, 
+// 		    double dx, int n_g)
+// {
+//   //  e_y[0] = e_y[0] - (dt / dx) * (b_z[0] - b_z[n_g-1]) - dt * j_y[0];
+//   for (int j = 1; j < n_g; j++) {
+//     for (int i = 1; i < n_g; i++) {
+//       e_y[j, i] = e_y[j, i] - (dt / dx) * (b_z[j, i] - b_z[j, i-1]) - dt * j_y[j, i];
+//     }
+//   }
+//   return;
+// }

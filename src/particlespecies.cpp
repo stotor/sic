@@ -35,6 +35,11 @@ void ParticleSpecies::initialize_species(int species_number,
     u_y[i] = u_y_drift + u_y_1 * sin(k * x[i]);
   }
 
+  for (int i = 0; i < n_p; i++) {
+    std::cout<< u_x[i] << std::endl;
+  }
+
+  
   // Add ghost tracer particle if using line segments
   if ((method==1)||(method==2)) {
     charge.push_back(0.0);
