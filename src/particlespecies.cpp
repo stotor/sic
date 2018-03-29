@@ -31,17 +31,12 @@ void ParticleSpecies::initialize_species(int species_number,
     charge[i] = (-1.0) * (1.0 / n_ppc);
     rqm[i] = -1.0;
     x[i] = double(i) * particle_spacing + particle_spacing / 2.0;
-    u_x[i] = u_x_drift + u_x_1 * sin(k * x[i]);;
+    u_x[i] = u_x_drift + u_x_1 * sin(k * x[i]);
     u_y[i] = u_y_drift + u_y_1 * sin(k * x[i]);
   }
-
-  for (int i = 0; i < n_p; i++) {
-    std::cout<< u_x[i] << std::endl;
-  }
-
   
   // Add ghost tracer particle if using line segments
-  if ((method==1)||(method==2)) {
+  if ((method==2)||(method==3)) {
     charge.push_back(0.0);
     rqm.push_back(rqm[0]);
     u_x.push_back(u_x[0]);
@@ -150,6 +145,9 @@ void ParticleSpecies::deposit_j_y_segments_linear(std::vector<double> &j_y)
 void ParticleSpecies::write_energy_history()
 {
   data_to_file(energy_history, (species_name+"_ene"));
+  data_to_file(momentum_x_history, (species_name+"_p_x"));
+  data_to_file(momentum_y_history, (species_name+"_p_y"));
+
   return; 
 }
 
@@ -670,24 +668,36 @@ void ParticleSpecies::advance_velocity(std::vector<double> &e_x,
 				       std::vector<double> &e_y, 
 				       std::vector<double> &b_z)
 {
-  // Shift e_x integer values to eliminate self force
-  //  std::vector<double> e_x_int(n_g);
-  //  half_int_to_int(e_x, e_x_int, n_g);
+  // Shift e_x and b_z integer values to eliminate self forces
+  std::vector<double> e_x_int(n_g);
+  std::vector<double> b_z_int(n_g);
+  if (center_fields) {
+    half_int_to_int(e_x, e_x_int, n_g);
+    half_int_to_int(b_z, b_z_int, n_g);
+  }
 
   double e_x_particle, e_y_particle, b_z_particle, gamma_centered, t, s;
   double energy = 0.0;
+  double momentum_x = 0.0;
+  double momentum_y = 0.0;
   for (int i = 0; i < n_p; i++) {
     // Weight fields to the particle location
     if (method==-2) {
-      int ngp_integer = get_nearest_gridpoint(x[i] / dx);
-      int ngp_half_integer = get_nearest_gridpoint((x[i]-0.5) / dx);
+      //      int ngp_integer = get_nearest_gridpoint(x[i] / dx);
+      //      int ngp_half_integer = get_nearest_gridpoint((x[i]-0.5) / dx);
       //      e_x_particle = e_x_int[mod(ngp_integer, n_g)];
-      e_y_particle = e_y[mod(ngp_integer, n_g)];
-      b_z_particle = b_z[mod(ngp_half_integer, n_g)];
+      //      e_y_particle = e_y[mod(ngp_integer, n_g)];
+      //      b_z_particle = b_z[mod(ngp_half_integer, n_g)];
     } else {
-      e_x_particle = interpolate_field_half_integer(e_x, x[i], dx, n_g);
-      e_y_particle = interpolate_field_integer(e_y, x[i], dx, n_g);
-      b_z_particle = interpolate_field_half_integer(b_z, x[i], dx, n_g);
+      if (center_fields) {
+	e_x_particle = interpolate_field_integer(e_x_int, x[i], dx, n_g);
+	e_y_particle = interpolate_field_integer(e_y, x[i], dx, n_g);
+	b_z_particle = interpolate_field_integer(b_z_int, x[i], dx, n_g);
+      } else {
+	e_x_particle = interpolate_field_half_integer(e_x, x[i], dx, n_g);
+	e_y_particle = interpolate_field_integer(e_y, x[i], dx, n_g);
+	b_z_particle = interpolate_field_half_integer(b_z, x[i], dx, n_g);
+      }
     }
 
     // Relativistic Boris push
@@ -696,7 +706,6 @@ void ParticleSpecies::advance_velocity(std::vector<double> &e_x,
     u_y[i] = u_y[i] + rqm[i] * e_y_particle * (dt / 2.0);
     
     gamma_centered = sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0));
-
     energy = energy + (charge[i] / rqm[i]) * (pow(u_x[i], 2.0) + pow(u_y[i], 2.0)) / (1.0 + gamma_centered);
     
     // Velocity rotation from magnetic field
@@ -710,26 +719,40 @@ void ParticleSpecies::advance_velocity(std::vector<double> &e_x,
     // Second half electric impulse
     u_x[i] = u_x[i] + rqm[i] * e_x_particle * (dt / 2.0);
     u_y[i] = u_y[i] + rqm[i] * e_y_particle * (dt / 2.0);
-    
+
+    momentum_x += fabs(charge[i]) * u_x[i];
+    momentum_y += fabs(charge[i]) * u_y[i];
   }
   energy_history.push_back(energy);
+  momentum_x_history.push_back(momentum_x);
+  momentum_y_history.push_back(momentum_y);
   return;
 }
 
 void ParticleSpecies::initial_velocity_deceleration(std::vector<double> &e_x, 
 						    std::vector<double> &e_y,
-						    std::vector<double> &b_z_tavg)
+						    std::vector<double> &b_z)
 {
-  // Shift e_x integer values to eliminate self force
+  // Shift e_x and b_z integer values to eliminate self forces
   std::vector<double> e_x_int(n_g);
-  half_int_to_int(e_x, e_x_int, n_g);
+  std::vector<double> b_z_int(n_g);
+  if (center_fields) {
+    half_int_to_int(e_x, e_x_int, n_g);
+    half_int_to_int(b_z, b_z_int, n_g);
+  }
   
   double e_x_particle, e_y_particle, b_z_particle, gamma_centered, t, s;
   for (int i = 0; i < n_p; i++) {
     // Weight fields to the particle location
-    e_x_particle = interpolate_field_integer(e_x_int, x[i], dx, n_g);
-    e_y_particle = interpolate_field_integer(e_y, x[i], dx, n_g);
-    b_z_particle = interpolate_field_half_integer(b_z_tavg, x[i], dx, n_g);
+    if (center_fields) {
+      e_x_particle = interpolate_field_integer(e_x_int, x[i], dx, n_g);
+      e_y_particle = interpolate_field_integer(e_y, x[i], dx, n_g);
+      b_z_particle = interpolate_field_integer(b_z_int, x[i], dx, n_g);
+    } else {
+      e_x_particle = interpolate_field_half_integer(e_x, x[i], dx, n_g);
+      e_y_particle = interpolate_field_integer(e_y, x[i], dx, n_g);
+      b_z_particle = interpolate_field_half_integer(b_z, x[i], dx, n_g);
+    }
     
     // Update velocities
     gamma_centered = sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0));

@@ -32,14 +32,12 @@ void Field::set_field_to_zero()
   return;
 }
 
-// Initialize EM fields
 void initialize_transverse_em_fields(std::vector<double> &e_y, 
 				     std::vector<double> &b_z, int n_g, 
 				     double dx, double e_y_1, double b_z_1,
 				     int mode)
 {
   double k = 2.0 * PI * mode / (n_g * dx);
-  // Initialize an EM wave, use v1 = 0.0 if zero initial fields are wanted
   for (int i = 0; i < n_g; i++) {
     e_y[i] = e_y_1 * cos(k * i * dx);
     b_z[i] = b_z_1 * cos(k * (i + 0.5) * dx);
@@ -47,8 +45,7 @@ void initialize_transverse_em_fields(std::vector<double> &e_y,
   return;
 }
 
-void initialize_fields_weibel(std::vector<double> &e_x,
-			      std::vector<double> &e_y, 
+void initialize_fields_weibel(std::vector<double> &e_y, 
 			      std::vector<double> &b_z,
 			      int n_g, 
 			      double dx,
@@ -57,7 +54,6 @@ void initialize_fields_weibel(std::vector<double> &e_x,
 {
   double k, phase;
   for (int i = 0; i < n_g; i++) {
-    e_x[i] = 0.0;
     e_y[i] = 0.0;
     b_z[i] = 0.0;
   }
@@ -71,11 +67,6 @@ void initialize_fields_weibel(std::vector<double> &e_x,
   return;
 }
 
-
-////////////////////////////////////////////////////////////////
-// Fields
-
-// Initialize e_x
 void initialize_e_x(std::vector<double> &rho, std::vector<double> &e_x, 
 		    double dx, int n_g)
 {
@@ -97,7 +88,6 @@ void initialize_e_x(std::vector<double> &rho, std::vector<double> &e_x,
   return;
 }
 
-// Not currently used
 void e_x_poisson_solve(std::vector<double> &rho, std::vector<double> &e_x, 
 		       double dx, int n_g, std::vector<double> &phi)
 {

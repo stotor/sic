@@ -7,13 +7,14 @@
 
 class ParticleSpecies {
 public:
-  ParticleSpecies(int method, int n_ppc, double dt, double dx, int n_g)
+  ParticleSpecies(int method, int n_ppc, double dt, double dx, int n_g, bool center_fields)
   {
     this->method = method;
     this->n_p = n_ppc * n_g;
     this->dt = dt;
     this->dx = dx;
     this->n_g = n_g;
+    this->center_fields = center_fields;
     x.resize(n_p);
     u_x.resize(n_p);
     u_y.resize(n_p);
@@ -37,8 +38,10 @@ public:
   // Attributes
   // Number of particles
   int n_p, method;
+  bool center_fields;
 
-  std::vector<double> x, u_x, u_y, x_old, u_x_old, u_y_old, energy_history;
+  std::vector<double> x, u_x, u_y, x_old, u_x_old, u_y_old, energy_history,
+    momentum_x_history, momentum_y_history;
 
   // Charge to mass ratio, and particle charge divided by grid spacing
   std::vector<double> rqm, charge;
@@ -55,10 +58,10 @@ public:
 			  double u_y_1);
   void advance_x();
   void advance_velocity(std::vector<double> &e_x, std::vector<double> &e_y, 
-			std::vector<double> &b_z_tavg);
+			std::vector<double> &b_z);
   void initial_velocity_deceleration(std::vector<double> &e_x, 
 				     std::vector<double> &e_y,
-				     std::vector<double> &b_z_tavg);
+				     std::vector<double> &b_z);
   void deposit_rho(std::vector<double> &rho);
   void deposit_rho_ngp(std::vector<double> &rho);
   void deposit_rho_segments_zero(std::vector<double> &rho);

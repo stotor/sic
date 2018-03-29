@@ -4,7 +4,7 @@ CXX = g++
 #CFLAGS = -Wall -Wextra -Wconversion -g -O0
 
 #For going fast:
-CXXFLAGS = -g -Wall -O3
+CXXFLAGS = -Wall -O3
 
 SOURCES = src/main.cpp src/particlespecies.cpp \
 	  src/speciesgroup.cpp src/fields.cpp src/utilities.cpp 

@@ -19,10 +19,10 @@ void SpeciesGroup::write_energy_history()
 
 void SpeciesGroup::initial_velocity_deceleration(std::vector<double> &e_x_int, 
 						 std::vector<double> &e_y,
-						 std::vector<double> &b_z_tavg)
+						 std::vector<double> &b_z)
 {
   for (int i = 0; i < n_species; i++) {
-    species[i].initial_velocity_deceleration(e_x_int, e_y, b_z_tavg);
+    species[i].initial_velocity_deceleration(e_x_int, e_y, b_z);
   }
   return;
 }
@@ -34,16 +34,16 @@ void SpeciesGroup::deposit_j_x(std::vector<double> &j_x)
   }
  
   for (int i = 0; i < n_species; i++) {
-    if (method==-1) { 
+    if (method==0) { 
       species[i].deposit_j_x_ngp(j_x);
     }
-    if (method==0) { 
+    if (method==1) { 
       species[i].deposit_j_x(j_x);
     }
-    else if (method==1) {
+    else if (method==2) {
       species[i].deposit_j_x_segments_zero(j_x);
     }
-    else if (method==2) {
+    else if (method==3) {
       species[i].deposit_j_x_segments_linear(j_x);
     }
   }
@@ -56,16 +56,16 @@ void SpeciesGroup::deposit_j_y(std::vector<double> &j_y)
     j_y[i] = 0.0;
   }
   for (int i = 0; i < n_species; i++) {
-    if (method==-1) { 
+    if (method==0) { 
       species[i].deposit_j_y_ngp(j_y);
     }
-    if (method==0) { 
+    if (method==1) { 
       species[i].deposit_j_y(j_y);
     }
-    else if (method==1) {
+    else if (method==2) {
       species[i].deposit_j_y_segments_zero(j_y);
     }
-    else if (method==2) {
+    else if (method==3) {
       species[i].deposit_j_y_segments_linear(j_y);
     }
   }
@@ -82,27 +82,10 @@ void SpeciesGroup::save_x_old()
 
 void SpeciesGroup::advance_velocity(std::vector<double> e_x_int, 
 				    std::vector<double> e_y,
-				    std::vector<double> b_z_tavg)
+				    std::vector<double> b_z)
 {
   for (int i = 0; i < n_species; i++) {
-    species[i].advance_velocity(e_x_int, e_y, b_z_tavg);
-  }
-  return;
-}
-
-
-void SpeciesGroup::save_u_x_old()
-{
-  for (int i = 0; i < n_species; i++) {
-    save_old_values(species[i].u_x, species[i].u_x_old, species[i].n_p);
-  }
-  return;
-}
-
-void SpeciesGroup::save_u_y_old()
-{
-  for (int i = 0; i < n_species; i++) {
-    save_old_values(species[i].u_y, species[i].u_y_old, species[i].n_p);
+    species[i].advance_velocity(e_x_int, e_y, b_z);
   }
   return;
 }
@@ -122,20 +105,21 @@ void SpeciesGroup::initialize_species(double n_ppc,
 
 void SpeciesGroup::deposit_rho(std::vector<double> &rho, int n_g)
 {
+  // First add neutralizing background density
   for (int i = 0; i < n_g; i++) {
-    rho[i] = 1.0;
+    rho[i] = 1.0 * n_species;
   }
   for (int i = 0; i < n_species; i++) {
-    if (method==-1) { 
+    if (method==0) { 
       species[i].deposit_rho_ngp(rho);
     }
-    if (method==0) { 
+    if (method==1) { 
       species[i].deposit_rho(rho);
     }
-    else if (method==1) { 
+    else if (method==2) { 
       species[i].deposit_rho_segments_zero(rho);
     }
-    else if (method==2) { 
+    else if (method==3) { 
       species[i].deposit_rho_segments_linear(rho);
     }
   }

@@ -11,17 +11,9 @@ void data_to_file(std::vector<double> data, std::string filename);
 void save_old_values(std::vector<double> &array, std::vector<double> &array_old,
 		     int n_values);
 
-
 void write_data(std::vector<double> &array, std::ofstream &file, int n_values);
 
 int mod(int a, int b);
-
-void write_data_tavg(std::vector<double> &array, std::vector<double> &array_old, std::ofstream &file, 
-		     int n_values);
-
-void calc_tavg_array(std::vector<double> &array_tavg, std::vector<double> &array, 
-		    std::vector<double> &array_old, 
-		    int n_values);
 
 void half_int_to_int(std::vector<double> &field, 
 		     std::vector<double> &shifted_field, 
