@@ -7,11 +7,13 @@
 
 class Field {
 public:
-  Field(int n_g, std::string field_name) : field(n_g)
+  Field(int n_g, std::string field_name, int my_rank) : field(n_g)
   {
     this->n_g = n_g;
     this->field_name = field_name;
-    output_stream.open(field_name.c_str(), std::ios::binary);
+    if (my_rank==0) {
+      output_stream.open(field_name.c_str(), std::ios::binary);
+    }
   }
   
   ~Field() {

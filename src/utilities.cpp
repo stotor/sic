@@ -2,6 +2,7 @@
 #include <fstream>
 #include <cstdlib>
 #include "utilities.hpp"
+#include "mpi.h"
 
 void data_to_file(std::vector<double> data, std::string filename)
 {
@@ -79,4 +80,13 @@ void half_int_to_int(std::vector<double> &field,
 double random_double(void)
 {
   return ((double) rand()) / (RAND_MAX + 1.0);
+}
+
+void sum_array_to_root(double *array, int n_values, MPI_Comm COMM, int my_rank)
+{
+  if (my_rank==0) {
+    MPI_Reduce(MPI_IN_PLACE, array, n_values, MPI_DOUBLE, MPI_SUM, 0, COMM);
+  } else {
+    MPI_Reduce(array, NULL, n_values, MPI_DOUBLE, MPI_SUM, 0, COMM);
+  }
 }

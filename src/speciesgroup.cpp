@@ -5,14 +5,16 @@
 #include <fstream>
 #include <iostream>
 
+#include "mpi.h"
+
 #include "speciesgroup.hpp"
 #include "particlespecies.hpp"
 #include "utilities.hpp"
 
-void SpeciesGroup::write_energy_history()
+void SpeciesGroup::write_energy_history(int n_t, int my_rank, MPI_Comm COMM)
 {
   for (int i = 0; i < n_species; i++) {
-    species[i].write_energy_history();
+    species[i].write_energy_history(n_t, my_rank, COMM);
   }
   return;
 }
@@ -95,10 +97,12 @@ void SpeciesGroup::initialize_species(double n_ppc,
 				      std::vector<double> u_y_drift, 
 				      int mode, 
 				      double u_x_1, 
-				      double u_y_1)
+				      double u_y_1,
+				      int my_rank,
+				      int num_procs)
 {
   for (int i = 0; i < n_species; i++) {
-    species[i].initialize_species(i, n_ppc, u_x_drift[i], u_y_drift[i], mode, u_x_1, u_y_1);
+    species[i].initialize_species(i, n_ppc, u_x_drift[i], u_y_drift[i], mode, u_x_1, u_y_1, my_rank, num_procs);
   }
   return;
 }

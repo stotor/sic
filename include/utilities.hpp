@@ -4,6 +4,8 @@
 #include <vector>
 #include <fstream>
 
+#include "mpi.h"
+
 #define PI (4 * atan(1.0))
 
 void data_to_file(std::vector<double> data, std::string filename);
@@ -20,5 +22,7 @@ void half_int_to_int(std::vector<double> &field,
 		     int n_g);
 
 double random_double(void);
+
+void sum_array_to_root(double *array, int n_values, MPI_Comm COMM, int my_rank);
 
 #endif /* utilities_hpp */

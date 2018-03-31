@@ -5,16 +5,19 @@
 #include <fstream>
 #include <string>
 
+#include "mpi.h"
+
 class ParticleSpecies {
 public:
-  ParticleSpecies(int method, int n_ppc, double dt, double dx, int n_g, bool center_fields)
+  ParticleSpecies(int method, int n_ppc, double dt, double dx, int n_g, bool center_fields, int interp_order, int num_procs)
   {
     this->method = method;
-    this->n_p = n_ppc * n_g;
+    this->n_p = (n_ppc * n_g) / num_procs;
     this->dt = dt;
     this->dx = dx;
     this->n_g = n_g;
     this->center_fields = center_fields;
+    this->interp_order = interp_order;
     x.resize(n_p);
     u_x.resize(n_p);
     u_y.resize(n_p);
@@ -37,7 +40,7 @@ public:
 
   // Attributes
   // Number of particles
-  int n_p, method;
+  int n_p, method, interp_order;
   bool center_fields;
 
   std::vector<double> x, u_x, u_y, x_old, u_x_old, u_y_old, energy_history,
@@ -55,7 +58,9 @@ public:
 			  double u_y_drift, 
 			  int mode, 
 			  double u_x_1, 
-			  double u_y_1);
+			  double u_y_1,
+			  int my_rank,
+			  int num_procs);
   void advance_x();
   void advance_velocity(std::vector<double> &e_x, std::vector<double> &e_y, 
 			std::vector<double> &b_z);
@@ -76,7 +81,7 @@ public:
   void deposit_j_y_segments_linear(std::vector<double> &j_y);
   void write_phase(std::ofstream &x_ofstream, std::ofstream &u_x_ofstream, 
 		   std::ofstream &u_y_ofstream);
-  void write_energy_history();
+  void write_energy_history(int n_t, int my_rank, MPI_Comm COMM);
 };
 
 #endif /* particlespecies_hpp */

@@ -5,6 +5,8 @@
 #include <fstream>
 #include <iostream>
 
+#include "mpi.h"
+
 #include "particlespecies.hpp"
 #include "utilities.hpp"
 
@@ -17,8 +19,15 @@ void ParticleSpecies::initialize_species(int species_number,
 					 double u_y_drift, 
 					 int mode, 
 					 double u_x_1, 
-					 double u_y_1)
+					 double u_y_1,
+					 int my_rank,
+					 int num_procs)
 {
+  int i_start, i_end, n_ppp;
+  n_ppp = (n_g * n_ppc) / num_procs;
+  i_start = n_ppp * my_rank;
+  i_end = i_start + n_ppp;
+  
   std::stringstream ss;
   ss << "particles_";
   ss << species_number;
@@ -27,26 +36,25 @@ void ParticleSpecies::initialize_species(int species_number,
   double k = 2.0 * PI * double(mode) / (n_g * dx);
   double particle_spacing = double(n_g) * dx / double(n_p);
 
-  for (int i = 0; i < n_p; i++) {
-    charge[i] = (-1.0) * (1.0 / n_ppc);
-    rqm[i] = -1.0;
-    x[i] = double(i) * particle_spacing + particle_spacing / 2.0;
-    u_x[i] = u_x_drift + u_x_1 * sin(k * x[i]);
-    u_y[i] = u_y_drift + u_y_1 * sin(k * x[i]);
-  }
-  
   // Add ghost tracer particle if using line segments
   if ((method==2)||(method==3)) {
-    charge.push_back(0.0);
-    rqm.push_back(rqm[0]);
-    u_x.push_back(u_x[0]);
-    u_y.push_back(u_y[0]);
-    x.push_back(x[0] + n_g*dx);
     n_p += 1;
-    
+    i_end += 1;
+
+    charge.push_back(0.0);
+    rqm.push_back(0.0);
+    u_x.push_back(0.0);
+    u_y.push_back(0.0);
+    x.push_back(0.0);
     x_old.push_back(0);
-    u_x_old.push_back(0);
-    u_y_old.push_back(0);
+  }
+
+  for (int i = i_start; i < i_end; i++) {
+    charge[i-i_start] = (-1.0) * (1.0 / n_ppc);
+    rqm[i-i_start] = -1.0;
+    x[i-i_start] = double(i) * particle_spacing + particle_spacing / 2.0;
+    u_x[i-i_start] = u_x_drift + u_x_1 * sin(k * x[i]);
+    u_y[i-i_start] = u_y_drift + u_y_1 * sin(k * x[i]);
   }
 
   return;
@@ -142,11 +150,17 @@ void ParticleSpecies::deposit_j_y_segments_linear(std::vector<double> &j_y)
   return;
 }
 
-void ParticleSpecies::write_energy_history()
+void ParticleSpecies::write_energy_history(int n_t, int my_rank, MPI_Comm COMM)
 {
-  data_to_file(energy_history, (species_name+"_ene"));
-  data_to_file(momentum_x_history, (species_name+"_p_x"));
-  data_to_file(momentum_y_history, (species_name+"_p_y"));
+  sum_array_to_root(&energy_history[0], n_t, COMM, my_rank);
+  sum_array_to_root(&momentum_x_history[0], n_t, COMM, my_rank);
+  sum_array_to_root(&momentum_y_history[0], n_t, COMM, my_rank);
+
+  if (my_rank==0) {
+    data_to_file(energy_history, (species_name+"_ene"));
+    data_to_file(momentum_x_history, (species_name+"_p_x"));
+    data_to_file(momentum_y_history, (species_name+"_p_y"));
+  }
 
   return; 
 }
@@ -680,14 +694,22 @@ void ParticleSpecies::advance_velocity(std::vector<double> &e_x,
   double energy = 0.0;
   double momentum_x = 0.0;
   double momentum_y = 0.0;
+  int ngp_integer, ngp_half_integer;
   for (int i = 0; i < n_p; i++) {
     // Weight fields to the particle location
-    if (method==-2) {
-      //      int ngp_integer = get_nearest_gridpoint(x[i] / dx);
-      //      int ngp_half_integer = get_nearest_gridpoint((x[i]-0.5) / dx);
-      //      e_x_particle = e_x_int[mod(ngp_integer, n_g)];
-      //      e_y_particle = e_y[mod(ngp_integer, n_g)];
-      //      b_z_particle = b_z[mod(ngp_half_integer, n_g)];
+    if (interp_order==0) {
+      if (center_fields) {
+	ngp_integer = get_nearest_gridpoint(x[i] / dx);
+	e_x_particle = e_x_int[mod(ngp_integer, n_g)];
+	e_y_particle = e_y[mod(ngp_integer, n_g)];
+	b_z_particle = b_z_int[mod(ngp_integer, n_g)];
+      } else {
+	ngp_integer = get_nearest_gridpoint(x[i] / dx);
+	ngp_half_integer = get_nearest_gridpoint((x[i]-0.5) / dx);
+	e_x_particle = e_x[mod(ngp_half_integer, n_g)];
+	e_y_particle = e_y[mod(ngp_integer, n_g)];
+	b_z_particle = b_z[mod(ngp_half_integer, n_g)];
+      }
     } else {
       if (center_fields) {
 	e_x_particle = interpolate_field_integer(e_x_int, x[i], dx, n_g);
@@ -733,6 +755,7 @@ void ParticleSpecies::initial_velocity_deceleration(std::vector<double> &e_x,
 						    std::vector<double> &e_y,
 						    std::vector<double> &b_z)
 {
+  int ngp_integer, ngp_half_integer;
   // Shift e_x and b_z integer values to eliminate self forces
   std::vector<double> e_x_int(n_g);
   std::vector<double> b_z_int(n_g);
@@ -744,14 +767,29 @@ void ParticleSpecies::initial_velocity_deceleration(std::vector<double> &e_x,
   double e_x_particle, e_y_particle, b_z_particle, gamma_centered, t, s;
   for (int i = 0; i < n_p; i++) {
     // Weight fields to the particle location
-    if (center_fields) {
-      e_x_particle = interpolate_field_integer(e_x_int, x[i], dx, n_g);
-      e_y_particle = interpolate_field_integer(e_y, x[i], dx, n_g);
-      b_z_particle = interpolate_field_integer(b_z_int, x[i], dx, n_g);
+    if (interp_order==0) {
+      if (center_fields) {
+	ngp_integer = get_nearest_gridpoint(x[i] / dx);
+	e_x_particle = e_x_int[mod(ngp_integer, n_g)];
+	e_y_particle = e_y[mod(ngp_integer, n_g)];
+	b_z_particle = b_z_int[mod(ngp_integer, n_g)];
+      } else {
+	ngp_integer = get_nearest_gridpoint(x[i] / dx);
+	ngp_half_integer = get_nearest_gridpoint((x[i]-0.5) / dx);
+	e_x_particle = e_x[mod(ngp_half_integer, n_g)];
+	e_y_particle = e_y[mod(ngp_integer, n_g)];
+	b_z_particle = b_z[mod(ngp_half_integer, n_g)];
+      }
     } else {
-      e_x_particle = interpolate_field_half_integer(e_x, x[i], dx, n_g);
-      e_y_particle = interpolate_field_integer(e_y, x[i], dx, n_g);
-      b_z_particle = interpolate_field_half_integer(b_z, x[i], dx, n_g);
+      if (center_fields) {
+	e_x_particle = interpolate_field_integer(e_x_int, x[i], dx, n_g);
+	e_y_particle = interpolate_field_integer(e_y, x[i], dx, n_g);
+	b_z_particle = interpolate_field_integer(b_z_int, x[i], dx, n_g);
+      } else {
+	e_x_particle = interpolate_field_half_integer(e_x, x[i], dx, n_g);
+	e_y_particle = interpolate_field_integer(e_y, x[i], dx, n_g);
+	b_z_particle = interpolate_field_half_integer(b_z, x[i], dx, n_g);
+      }
     }
     
     // Update velocities

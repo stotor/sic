@@ -4,12 +4,14 @@
 #include <vector>
 #include <fstream>
 
+#include "mpi.h"
+
 #include "particlespecies.hpp"
 
 class SpeciesGroup {
 public:
-  SpeciesGroup(int n_species, int method, int n_ppc, double dt, double dx, int n_g, bool center_fields) :
-    species(n_species, ParticleSpecies(method, n_ppc, dt, dx, n_g, center_fields))
+  SpeciesGroup(int n_species, int method, int n_ppc, double dt, double dx, int n_g, bool center_fields, int interp_order, int num_procs) :
+    species(n_species, ParticleSpecies(method, n_ppc, dt, dx, n_g, center_fields, interp_order, num_procs))
   {
     this->n_species = n_species;
     this->method = method;
@@ -36,13 +38,15 @@ public:
   void initial_velocity_deceleration(std::vector<double> &e_x_int, 
 				     std::vector<double> &e_y,
 				     std::vector<double> &b_z);
-  void write_energy_history();
+  void write_energy_history(int n_t, int my_rank, MPI_Comm COMM);
   void initialize_species(double n_ppc, 
 			  std::vector<double> u_x_drift, 
 			  std::vector<double> u_y_drift, 
 			  int mode, 
 			  double u_x_1, 
-			  double u_y_1);
+			  double u_y_1,
+			  int my_rank,
+			  int num_procs);
 };
 
 #endif /* speciesgroup_hpp */
