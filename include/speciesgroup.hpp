@@ -28,7 +28,7 @@ public:
   std::vector<ParticleSpecies> species;
 
   // Methods
-  void deposit_rho(std::vector<double> &rho, int n_g);
+  void deposit_rho(std::vector<double> &rho, int n_g, int my_rank);
   void save_x_old();
   void advance_x();
   void advance_velocity(std::vector<double> e_x_int, std::vector<double> e_y, 

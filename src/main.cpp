@@ -139,7 +139,7 @@ int main(int argc, char *argv[])
   Field j_y(n_g, "j_y", my_rank);
   Field rho(n_g, "rho", my_rank);
   
-  particles.deposit_rho(rho.field, n_g);
+  particles.deposit_rho(rho.field, n_g, my_rank);
   sum_array_to_root(&rho.field[0], n_g, MPI_COMM_WORLD, my_rank);
 
   if (my_rank==0) {
@@ -158,7 +158,7 @@ int main(int argc, char *argv[])
   particles.initial_velocity_deceleration(e_x.field, e_y.field, b_z.field);
 
   for (int t = 0; t < n_t; t++) {
-    particles.deposit_rho(rho.field, n_g);
+    particles.deposit_rho(rho.field, n_g, my_rank);
     sum_array_to_root(&rho.field[0], n_g, MPI_COMM_WORLD, my_rank);
     
     if (my_rank==0) {
@@ -194,8 +194,10 @@ int main(int argc, char *argv[])
     MPI_Bcast(&e_x.field[0], n_g, MPI_DOUBLE, 0, MPI_COMM_WORLD);
     MPI_Bcast(&e_y.field[0], n_g, MPI_DOUBLE, 0, MPI_COMM_WORLD);
     MPI_Bcast(&b_z.field[0], n_g, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-    
-    std::cout << t << std::endl;
+
+    if (my_rank==0) {
+      std::cout << t << std::endl;
+    }
   }
   
   particles.write_energy_history(n_t, my_rank, MPI_COMM_WORLD);

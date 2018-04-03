@@ -107,12 +107,19 @@ void SpeciesGroup::initialize_species(double n_ppc,
   return;
 }
 
-void SpeciesGroup::deposit_rho(std::vector<double> &rho, int n_g)
+void SpeciesGroup::deposit_rho(std::vector<double> &rho, int n_g, int my_rank)
 {
   // First add neutralizing background density
-  for (int i = 0; i < n_g; i++) {
-    rho[i] = 1.0 * n_species;
+  if (my_rank==0) { 
+    for (int i = 0; i < n_g; i++) {
+      rho[i] = 1.0 * n_species;
+    }
+  } else { 
+    for (int i = 0; i < n_g; i++) {
+      rho[i] = 0.0;
+    }
   }
+  
   for (int i = 0; i < n_species; i++) {
     if (method==0) { 
       species[i].deposit_rho_ngp(rho);

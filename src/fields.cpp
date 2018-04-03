@@ -2,6 +2,7 @@
 #include <cmath>
 #include <iostream>
 #include <string>
+#include <cstdlib>
 
 #include "fields.hpp"
 #include "utilities.hpp"
@@ -53,6 +54,7 @@ void initialize_fields_weibel(std::vector<double> &e_y,
 			      double amplitude)
 {
   double k, phase;
+  srand(0);
   for (int i = 0; i < n_g; i++) {
     e_y[i] = 0.0;
     b_z[i] = 0.0;

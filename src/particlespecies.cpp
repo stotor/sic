@@ -34,7 +34,7 @@ void ParticleSpecies::initialize_species(int species_number,
   species_name = ss.str();
 
   double k = 2.0 * PI * double(mode) / (n_g * dx);
-  double particle_spacing = double(n_g) * dx / double(n_p);
+  double particle_spacing = double(n_g) * dx / double(n_ppc * n_g);
 
   // Add ghost tracer particle if using line segments
   if ((method==2)||(method==3)) {
@@ -53,8 +53,8 @@ void ParticleSpecies::initialize_species(int species_number,
     charge[i-i_start] = (-1.0) * (1.0 / n_ppc);
     rqm[i-i_start] = -1.0;
     x[i-i_start] = double(i) * particle_spacing + particle_spacing / 2.0;
-    u_x[i-i_start] = u_x_drift + u_x_1 * sin(k * x[i]);
-    u_y[i-i_start] = u_y_drift + u_y_1 * sin(k * x[i]);
+    u_x[i-i_start] = u_x_drift + u_x_1 * sin(k * x[i-i_start]);
+    u_y[i-i_start] = u_y_drift + u_y_1 * sin(k * x[i-i_start]);
   }
 
   return;
