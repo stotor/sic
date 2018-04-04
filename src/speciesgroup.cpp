@@ -92,7 +92,7 @@ void SpeciesGroup::advance_velocity(std::vector<double> e_x_int,
   return;
 }
 
-void SpeciesGroup::initialize_species(double n_ppc, 
+void SpeciesGroup::initialize_species(long long n_ppc, 
 				      std::vector<double> u_x_drift, 
 				      std::vector<double> u_y_drift, 
 				      int mode, 

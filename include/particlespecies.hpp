@@ -9,7 +9,7 @@
 
 class ParticleSpecies {
 public:
-  ParticleSpecies(int method, int n_ppc, double dt, double dx, int n_g, bool center_fields, int interp_order, int num_procs)
+  ParticleSpecies(int method, long long n_ppc, double dt, double dx, int n_g, bool center_fields, int interp_order, int num_procs)
   {
     this->method = method;
     this->n_p = (n_ppc * n_g) / num_procs;
@@ -39,8 +39,8 @@ public:
   int n_g;
 
   // Attributes
-  // Number of particles
-  int n_p, method, interp_order;
+  long long n_p;
+  int method, interp_order;
   bool center_fields;
 
   std::vector<double> x, u_x, u_y, x_old, u_x_old, u_y_old, energy_history,
@@ -53,7 +53,7 @@ public:
 
   // Methods
   void initialize_species(int species_number, 
-			  double n_ppc, 
+			  long long n_ppc,
 			  double u_x_drift, 
 			  double u_y_drift, 
 			  int mode, 

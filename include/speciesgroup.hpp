@@ -10,7 +10,7 @@
 
 class SpeciesGroup {
 public:
-  SpeciesGroup(int n_species, int method, int n_ppc, double dt, double dx, int n_g, bool center_fields, int interp_order, int num_procs) :
+  SpeciesGroup(int n_species, int method, long long n_ppc, double dt, double dx, int n_g, bool center_fields, int interp_order, int num_procs) :
     species(n_species, ParticleSpecies(method, n_ppc, dt, dx, n_g, center_fields, interp_order, num_procs))
   {
     this->n_species = n_species;
@@ -39,7 +39,7 @@ public:
 				     std::vector<double> &e_y,
 				     std::vector<double> &b_z);
   void write_energy_history(int n_t, int my_rank, MPI_Comm COMM);
-  void initialize_species(double n_ppc, 
+  void initialize_species(long long n_ppc, 
 			  std::vector<double> u_x_drift, 
 			  std::vector<double> u_y_drift, 
 			  int mode, 

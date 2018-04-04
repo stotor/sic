@@ -14,7 +14,7 @@
 // Particles
 
 void ParticleSpecies::initialize_species(int species_number, 
-					 double n_ppc, 
+					 long long n_ppc, 
 					 double u_x_drift, 
 					 double u_y_drift, 
 					 int mode, 
@@ -23,10 +23,9 @@ void ParticleSpecies::initialize_species(int species_number,
 					 int my_rank,
 					 int num_procs)
 {
-  int i_start, i_end, n_ppp;
-  n_ppp = (n_g * n_ppc) / num_procs;
-  i_start = n_ppp * my_rank;
-  i_end = i_start + n_ppp;
+  long long i_start, i_end;
+  i_start = n_p * my_rank;
+  i_end = i_start + n_p;
   
   std::stringstream ss;
   ss << "particles_";
@@ -34,7 +33,7 @@ void ParticleSpecies::initialize_species(int species_number,
   species_name = ss.str();
 
   double k = 2.0 * PI * double(mode) / (n_g * dx);
-  double particle_spacing = double(n_g) * dx / double(n_ppc * n_g);
+  double particle_spacing = dx / double(n_ppc);
 
   // Add ghost tracer particle if using line segments
   if ((method==2)||(method==3)) {
@@ -49,10 +48,10 @@ void ParticleSpecies::initialize_species(int species_number,
     x_old.push_back(0);
   }
 
-  for (int i = i_start; i < i_end; i++) {
+  for (long long i = i_start; i < i_end; i++) {
     charge[i-i_start] = (-1.0) * (1.0 / n_ppc);
     rqm[i-i_start] = -1.0;
-    x[i-i_start] = double(i) * particle_spacing + particle_spacing / 2.0;
+    x[i-i_start] = ((long double) i) * particle_spacing + particle_spacing / 2.0;
     u_x[i-i_start] = u_x_drift + u_x_1 * sin(k * x[i-i_start]);
     u_y[i-i_start] = u_y_drift + u_y_1 * sin(k * x[i-i_start]);
   }

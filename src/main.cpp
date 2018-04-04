@@ -39,7 +39,7 @@ int main(int argc, char *argv[])
 
   ss.str(std::string());
   ss.clear();
-  double n_ppc;
+  long long n_ppc;
   ss << argv[2];
   ss >> n_ppc;
 
