@@ -57,6 +57,8 @@ int main(int argc, char *argv[])
   int n_t, n_g;
   double k, dx, dt;
 
+  double refinement_length = 0.1;
+
   switch (simulation_type) {
   case 0:
     // Electrostatic wave
@@ -68,7 +70,7 @@ int main(int argc, char *argv[])
     n_species = 1;
     u_x_drift.push_back(0.0);
     u_y_drift.push_back(0.0);
-    u_x_1 = 0.01;
+    u_x_1 = 0.0025;
     u_y_1 = 0.0;
     e_y_1 = 0.0;
     b_z_1 = 0.0;
@@ -84,7 +86,7 @@ int main(int argc, char *argv[])
     n_species = 1;
     u_x_drift.push_back(0.0);
     u_y_drift.push_back(0.0);
-    u_x_1 = 0.0;
+    u_x_1 = 0.0025;
     u_y_1 = 0.0025;
     e_y_1 = u_y_1 * sqrt(1 + k*k);
     b_z_1 = u_y_1 * k;
@@ -197,6 +199,10 @@ int main(int argc, char *argv[])
 
     if (my_rank==0) {
       std::cout << t << std::endl;
+      std::cout << particles.species[0].n_p << std::endl;
+    }
+    if (refinement_length) {
+      particles.refine_segments(refinement_length);
     }
   }
   

@@ -31,6 +31,7 @@ public:
   void deposit_rho(std::vector<double> &rho, int n_g, int my_rank);
   void save_x_old();
   void advance_x();
+  void refine_segments(double refinement_length);
   void advance_velocity(std::vector<double> e_x_int, std::vector<double> e_y, 
 			std::vector<double> b_z);
   void deposit_j_x(std::vector<double> &j_x);

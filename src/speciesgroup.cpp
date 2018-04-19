@@ -144,3 +144,11 @@ void SpeciesGroup::advance_x()
   }
   return;
 }
+
+void SpeciesGroup::refine_segments(double refinement_length)
+{
+  for (int i = 0; i < n_species; i++) {
+    species[i].refine_segments(refinement_length);
+  }
+  return;
+}

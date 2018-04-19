@@ -818,3 +818,31 @@ void ParticleSpecies::advance_x()
   } 
   return;
 }
+
+void ParticleSpecies::split_segment(int i)
+{
+  x.insert(x.begin()+i+1, (x[i+1] + x[i])/2.0);
+  x_old.insert(x_old.begin()+i+1, (x_old[i+1] + x_old[i])/2.0);
+  u_x.insert(u_x.begin()+i+1, (u_x[i+1] + u_x[i])/2.0);
+  u_y.insert(u_y.begin()+i+1, (u_y[i+1] + u_y[i])/2.0);
+  rqm.insert(rqm.begin()+i+1, rqm[i]);
+  charge[i] *= 0.5;
+  charge.insert(charge.begin()+i+1, charge[i]);
+  n_p += 1;
+  return;
+}
+
+void ParticleSpecies::refine_segments(double refinement_length)
+{
+  double length;
+  int i = 0;
+  while (i < (n_p-1)) {
+    length = fabs(x[i+1] - x[i]);
+    if (length > refinement_length) {
+      split_segment(i);
+    } else {
+      i+=1;
+    }
+  }
+  return;
+}

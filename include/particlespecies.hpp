@@ -22,9 +22,6 @@ public:
     u_x.resize(n_p);
     u_y.resize(n_p);
     x_old.resize(n_p);
-    u_x_old.resize(n_p);
-    u_y_old.resize(n_p);
-    charge.resize(n_p);
     charge.resize(n_p);
     rqm.resize(n_p);
     return;
@@ -43,8 +40,7 @@ public:
   int method, interp_order;
   bool center_fields;
 
-  std::vector<double> x, u_x, u_y, x_old, u_x_old, u_y_old, energy_history,
-    momentum_x_history, momentum_y_history;
+  std::vector<double> x, u_x, u_y, x_old, energy_history, momentum_x_history, momentum_y_history;
 
   // Charge to mass ratio, and particle charge divided by grid spacing
   std::vector<double> rqm, charge;
@@ -62,6 +58,8 @@ public:
 			  int my_rank,
 			  int num_procs);
   void advance_x();
+  void split_segment(int i);
+  void refine_segments(double refinement_length);
   void advance_velocity(std::vector<double> &e_x, std::vector<double> &e_y, 
 			std::vector<double> &b_z);
   void initial_velocity_deceleration(std::vector<double> &e_x, 
