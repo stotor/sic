@@ -40,7 +40,8 @@ public:
   int method, interp_order;
   bool center_fields;
 
-  std::vector<double> x, u_x, u_y, x_old, energy_history, momentum_x_history, momentum_y_history;
+  std::vector<double> x, u_x, u_y, x_old, lagrangian_id,
+    energy_history, momentum_x_history, momentum_y_history;
 
   // Charge to mass ratio, and particle charge divided by grid spacing
   std::vector<double> rqm, charge;
@@ -58,7 +59,8 @@ public:
 			  int my_rank,
 			  int num_procs);
   void advance_x();
-  void split_segment(int i);
+  void split_segment_linear(int i);
+  void split_segment_lagrange_4(int i);
   void refine_segments(double refinement_length);
   void advance_velocity(std::vector<double> &e_x, std::vector<double> &e_y, 
 			std::vector<double> &b_z);

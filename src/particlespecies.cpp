@@ -54,6 +54,7 @@ void ParticleSpecies::initialize_species(int species_number,
     x[i-i_start] = ((long double) i) * particle_spacing + particle_spacing / 2.0;
     u_x[i-i_start] = u_x_drift + u_x_1 * sin(k * x[i-i_start]);
     u_y[i-i_start] = u_y_drift + u_y_1 * sin(k * x[i-i_start]);
+    lagrangian_id[i-i_start] = i - i_start;
   }
 
   return;
@@ -819,7 +820,43 @@ void ParticleSpecies::advance_x()
   return;
 }
 
-void ParticleSpecies::split_segment(int i)
+double lagrange_4(double *x, double *y, double x_sample)
+{
+  double y_interpolated = 0.0;
+  double p_i;
+  for (int i = 0; i < 4; i++) {
+    p_i = 1.0;
+    for (int j = 0; j < 4; j++) {
+      if (j==i) {
+	continue;
+      } else {
+	p_i *= (x_sample - x[j]) / (x[i] - x[j]);
+      }
+    }
+    y_interpolated += y[i] * p_i;
+  }
+  return y_interpolated;
+}
+
+void ParticleSpecies::split_segment_lagrange_4(int i)
+{
+  double new_id = (lagrangian_id[i+1]-lagrangian_id[i])/2.0;
+
+  x.insert(x.begin()+i+1, lagrange_4(&lagrangian_id[i-1], &x[i-1], new_id));
+  x_old.insert(x_old.begin()+i+1, lagrange_4(&lagrangian_id[i-1], &x_old[i-1], new_id));
+  u_x.insert(u_x.begin()+i+1, lagrange_4(&lagrangian_id[i-1], &u_x[i-1], new_id));
+  u_y.insert(u_y.begin()+i+1, lagrange_4(&lagrangian_id[i-1], &u_y[i-1], new_id));
+  
+  lagrangian_id.insert(lagrangian_id.begin()+i+1, new_id);
+  rqm.insert(rqm.begin()+i+1, rqm[i]);
+  charge[i] *= 0.5;
+  charge.insert(charge.begin()+i+1, charge[i]);
+
+  n_p += 1;
+  return;
+}
+
+void ParticleSpecies::split_segment_linear(int i)
 {
   x.insert(x.begin()+i+1, (x[i+1] + x[i])/2.0);
   x_old.insert(x_old.begin()+i+1, (x_old[i+1] + x_old[i])/2.0);
@@ -839,7 +876,7 @@ void ParticleSpecies::refine_segments(double refinement_length)
   while (i < (n_p-1)) {
     length = fabs(x[i+1] - x[i]);
     if (length > refinement_length) {
-      split_segment(i);
+      split_segment_lagrange_4(i);
     } else {
       i+=1;
     }

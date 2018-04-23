@@ -22,7 +22,6 @@ int main(int argc, char *argv[])
   MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
   MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
 
-  // Load input parameters for initialization
   if (argc != 4) {
     std::cout << "Usage: ./sic <method> <n_ppc> <simulation_type>" << std::endl;
     return 1;
@@ -57,7 +56,7 @@ int main(int argc, char *argv[])
   int n_t, n_g;
   double k, dx, dt;
 
-  double refinement_length = 0.1;
+  double refinement_length = 0.01;
 
   switch (simulation_type) {
   case 0:
