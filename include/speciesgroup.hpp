@@ -48,6 +48,7 @@ public:
 			  double u_y_1,
 			  int my_rank,
 			  int num_procs);
+  void communicate_ghost_particles(MPI_Comm COMM);
 };
 
 #endif /* speciesgroup_hpp */

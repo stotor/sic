@@ -13,6 +13,7 @@ public:
   {
     this->method = method;
     this->n_p = (n_ppc * n_g) / num_procs;
+    this->n_ppp = n_p;
     this->dt = dt;
     this->dx = dx;
     this->n_g = n_g;
@@ -23,7 +24,8 @@ public:
     u_y.resize(n_p);
     x_old.resize(n_p);
     charge.resize(n_p);
-    rqm.resize(n_p);
+    rqm = -1.0;
+    lagrangian_id.resize(n_p);
     return;
   }
 
@@ -36,7 +38,7 @@ public:
   int n_g;
 
   // Attributes
-  long long n_p;
+  long long n_p, n_ppp;
   int method, interp_order;
   bool center_fields;
 
@@ -44,7 +46,8 @@ public:
     energy_history, momentum_x_history, momentum_y_history;
 
   // Charge to mass ratio, and particle charge divided by grid spacing
-  std::vector<double> rqm, charge;
+  double rqm;
+  std::vector<double> charge;
 
   std::string species_name;
 
@@ -60,7 +63,7 @@ public:
 			  int num_procs);
   void advance_x();
   void split_segment_linear(int i);
-  void split_segment_lagrange_4(int i);
+  void split_segment_lagrange_3(int i);
   void refine_segments(double refinement_length);
   void advance_velocity(std::vector<double> &e_x, std::vector<double> &e_y, 
 			std::vector<double> &b_z);
@@ -82,6 +85,7 @@ public:
   void write_phase(std::ofstream &x_ofstream, std::ofstream &u_x_ofstream, 
 		   std::ofstream &u_y_ofstream);
   void write_energy_history(int n_t, int my_rank, MPI_Comm COMM);
+  void communicate_ghost_particles(MPI_Comm COMM);
 };
 
 #endif /* particlespecies_hpp */

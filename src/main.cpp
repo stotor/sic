@@ -56,7 +56,7 @@ int main(int argc, char *argv[])
   int n_t, n_g;
   double k, dx, dt;
 
-  double refinement_length = 0.01;
+  double refinement_length = 0.1;
 
   switch (simulation_type) {
   case 0:
@@ -129,9 +129,11 @@ int main(int argc, char *argv[])
     std::cout << "Error: n_ppc * n_g is not an integer.";
     return 1;
   }
-  
+
   SpeciesGroup particles(n_species, method, n_ppc, dt, dx, n_g, center_fields, interp_order, num_procs);
   particles.initialize_species(n_ppc, u_x_drift, u_y_drift, mode, u_x_1, u_y_1, my_rank, num_procs);
+
+  particles.communicate_ghost_particles(MPI_COMM_WORLD);  
 
   Field e_x(n_g, "e_x", my_rank);
   Field e_y(n_g, "e_y", my_rank);
@@ -176,6 +178,8 @@ int main(int argc, char *argv[])
 
     particles.save_x_old();
     particles.advance_x();
+
+    particles.communicate_ghost_particles(MPI_COMM_WORLD);
 
     particles.deposit_j_x(j_x.field);
     particles.deposit_j_y(j_y.field);

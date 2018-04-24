@@ -35,22 +35,20 @@ void ParticleSpecies::initialize_species(int species_number,
   double k = 2.0 * PI * double(mode) / (n_g * dx);
   double particle_spacing = dx / double(n_ppc);
 
-  // Add ghost tracer particle if using line segments
+  // Add ghost tracer particles if using line segments
   if ((method==2)||(method==3)) {
-    n_p += 1;
-    i_end += 1;
-
-    charge.push_back(0.0);
-    rqm.push_back(0.0);
-    u_x.push_back(0.0);
-    u_y.push_back(0.0);
-    x.push_back(0.0);
-    x_old.push_back(0);
+    for (int i = 0; i < 2; i++) {
+      charge.push_back(0.0);
+      u_x.push_back(0.0);
+      u_y.push_back(0.0);
+      x.push_back(0.0);
+      x_old.push_back(0);
+      lagrangian_id.push_back(0.0);
+    }
   }
-
+  
   for (long long i = i_start; i < i_end; i++) {
     charge[i-i_start] = (-1.0) * (1.0 / n_ppc);
-    rqm[i-i_start] = -1.0;
     x[i-i_start] = ((long double) i) * particle_spacing + particle_spacing / 2.0;
     u_x[i-i_start] = u_x_drift + u_x_1 * sin(k * x[i-i_start]);
     u_y[i-i_start] = u_y_drift + u_y_1 * sin(k * x[i-i_start]);
@@ -130,7 +128,7 @@ void deposit_j_y_segment_linear(std::vector<double> &j_y, double xl, double xr,
 void ParticleSpecies::deposit_j_y_segments_linear(std::vector<double> &j_y)
 {
   double x_i_tavg, x_ip1_tavg, left, right, v_y_left, v_y_right;
-  for (int i = 0; i < (n_p-1); i++) {
+  for (int i = 0; i < n_p; i++) {
     x_i_tavg = (x_old[i] + x[i]) / 2.0;
     x_ip1_tavg = (x_old[i+1] + x[i+1]) / 2.0;
     if (x_ip1_tavg >= x_i_tavg) {
@@ -320,7 +318,7 @@ void deposit_j_y_segment_zero(std::vector<double> &j_y, double left,
 void ParticleSpecies::deposit_j_y_segments_zero(std::vector<double> &j_y)
 {
   double x_i_tavg, x_ip1_tavg, left, right, v_y_left, v_y_right;
-  for (int i = 0; i < (n_p-1); i++) {
+  for (int i = 0; i < n_p; i++) {
     x_i_tavg = (x_old[i] + x[i]) / 2.0;
     x_ip1_tavg = (x_old[i+1] + x[i+1]) / 2.0;
     if (x_ip1_tavg >= x_i_tavg) {
@@ -438,7 +436,7 @@ void deposit_charge_to_left_segment_linear(std::vector<double> &j_x, double x_tr
 void ParticleSpecies::deposit_j_x_segments_linear(std::vector<double> &j_x)
 {
   double right_max;
-  for (int i = 0; i < (n_p-1); i++) {
+  for (int i = 0; i < n_p; i++) {
     // Index of right bounding gridpoint
     right_max = fmax(fmax(x_old[i], x_old[i+1]),fmax(x[i],x[i+1]));
     right_max = right_max / dx;
@@ -453,7 +451,7 @@ void ParticleSpecies::deposit_j_x_segments_linear(std::vector<double> &j_x)
 
 void ParticleSpecies::deposit_rho_segments_zero(std::vector<double> &rho)
 {
-  for (int i = 0; i < (n_p-1); i++) {    
+  for (int i = 0; i < n_p; i++) {    
     //deposit_rho_segment_zero(rho, x[i], x[i+1], charge[i], n_g, dx);
     deposit_rho_segment_zero_new(rho, x[i], x[i+1], charge[i], n_g, dx);
   }
@@ -462,7 +460,7 @@ void ParticleSpecies::deposit_rho_segments_zero(std::vector<double> &rho)
 
 void ParticleSpecies::deposit_rho_segments_linear(std::vector<double> &rho)
 {
-  for (int i = 0; i < (n_p-1); i++) {    
+  for (int i = 0; i < n_p; i++) {    
     deposit_rho_segment_linear(rho, x[i], x[i+1], charge[i], n_g, dx);
   }
   return;
@@ -474,7 +472,7 @@ void ParticleSpecies::deposit_j_x_segments_zero(std::vector<double> &j_x)
   double left_initial, right_initial, left_final, right_final, length_initial, length_final,
     charge_initial, charge_final, cell_boundary;
   int bound_left, bound_right;
-  for (int i = 0; i < (n_p-1); i++) {
+  for (int i = 0; i < n_p; i++) {
     // Initial line segment
     left_initial = fmin(x_old[i], x_old[i+1]) / dx;
     right_initial = fmax(x_old[i], x_old[i+1]) / dx;
@@ -724,14 +722,14 @@ void ParticleSpecies::advance_velocity(std::vector<double> &e_x,
 
     // Relativistic Boris push
     // First half electric impulse
-    u_x[i] = u_x[i] + rqm[i] * e_x_particle * (dt / 2.0);
-    u_y[i] = u_y[i] + rqm[i] * e_y_particle * (dt / 2.0);
+    u_x[i] = u_x[i] + rqm * e_x_particle * (dt / 2.0);
+    u_y[i] = u_y[i] + rqm * e_y_particle * (dt / 2.0);
     
     gamma_centered = sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0));
-    energy = energy + (charge[i] / rqm[i]) * (pow(u_x[i], 2.0) + pow(u_y[i], 2.0)) / (1.0 + gamma_centered);
+    energy = energy + (charge[i] / rqm) * (pow(u_x[i], 2.0) + pow(u_y[i], 2.0)) / (1.0 + gamma_centered);
     
     // Velocity rotation from magnetic field
-    t = rqm[i] * b_z_particle * dt / (2.0 * gamma_centered);
+    t = rqm * b_z_particle * dt / (2.0 * gamma_centered);
     s = (2.0 * t) / (1.0 + pow(t, 2.0));
     
     u_x[i] = u_x[i] + u_y[i] * t;
@@ -739,8 +737,8 @@ void ParticleSpecies::advance_velocity(std::vector<double> &e_x,
     u_x[i] = u_x[i] + u_y[i] * t;
     
     // Second half electric impulse
-    u_x[i] = u_x[i] + rqm[i] * e_x_particle * (dt / 2.0);
-    u_y[i] = u_y[i] + rqm[i] * e_y_particle * (dt / 2.0);
+    u_x[i] = u_x[i] + rqm * e_x_particle * (dt / 2.0);
+    u_y[i] = u_y[i] + rqm * e_y_particle * (dt / 2.0);
 
     momentum_x += fabs(charge[i]) * u_x[i];
     momentum_y += fabs(charge[i]) * u_y[i];
@@ -796,7 +794,7 @@ void ParticleSpecies::initial_velocity_deceleration(std::vector<double> &e_x,
     gamma_centered = sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0));
     
     // Velocity rotation from magnetic field
-    t = rqm[i] * b_z_particle * (-1.0 * dt / 2.0) / (2.0 * gamma_centered);
+    t = rqm * b_z_particle * (-1.0 * dt / 2.0) / (2.0 * gamma_centered);
     s = (2.0 * t) / (1.0 + pow(t, 2.0));
     
     u_x[i] = u_x[i] + u_y[i] * t;
@@ -804,8 +802,8 @@ void ParticleSpecies::initial_velocity_deceleration(std::vector<double> &e_x,
     u_x[i] = u_x[i] + u_y[i] * t;
     
     // Half electric impulse
-    u_x[i] = u_x[i] + rqm[i] * e_x_particle * (-1.0 * dt / 2.0);
-    u_y[i] = u_y[i] + rqm[i] * e_y_particle * (-1.0 * dt / 2.0);
+    u_x[i] = u_x[i] + rqm * e_x_particle * (-1.0 * dt / 2.0);
+    u_y[i] = u_y[i] + rqm * e_y_particle * (-1.0 * dt / 2.0);
   }
   return;
 }
@@ -820,13 +818,13 @@ void ParticleSpecies::advance_x()
   return;
 }
 
-double lagrange_4(double *x, double *y, double x_sample)
+double lagrange_3(double *x, double *y, double x_sample)
 {
   double y_interpolated = 0.0;
   double p_i;
-  for (int i = 0; i < 4; i++) {
+  for (int i = 0; i < 3; i++) {
     p_i = 1.0;
-    for (int j = 0; j < 4; j++) {
+    for (int j = 0; j < 3; j++) {
       if (j==i) {
 	continue;
       } else {
@@ -838,17 +836,16 @@ double lagrange_4(double *x, double *y, double x_sample)
   return y_interpolated;
 }
 
-void ParticleSpecies::split_segment_lagrange_4(int i)
+void ParticleSpecies::split_segment_lagrange_3(int i)
 {
-  double new_id = (lagrangian_id[i+1]-lagrangian_id[i])/2.0;
+  double new_id = (lagrangian_id[i+1]+lagrangian_id[i])/2.0;
 
-  x.insert(x.begin()+i+1, lagrange_4(&lagrangian_id[i-1], &x[i-1], new_id));
-  x_old.insert(x_old.begin()+i+1, lagrange_4(&lagrangian_id[i-1], &x_old[i-1], new_id));
-  u_x.insert(u_x.begin()+i+1, lagrange_4(&lagrangian_id[i-1], &u_x[i-1], new_id));
-  u_y.insert(u_y.begin()+i+1, lagrange_4(&lagrangian_id[i-1], &u_y[i-1], new_id));
+  x.insert(x.begin()+i+1, lagrange_3(&lagrangian_id[i], &x[i], new_id));
+  x_old.insert(x_old.begin()+i+1, lagrange_3(&lagrangian_id[i], &x_old[i], new_id));
+  u_x.insert(u_x.begin()+i+1, lagrange_3(&lagrangian_id[i], &u_x[i], new_id));
+  u_y.insert(u_y.begin()+i+1, lagrange_3(&lagrangian_id[i], &u_y[i], new_id));
   
   lagrangian_id.insert(lagrangian_id.begin()+i+1, new_id);
-  rqm.insert(rqm.begin()+i+1, rqm[i]);
   charge[i] *= 0.5;
   charge.insert(charge.begin()+i+1, charge[i]);
 
@@ -862,7 +859,6 @@ void ParticleSpecies::split_segment_linear(int i)
   x_old.insert(x_old.begin()+i+1, (x_old[i+1] + x_old[i])/2.0);
   u_x.insert(u_x.begin()+i+1, (u_x[i+1] + u_x[i])/2.0);
   u_y.insert(u_y.begin()+i+1, (u_y[i+1] + u_y[i])/2.0);
-  rqm.insert(rqm.begin()+i+1, rqm[i]);
   charge[i] *= 0.5;
   charge.insert(charge.begin()+i+1, charge[i]);
   n_p += 1;
@@ -873,13 +869,55 @@ void ParticleSpecies::refine_segments(double refinement_length)
 {
   double length;
   int i = 0;
-  while (i < (n_p-1)) {
+  
+  while (i < n_p) {
     length = fabs(x[i+1] - x[i]);
     if (length > refinement_length) {
-      split_segment_lagrange_4(i);
+      split_segment_lagrange_3(i);
     } else {
       i+=1;
     }
   }
+  return;
+}
+
+void ParticleSpecies::communicate_ghost_particles(MPI_Comm COMM)
+{
+  MPI_Status status;
+  int num_procs, my_rank, dest, source;
+  int tag = 0;
+  MPI_Comm_size(COMM, &num_procs);
+  MPI_Comm_rank(COMM, &my_rank);
+  dest = mod(my_rank-1, num_procs);
+  source = mod(my_rank+1, num_procs);
+
+  MPI_Sendrecv(&x[0], 2, MPI_DOUBLE, dest, tag,
+	       &x[n_p], 2, MPI_DOUBLE,
+	       source, tag, COMM, &status);
+  MPI_Sendrecv(&x_old[0], 2, MPI_DOUBLE, dest, tag,
+	       &x_old[n_p], 2, MPI_DOUBLE,
+	       source, tag, COMM, &status);
+  MPI_Sendrecv(&charge[0], 2, MPI_DOUBLE, dest, tag,
+	       &charge[n_p], 2, MPI_DOUBLE,
+	       source, tag, COMM, &status);
+  MPI_Sendrecv(&u_x[0], 2, MPI_DOUBLE, dest, tag,
+	       &u_x[n_p], 2, MPI_DOUBLE,
+	       source, tag, COMM, &status);
+  MPI_Sendrecv(&u_y[0], 2, MPI_DOUBLE, dest, tag,
+	       &u_y[n_p], 2, MPI_DOUBLE,
+	       source, tag, COMM, &status);
+  MPI_Sendrecv(&lagrangian_id[0], 2, MPI_DOUBLE, dest, tag,
+	       &lagrangian_id[n_p], 2, MPI_DOUBLE,
+	       source, tag, COMM, &status);
+
+  lagrangian_id[n_p] += n_ppp;
+
+  if (my_rank==(num_procs-1)) {
+    x[n_p] += n_g * dx;
+    x[n_p+1] += n_g * dx;
+    x_old[n_p] += n_g * dx;
+    x_old[n_p+1] += n_g * dx;
+  }
+
   return;
 }

@@ -152,3 +152,12 @@ void SpeciesGroup::refine_segments(double refinement_length)
   }
   return;
 }
+
+
+void SpeciesGroup::communicate_ghost_particles(MPI_Comm COMM)
+{
+  for (int i = 0; i < n_species; i++) {
+    species[i].communicate_ghost_particles(COMM);
+  }
+  return;
+}
