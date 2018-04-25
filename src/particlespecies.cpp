@@ -148,16 +148,18 @@ void ParticleSpecies::deposit_j_y_segments_linear(std::vector<double> &j_y)
   return;
 }
 
-void ParticleSpecies::write_energy_history(int n_t, int my_rank, MPI_Comm COMM)
+void ParticleSpecies::write_particle_diagnostics(int n_t, int my_rank, MPI_Comm COMM)
 {
   sum_array_to_root(&energy_history[0], n_t, COMM, my_rank);
   sum_array_to_root(&momentum_x_history[0], n_t, COMM, my_rank);
   sum_array_to_root(&momentum_y_history[0], n_t, COMM, my_rank);
+  sum_array_to_root(&n_p_history[0], n_t, COMM, my_rank);
 
   if (my_rank==0) {
     data_to_file(energy_history, (species_name+"_ene"));
     data_to_file(momentum_x_history, (species_name+"_p_x"));
     data_to_file(momentum_y_history, (species_name+"_p_y"));
+    data_to_file(n_p_history, (species_name+"_n_p"));
   }
 
   return; 
@@ -746,6 +748,7 @@ void ParticleSpecies::advance_velocity(std::vector<double> &e_x,
   energy_history.push_back(energy);
   momentum_x_history.push_back(momentum_x);
   momentum_y_history.push_back(momentum_y);
+  n_p_history.push_back(n_p);
   return;
 }
 
@@ -839,12 +842,11 @@ double lagrange_3(double *x, double *y, double x_sample)
 void ParticleSpecies::split_segment_lagrange_3(int i)
 {
   double new_id = (lagrangian_id[i+1]+lagrangian_id[i])/2.0;
-
   x.insert(x.begin()+i+1, lagrange_3(&lagrangian_id[i], &x[i], new_id));
-  x_old.insert(x_old.begin()+i+1, lagrange_3(&lagrangian_id[i], &x_old[i], new_id));
+  // Linear interpolation on x_old to be consistent with Gauss's law
+  x_old.insert(x_old.begin()+i+1, (x_old[i+1] + x_old[i])/2.0);
   u_x.insert(u_x.begin()+i+1, lagrange_3(&lagrangian_id[i], &u_x[i], new_id));
-  u_y.insert(u_y.begin()+i+1, lagrange_3(&lagrangian_id[i], &u_y[i], new_id));
-  
+  u_y.insert(u_y.begin()+i+1, lagrange_3(&lagrangian_id[i], &u_y[i], new_id));  
   lagrangian_id.insert(lagrangian_id.begin()+i+1, new_id);
   charge[i] *= 0.5;
   charge.insert(charge.begin()+i+1, charge[i]);
@@ -855,12 +857,15 @@ void ParticleSpecies::split_segment_lagrange_3(int i)
 
 void ParticleSpecies::split_segment_linear(int i)
 {
+  double new_id = (lagrangian_id[i+1]+lagrangian_id[i])/2.0;
   x.insert(x.begin()+i+1, (x[i+1] + x[i])/2.0);
   x_old.insert(x_old.begin()+i+1, (x_old[i+1] + x_old[i])/2.0);
   u_x.insert(u_x.begin()+i+1, (u_x[i+1] + u_x[i])/2.0);
   u_y.insert(u_y.begin()+i+1, (u_y[i+1] + u_y[i])/2.0);
+  lagrangian_id.insert(lagrangian_id.begin()+i+1, new_id);
   charge[i] *= 0.5;
   charge.insert(charge.begin()+i+1, charge[i]);
+  
   n_p += 1;
   return;
 }
@@ -874,6 +879,7 @@ void ParticleSpecies::refine_segments(double refinement_length)
     length = fabs(x[i+1] - x[i]);
     if (length > refinement_length) {
       split_segment_lagrange_3(i);
+      //split_segment_linear(i);
     } else {
       i+=1;
     }

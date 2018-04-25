@@ -11,10 +11,10 @@
 #include "particlespecies.hpp"
 #include "utilities.hpp"
 
-void SpeciesGroup::write_energy_history(int n_t, int my_rank, MPI_Comm COMM)
+void SpeciesGroup::write_particle_diagnostics(int n_t, int my_rank, MPI_Comm COMM)
 {
   for (int i = 0; i < n_species; i++) {
-    species[i].write_energy_history(n_t, my_rank, COMM);
+    species[i].write_particle_diagnostics(n_t, my_rank, COMM);
   }
   return;
 }

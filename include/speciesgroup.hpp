@@ -39,7 +39,7 @@ public:
   void initial_velocity_deceleration(std::vector<double> &e_x_int, 
 				     std::vector<double> &e_y,
 				     std::vector<double> &b_z);
-  void write_energy_history(int n_t, int my_rank, MPI_Comm COMM);
+  void write_particle_diagnostics(int n_t, int my_rank, MPI_Comm COMM);
   void initialize_species(long long n_ppc, 
 			  std::vector<double> u_x_drift, 
 			  std::vector<double> u_y_drift, 

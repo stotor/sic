@@ -43,7 +43,7 @@ public:
   bool center_fields;
 
   std::vector<double> x, u_x, u_y, x_old, lagrangian_id,
-    energy_history, momentum_x_history, momentum_y_history;
+    energy_history, momentum_x_history, momentum_y_history, n_p_history;
 
   // Charge to mass ratio, and particle charge divided by grid spacing
   double rqm;
@@ -84,7 +84,7 @@ public:
   void deposit_j_y_segments_linear(std::vector<double> &j_y);
   void write_phase(std::ofstream &x_ofstream, std::ofstream &u_x_ofstream, 
 		   std::ofstream &u_y_ofstream);
-  void write_energy_history(int n_t, int my_rank, MPI_Comm COMM);
+  void write_particle_diagnostics(int n_t, int my_rank, MPI_Comm COMM);
   void communicate_ghost_particles(MPI_Comm COMM);
 };
 

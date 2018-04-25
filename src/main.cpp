@@ -22,8 +22,8 @@ int main(int argc, char *argv[])
   MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
   MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
 
-  if (argc != 4) {
-    std::cout << "Usage: ./sic <method> <n_ppc> <simulation_type>" << std::endl;
+  if (argc != 4 && argc != 5) {
+    std::cout << "Usage: ./sic <method> <n_ppc> <simulation_type> [<refinement length>]" << std::endl;
     return 1;
   }
 
@@ -47,7 +47,17 @@ int main(int argc, char *argv[])
   int simulation_type;
   ss << argv[3];
   ss >> simulation_type;
-  
+
+  double refinement_length;
+  if (argc == 5) {
+    ss.str(std::string());
+    ss.clear();
+    ss << argv[4];
+    ss >> refinement_length;
+  } else {
+    refinement_length = 0.0;
+  }
+
   int n_species;
   std::vector<double> u_x_drift, u_y_drift;
   double u_x_1, u_y_1, e_y_1, b_z_1;
@@ -55,8 +65,6 @@ int main(int argc, char *argv[])
   double amplitude;
   int n_t, n_g;
   double k, dx, dt;
-
-  double refinement_length = 0.1;
 
   switch (simulation_type) {
   case 0:
@@ -132,8 +140,9 @@ int main(int argc, char *argv[])
 
   SpeciesGroup particles(n_species, method, n_ppc, dt, dx, n_g, center_fields, interp_order, num_procs);
   particles.initialize_species(n_ppc, u_x_drift, u_y_drift, mode, u_x_1, u_y_1, my_rank, num_procs);
-
-  particles.communicate_ghost_particles(MPI_COMM_WORLD);  
+  if (method==2||method==3) {
+    particles.communicate_ghost_particles(MPI_COMM_WORLD);
+  }
 
   Field e_x(n_g, "e_x", my_rank);
   Field e_y(n_g, "e_y", my_rank);
@@ -179,7 +188,12 @@ int main(int argc, char *argv[])
     particles.save_x_old();
     particles.advance_x();
 
-    particles.communicate_ghost_particles(MPI_COMM_WORLD);
+    if (method==2||method==3) {
+      particles.communicate_ghost_particles(MPI_COMM_WORLD);
+      if (refinement_length) {
+	particles.refine_segments(refinement_length);
+      }
+    }
 
     particles.deposit_j_x(j_x.field);
     particles.deposit_j_y(j_y.field);
@@ -204,12 +218,9 @@ int main(int argc, char *argv[])
       std::cout << t << std::endl;
       std::cout << particles.species[0].n_p << std::endl;
     }
-    if (refinement_length) {
-      particles.refine_segments(refinement_length);
-    }
   }
   
-  particles.write_energy_history(n_t, my_rank, MPI_COMM_WORLD);
+  particles.write_particle_diagnostics(n_t, my_rank, MPI_COMM_WORLD);
   
   if (my_rank==0) {
     e_x.write_energy_history();
