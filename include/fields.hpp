@@ -61,4 +61,11 @@ void advance_e_y(std::vector<double> &e_y, std::vector<double> &b_z,
 
 double sum_of_squares(std::vector<double> &array, int n_values);
 
+void initialize_beat_heating(std::vector<double> &e_y, 
+			     std::vector<double> &b_z,
+			     int n_g, double dx,
+			     int mode_1, int mode_2,
+			     double phase_1, double phase_2,
+			     double vel_amp);
+
 #endif /* fields_hpp */

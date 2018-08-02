@@ -28,14 +28,14 @@ public:
   std::vector<ParticleSpecies> species;
 
   // Methods
-  void deposit_rho(std::vector<double> &rho, int n_g, int my_rank);
+  void deposit_rho(std::vector<double> &rho, int n_g, int my_rank, MPI_Comm COMM);
   void save_x_old();
   void advance_x();
   void refine_segments(double refinement_length);
   void advance_velocity(std::vector<double> e_x_int, std::vector<double> e_y, 
 			std::vector<double> b_z);
-  void deposit_j_x(std::vector<double> &j_x);
-  void deposit_j_y(std::vector<double> &j_y);
+  void deposit_j_x(std::vector<double> &j_x, MPI_Comm COMM);
+  void deposit_j_y(std::vector<double> &j_y, MPI_Comm COMM);
   void initial_velocity_deceleration(std::vector<double> &e_x_int, 
 				     std::vector<double> &e_y,
 				     std::vector<double> &b_z);
@@ -49,6 +49,10 @@ public:
 			  int my_rank,
 			  int num_procs);
   void communicate_ghost_particles(MPI_Comm COMM);
+  void u_x_perturbation(double amplitude, int mode_max);
+  void initialize_beat_heating(int mode_1, int mode_2,
+			       double phase_1, double phase_2,
+			       double vel_amp);
 };
 
 #endif /* speciesgroup_hpp */

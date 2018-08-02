@@ -1,6 +1,6 @@
 /**
  * sic
- * - The greatest PIC code of all time
+ * - The greatest plasma code of all time
  */
 
 #include <iostream>
@@ -65,12 +65,14 @@ int main(int argc, char *argv[])
   double amplitude;
   int n_t, n_g;
   double k, dx, dt;
+  int mode_1, mode_2;
+  double phase_1, phase_2, vel_amp;
 
   switch (simulation_type) {
   case 0:
     // Electrostatic wave
     mode = 1;
-    n_t = 500;
+    n_t = 2000;
     n_g = 128;
     dx = 0.1;
     dt = 0.09;
@@ -93,7 +95,7 @@ int main(int argc, char *argv[])
     n_species = 1;
     u_x_drift.push_back(0.0);
     u_y_drift.push_back(0.0);
-    u_x_1 = 0.0025;
+    u_x_1 = 0.0;
     u_y_1 = 0.0025;
     e_y_1 = u_y_1 * sqrt(1 + k*k);
     b_z_1 = u_y_1 * k;
@@ -131,6 +133,21 @@ int main(int argc, char *argv[])
     mode_max = 64;
     amplitude = pow(10.0, -6.0);
     break; 
+  case 4:
+    // Beat heating, currently in progress
+    n_t = 5000;
+    n_g = 1280;
+    dx = 0.1;
+    dt = 0.09;
+    n_species = 1;
+    u_x_drift.push_back(0.0);
+    u_y_drift.push_back(0.0);
+    mode_1 = 1;
+    mode_2 = 36;
+    vel_amp = 0.0025;
+    phase_1 = 0.0;
+    phase_2 = 0.0;
+    break; 
   }
   
   if (fmod((n_ppc * double(n_g)), 1.0) != 0.0) {
@@ -140,8 +157,11 @@ int main(int argc, char *argv[])
 
   SpeciesGroup particles(n_species, method, n_ppc, dt, dx, n_g, center_fields, interp_order, num_procs);
   particles.initialize_species(n_ppc, u_x_drift, u_y_drift, mode, u_x_1, u_y_1, my_rank, num_procs);
-  if (method==2||method==3) {
+  if (method==2||method==3||method==4) {
     particles.communicate_ghost_particles(MPI_COMM_WORLD);
+  }
+  if (simulation_type == 4) {
+    particles.initialize_beat_heating(mode_1, mode_2, phase_1, phase_2, vel_amp);
   }
 
   Field e_x(n_g, "e_x", my_rank);
@@ -151,16 +171,22 @@ int main(int argc, char *argv[])
   Field j_y(n_g, "j_y", my_rank);
   Field rho(n_g, "rho", my_rank);
   
-  particles.deposit_rho(rho.field, n_g, my_rank);
+  particles.deposit_rho(rho.field, n_g, my_rank, MPI_COMM_WORLD);
   sum_array_to_root(&rho.field[0], n_g, MPI_COMM_WORLD, my_rank);
 
   if (my_rank==0) {
     initialize_e_x(rho.field, e_x.field, dx, n_g);
     if (simulation_type == 3) {
       initialize_fields_weibel(e_y.field, b_z.field, n_g, dx, mode_max, amplitude);
+    } else if (simulation_type == 4) {
+      initialize_beat_heating(e_y.field, b_z.field, n_g, dx, mode_1, mode_2, phase_1, phase_2, vel_amp);
     } else {
       initialize_transverse_em_fields(e_y.field, b_z.field, n_g, dx, e_y_1, b_z_1, mode);
     }
+  }
+  
+  if (simulation_type == 3) {
+    //    particles.u_x_perturbation(amplitude, mode_max);
   }
 
   MPI_Bcast(&e_x.field[0], n_g, MPI_DOUBLE, 0, MPI_COMM_WORLD);
@@ -170,7 +196,7 @@ int main(int argc, char *argv[])
   particles.initial_velocity_deceleration(e_x.field, e_y.field, b_z.field);
 
   for (int t = 0; t < n_t; t++) {
-    particles.deposit_rho(rho.field, n_g, my_rank);
+    particles.deposit_rho(rho.field, n_g, my_rank, MPI_COMM_WORLD);
     sum_array_to_root(&rho.field[0], n_g, MPI_COMM_WORLD, my_rank);
     
     if (my_rank==0) {
@@ -188,15 +214,15 @@ int main(int argc, char *argv[])
     particles.save_x_old();
     particles.advance_x();
 
-    if (method==2||method==3) {
+    if (method==2||method==3||method==4) {
       particles.communicate_ghost_particles(MPI_COMM_WORLD);
       if (refinement_length) {
 	particles.refine_segments(refinement_length);
       }
     }
 
-    particles.deposit_j_x(j_x.field);
-    particles.deposit_j_y(j_y.field);
+    particles.deposit_j_x(j_x.field, MPI_COMM_WORLD);
+    particles.deposit_j_y(j_y.field, MPI_COMM_WORLD);
 
     sum_array_to_root(&j_x.field[0], n_g, MPI_COMM_WORLD, my_rank);
     sum_array_to_root(&j_y.field[0], n_g, MPI_COMM_WORLD, my_rank);
@@ -216,7 +242,6 @@ int main(int argc, char *argv[])
 
     if (my_rank==0) {
       std::cout << t << std::endl;
-      std::cout << particles.species[0].n_p << std::endl;
     }
   }
   

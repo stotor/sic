@@ -1,4 +1,3 @@
-#CXX = g++
 CXX = mpicxx
 
 #For debugging

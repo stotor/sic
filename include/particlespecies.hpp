@@ -26,6 +26,8 @@ public:
     charge.resize(n_p);
     rqm = -1.0;
     lagrangian_id.resize(n_p);
+    gradient.resize(n_p);
+    gradient_old.resize(n_p);
     return;
   }
 
@@ -43,7 +45,8 @@ public:
   bool center_fields;
 
   std::vector<double> x, u_x, u_y, x_old, lagrangian_id,
-    energy_history, momentum_x_history, momentum_y_history, n_p_history;
+    energy_history, momentum_x_history, momentum_y_history, n_p_history,
+    gradient, gradient_old;
 
   // Charge to mass ratio, and particle charge divided by grid spacing
   double rqm;
@@ -82,10 +85,18 @@ public:
   void deposit_j_y_ngp(std::vector<double> &j_y);
   void deposit_j_y_segments_zero(std::vector<double> &j_y);
   void deposit_j_y_segments_linear(std::vector<double> &j_y);
+  void deposit_j_y_segments_gradient(std::vector<double> &j_y, MPI_Comm COMM);
   void write_phase(std::ofstream &x_ofstream, std::ofstream &u_x_ofstream, 
 		   std::ofstream &u_y_ofstream);
   void write_particle_diagnostics(int n_t, int my_rank, MPI_Comm COMM);
   void communicate_ghost_particles(MPI_Comm COMM);
+  void u_x_perturbation(double amplitude, int mode_max);
+  void initialize_beat_heating(int mode_1, int mode_2,
+			       double phase_1, double phase_2,
+			       double vel_amp);
+  void deposit_j_x_segments_gradient(std::vector<double> &j_x, MPI_Comm COMM);
+  void deposit_rho_segments_gradient(std::vector<double> &rho,
+				     MPI_Comm COMM);
 };
 
 #endif /* particlespecies_hpp */

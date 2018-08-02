@@ -46,6 +46,29 @@ void initialize_transverse_em_fields(std::vector<double> &e_y,
   return;
 }
 
+void initialize_beat_heating(std::vector<double> &e_y, 
+			     std::vector<double> &b_z,
+			     int n_g, double dx,
+			     int mode_1, int mode_2,
+			     double phase_1, double phase_2,
+			     double vel_amp)
+{
+  double k1 = 2.0 * PI * mode_1 / (n_g * dx);
+  double k2 = 2.0 * PI * mode_2 / (n_g * dx);
+
+  double e_y_1 = vel_amp * sqrt(1 + k1*k1);
+  double e_y_2 = vel_amp * sqrt(1 + k2*k2) ;
+  double b_z_1 = vel_amp * k1;
+  double b_z_2 = vel_amp * k2;
+    
+  for (int i = 0; i < n_g; i++) {
+    e_y[i] = e_y_1 * cos(k1 * i * dx + phase_1) + (-1.0) * e_y_2 * cos(k2 * i * dx + phase_2);
+    b_z[i] = b_z_1 * cos(k1 * (i + 0.5) * dx + phase_1) + b_z_2 * cos(k2 * (i + 0.5) * dx + phase_2);
+  }
+  return;
+}
+
+
 void initialize_fields_weibel(std::vector<double> &e_y, 
 			      std::vector<double> &b_z,
 			      int n_g, 

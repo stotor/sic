@@ -11,6 +11,25 @@
 #include "particlespecies.hpp"
 #include "utilities.hpp"
 
+
+void SpeciesGroup::initialize_beat_heating(int mode_1, int mode_2,
+					   double phase_1, double phase_2,
+					   double vel_amp)
+{
+  for (int i = 0; i < n_species; i++) {
+    species[i].initialize_beat_heating(mode_1, mode_2, phase_1, phase_2, vel_amp);
+  }
+  return;
+}
+
+void SpeciesGroup::u_x_perturbation(double amplitude, int mode_max)
+{
+  for (int i = 0; i < n_species; i++) {
+    species[i].u_x_perturbation(amplitude, mode_max);
+  }
+  return;
+}
+
 void SpeciesGroup::write_particle_diagnostics(int n_t, int my_rank, MPI_Comm COMM)
 {
   for (int i = 0; i < n_species; i++) {
@@ -29,7 +48,7 @@ void SpeciesGroup::initial_velocity_deceleration(std::vector<double> &e_x_int,
   return;
 }
 
-void SpeciesGroup::deposit_j_x(std::vector<double> &j_x)
+void SpeciesGroup::deposit_j_x(std::vector<double> &j_x, MPI_Comm COMM)
 {
   for (int i = 0; i < n_g; i++) {
     j_x[i] = 0.0;
@@ -38,8 +57,7 @@ void SpeciesGroup::deposit_j_x(std::vector<double> &j_x)
   for (int i = 0; i < n_species; i++) {
     if (method==0) { 
       species[i].deposit_j_x_ngp(j_x);
-    }
-    if (method==1) { 
+    } else if (method==1) { 
       species[i].deposit_j_x(j_x);
     }
     else if (method==2) {
@@ -48,11 +66,14 @@ void SpeciesGroup::deposit_j_x(std::vector<double> &j_x)
     else if (method==3) {
       species[i].deposit_j_x_segments_linear(j_x);
     }
+    else if (method==4) {
+      species[i].deposit_j_x_segments_gradient(j_x, COMM);
+    }
   }
   return;
 }
 
-void SpeciesGroup::deposit_j_y(std::vector<double> &j_y)
+void SpeciesGroup::deposit_j_y(std::vector<double> &j_y, MPI_Comm COMM)
 {
   for (int i = 0; i < n_g; i++) {
     j_y[i] = 0.0;
@@ -60,8 +81,7 @@ void SpeciesGroup::deposit_j_y(std::vector<double> &j_y)
   for (int i = 0; i < n_species; i++) {
     if (method==0) { 
       species[i].deposit_j_y_ngp(j_y);
-    }
-    if (method==1) { 
+    } else if (method==1) { 
       species[i].deposit_j_y(j_y);
     }
     else if (method==2) {
@@ -69,6 +89,9 @@ void SpeciesGroup::deposit_j_y(std::vector<double> &j_y)
     }
     else if (method==3) {
       species[i].deposit_j_y_segments_linear(j_y);
+    }
+    else if (method==4) {
+      species[i].deposit_j_y_segments_gradient(j_y, COMM);
     }
   }
   return;
@@ -107,7 +130,7 @@ void SpeciesGroup::initialize_species(long long n_ppc,
   return;
 }
 
-void SpeciesGroup::deposit_rho(std::vector<double> &rho, int n_g, int my_rank)
+void SpeciesGroup::deposit_rho(std::vector<double> &rho, int n_g, int my_rank, MPI_Comm COMM)
 {
   // First add neutralizing background density
   if (my_rank==0) { 
@@ -123,8 +146,7 @@ void SpeciesGroup::deposit_rho(std::vector<double> &rho, int n_g, int my_rank)
   for (int i = 0; i < n_species; i++) {
     if (method==0) { 
       species[i].deposit_rho_ngp(rho);
-    }
-    if (method==1) { 
+    } else if (method==1) { 
       species[i].deposit_rho(rho);
     }
     else if (method==2) { 
@@ -132,6 +154,9 @@ void SpeciesGroup::deposit_rho(std::vector<double> &rho, int n_g, int my_rank)
     }
     else if (method==3) { 
       species[i].deposit_rho_segments_linear(rho);
+    }
+    else if (method==4) { 
+      species[i].deposit_rho_segments_gradient(rho, COMM);
     }
   }
   return;
