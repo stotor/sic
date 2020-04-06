@@ -51,12 +51,17 @@ void initialize_fields_weibel(std::vector<double> &e_y,
 
 void advance_b_z(std::vector<double> &b_z, std::vector<double> &e_y, double dt, 
 		 double dx, int n_g);
+void advance_b_y(std::vector<double> &b_y, std::vector<double> &e_z, double dt, 
+		 double dx, int n_g);
 
 void advance_e_x(std::vector<double> &e_x, std::vector<double> &j_x, double dt, 
 		 double dx, int n_g);
 
 void advance_e_y(std::vector<double> &e_y, std::vector<double> &b_z, 
 		 std::vector<double> &j_y, double dt, 
+		 double dx, int n_g);
+void advance_e_z(std::vector<double> &e_z, std::vector<double> &b_y,
+		 std::vector<double> &j_z, double dt, 
 		 double dx, int n_g);
 
 double sum_of_squares(std::vector<double> &array, int n_values);

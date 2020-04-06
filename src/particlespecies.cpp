@@ -1048,30 +1048,50 @@ void ParticleSpecies::advance_velocity(std::vector<double> &e_x,
 
     // Relativistic Boris push
     // First half electric impulse
+    //Need to gefine tem and gamma
     u_x[i] = u_x[i] + rqm * e_x_particle * (dt / 2.0);
     u_y[i] = u_y[i] + rqm * e_y_particle * (dt / 2.0);
+    u_z[i] = u_z[i] + rqm * e_z_particle * (dt / 2.0);    
+
+    tem = 0.5 * dt / rqm;
+    gamma =  sqrt(1.0 + pow(u_x[i], 2) + pow(u_y[i], 2) + pow(u_z[i], 2));
+
+    b_x_particle = b_x_particle * tem / gamma;
+    b_y_particle = b_y_particle[1] * tem / gamma;
+    b_z_particle = b_z_particle[2] * tem / gamma;
     
-    gamma_centered = sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0));
-    energy = energy + (charge[i] / rqm) * (pow(u_x[i], 2.0) + pow(u_y[i], 2.0)) / (1.0 + gamma_centered);
+    u_temp[0] = u[0] + u[1] * b_p[2] - u[2] * b_p[1];
+    u_temp[1] = u[1] + u[2] * b_p[0] - u[0] * b_p[2];
+    u_temp[2] = u[2] + u[0] * b_p[1] - u[1] * b_p[0];
     
-    // Velocity rotation from magnetic field
-    t = rqm * b_z_particle * dt / (2.0 * gamma_centered);
-    s = (2.0 * t) / (1.0 + pow(t, 2.0));
+    otsq = 2.0 / (1.0 + pow(b_p[0], 2) + pow(b_p[1], 2) + pow(b_p[2], 2));
     
-    u_x[i] = u_x[i] + u_y[i] * t;
-    u_y[i] = u_y[i] - u_x[i] * s;
-    u_x[i] = u_x[i] + u_y[i] * t;
+    b_p[0] = b_p[0] * otsq;
+    b_p[1] = b_p[1] * otsq;
+    b_p[2] = b_p[2] * otsq;
+    
+    u[0] = u[0] + u_temp[1] * b_p[2] - u_temp[2] * b_p[1];
+    u[1] = u[1] + u_temp[2] * b_p[0] - u_temp[0] * b_p[2];
+    u[2] = u[2] + u_temp[0] * b_p[1] - u_temp[1] * b_p[0];
+
+    // Check the energy calculation
+    //    gamma_centered = sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0));
+    //    energy = energy + (charge[i] / rqm) * (pow(u_x[i], 2.0) + pow(u_y[i], 2.0)) / (1.0 + gamma_centered);
     
     // Second half electric impulse
     u_x[i] = u_x[i] + rqm * e_x_particle * (dt / 2.0);
     u_y[i] = u_y[i] + rqm * e_y_particle * (dt / 2.0);
+    u_z[i] = u_z[i] + rqm * e_z_particle * (dt / 2.0);    
 
     momentum_x += fabs(charge[i]) * u_x[i];
     momentum_y += fabs(charge[i]) * u_y[i];
+    momentum_z += fabs(charge[i]) * u_z[i];
   }
+  
   energy_history.push_back(energy);
   momentum_x_history.push_back(momentum_x);
   momentum_y_history.push_back(momentum_y);
+  momentum_z_history.push_back(momentum_z);  
   n_p_history.push_back(n_p);
   return;
 }

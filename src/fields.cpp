@@ -33,8 +33,11 @@ void Field::set_field_to_zero()
   return;
 }
 
-void initialize_transverse_em_fields(std::vector<double> &e_y, 
-				     std::vector<double> &b_z, int n_g, 
+void initialize_transverse_em_fields(std::vector<double> &e_y,
+				     std::vector<double> &e_z,
+				     std::vector<double> &b_y,
+				     std::vector<double> &b_z,
+				     int n_g, 
 				     double dx, double e_y_1, double b_z_1,
 				     int mode)
 {
@@ -146,6 +149,16 @@ void advance_b_z(std::vector<double> &b_z, std::vector<double> &e_y, double dt,
   return;
 }
 
+void advance_b_y(std::vector<double> &b_y, std::vector<double> &e_z, double dt, 
+		 double dx, int n_g)
+{
+  for (int i = 0; i < (n_g - 1); i++) {
+    b_y[i] = b_y[i] - (dt / dx) * (e_z[i+1] - e_z[i]);
+  }
+  b_y[n_g-1] = b_y[n_g-1] - (dt / dx) * (e_z[0] - e_z[n_g-1]);
+  return;
+}
+
 void advance_e_x(std::vector<double> &e_x, std::vector<double> &j_x, double dt, 
 		 double dx, int n_g)
 {
@@ -162,6 +175,17 @@ void advance_e_y(std::vector<double> &e_y, std::vector<double> &b_z,
   e_y[0] = e_y[0] - (dt / dx) * (b_z[0] - b_z[n_g-1]) - dt * j_y[0];
   for (int i = 1; i < n_g; i++) {
     e_y[i] = e_y[i] - (dt / dx) * (b_z[i] - b_z[i-1]) - dt * j_y[i];
+  }
+  return;
+}
+
+void advance_e_z(std::vector<double> &e_z, std::vector<double> &b_y,
+		 std::vector<double> &j_z, double dt, 
+		 double dx, int n_g)
+{
+  e_z[0] = e_z[0] - (dt / dx) * (b_y[0] - b_y[n_g-1]) - dt * j_y[0];
+  for (int i = 1; i < n_g; i++) {
+    e_z[i] = e_z[i] - (dt / dx) * (b_y[i] - b_y[i-1]) - dt * j_y[i];
   }
   return;
 }
