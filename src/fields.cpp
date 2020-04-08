@@ -35,62 +35,21 @@ void Field::set_field_to_zero()
 
 void initialize_transverse_em_fields(std::vector<double> &e_y,
 				     std::vector<double> &e_z,
+				     std::vector<double> &b_x,
 				     std::vector<double> &b_y,
 				     std::vector<double> &b_z,
 				     int n_g, 
-				     double dx, double e_y_1, double b_z_1,
-				     int mode)
+				     double dx)
 {
+  int mode = 1;
   double k = 2.0 * PI * mode / (n_g * dx);
   for (int i = 0; i < n_g; i++) {
-    e_y[i] = e_y_1 * cos(k * i * dx);
-    b_z[i] = b_z_1 * cos(k * (i + 0.5) * dx);
-  }
-  return;
-}
-
-void initialize_beat_heating(std::vector<double> &e_y, 
-			     std::vector<double> &b_z,
-			     int n_g, double dx,
-			     int mode_1, int mode_2,
-			     double phase_1, double phase_2,
-			     double vel_amp)
-{
-  double k1 = 2.0 * PI * mode_1 / (n_g * dx);
-  double k2 = 2.0 * PI * mode_2 / (n_g * dx);
-
-  double e_y_1 = vel_amp * sqrt(1 + k1*k1);
-  double e_y_2 = vel_amp * sqrt(1 + k2*k2) ;
-  double b_z_1 = vel_amp * k1;
-  double b_z_2 = vel_amp * k2;
+    e_y[i] = 2.0 * 0.40214 * cos(k * i * dx);
+    e_z[i] = 0.0;
     
-  for (int i = 0; i < n_g; i++) {
-    e_y[i] = e_y_1 * cos(k1 * i * dx + phase_1) + (-1.0) * e_y_2 * cos(k2 * i * dx + phase_2);
-    b_z[i] = b_z_1 * cos(k1 * (i + 0.5) * dx + phase_1) + b_z_2 * cos(k2 * (i + 0.5) * dx + phase_2);
-  }
-  return;
-}
-
-
-void initialize_fields_weibel(std::vector<double> &e_y, 
-			      std::vector<double> &b_z,
-			      int n_g, 
-			      double dx,
-			      int mode_max,
-			      double amplitude)
-{
-  double k, phase;
-  srand(0);
-  for (int i = 0; i < n_g; i++) {
-    e_y[i] = 0.0;
+    b_x[i] = 1.7;
+    b_y[i] = 2.0 * 0.80428 * sin(k * (i + 0.5) * dx);
     b_z[i] = 0.0;
-  }
-  for (int mode = 1; mode <= mode_max; mode++) {  
-    k = 2.0 * PI * mode / (n_g * dx);
-    phase = 2.0 * PI * random_double();
-    for (int i = 0; i < n_g; i++) {
-      b_z[i] += amplitude * cos(k * (i + 0.5) * dx + phase);
-    }
   }
   return;
 }
@@ -139,6 +98,16 @@ void e_x_poisson_solve(std::vector<double> &rho, std::vector<double> &e_x,
   return;
 }
 
+void advance_b_y(std::vector<double> &b_y, std::vector<double> &e_z, double dt, 
+		 double dx, int n_g)
+{
+  for (int i = 0; i < (n_g - 1); i++) {
+    b_y[i] = b_y[i] + (dt / dx) * (e_z[i+1] - e_z[i]);
+  }
+  b_y[n_g-1] = b_y[n_g-1] + (dt / dx) * (e_z[0] - e_z[n_g-1]);
+  return;
+}
+
 void advance_b_z(std::vector<double> &b_z, std::vector<double> &e_y, double dt, 
 		 double dx, int n_g)
 {
@@ -146,16 +115,6 @@ void advance_b_z(std::vector<double> &b_z, std::vector<double> &e_y, double dt,
     b_z[i] = b_z[i] - (dt / dx) * (e_y[i+1] - e_y[i]);
   }
   b_z[n_g-1] = b_z[n_g-1] - (dt / dx) * (e_y[0] - e_y[n_g-1]);
-  return;
-}
-
-void advance_b_y(std::vector<double> &b_y, std::vector<double> &e_z, double dt, 
-		 double dx, int n_g)
-{
-  for (int i = 0; i < (n_g - 1); i++) {
-    b_y[i] = b_y[i] - (dt / dx) * (e_z[i+1] - e_z[i]);
-  }
-  b_y[n_g-1] = b_y[n_g-1] - (dt / dx) * (e_z[0] - e_z[n_g-1]);
   return;
 }
 
@@ -183,9 +142,9 @@ void advance_e_z(std::vector<double> &e_z, std::vector<double> &b_y,
 		 std::vector<double> &j_z, double dt, 
 		 double dx, int n_g)
 {
-  e_z[0] = e_z[0] - (dt / dx) * (b_y[0] - b_y[n_g-1]) - dt * j_y[0];
+  e_z[0] = e_z[0] + (dt / dx) * (b_y[0] - b_y[n_g-1]) - dt * j_z[0];
   for (int i = 1; i < n_g; i++) {
-    e_z[i] = e_z[i] - (dt / dx) * (b_y[i] - b_y[i-1]) - dt * j_y[i];
+    e_z[i] = e_z[i] + (dt / dx) * (b_y[i] - b_y[i-1]) - dt * j_z[i];
   }
   return;
 }

@@ -22,9 +22,9 @@ public:
     x.resize(n_p);
     u_x.resize(n_p);
     u_y.resize(n_p);
+    u_z.resize(n_p);    
     x_old.resize(n_p);
     charge.resize(n_p);
-    rqm = -1.0;
     lagrangian_id.resize(n_p);
     gradient.resize(n_p);
     gradient_old.resize(n_p);
@@ -44,59 +44,62 @@ public:
   int method, interp_order;
   bool center_fields;
 
-  std::vector<double> x, u_x, u_y, x_old, lagrangian_id,
-    energy_history, momentum_x_history, momentum_y_history, n_p_history,
-    gradient, gradient_old;
+  std::vector<double> x, u_x, u_y, u_z, x_old, lagrangian_id,
+    energy_history, momentum_x_history, momentum_y_history, momentum_z_history,
+    n_p_history, gradient, gradient_old;
 
-  // Charge to mass ratio, and particle charge divided by grid spacing
-  double rqm;
-  std::vector<double> charge;
+  double rqm; // Reciprocal charge to mass ratio
+  std::vector<double> charge; // Particle charge divided by grid spacing
 
   std::string species_name;
 
   // Methods
   void initialize_species(int species_number, 
 			  long long n_ppc,
-			  double u_x_drift, 
-			  double u_y_drift, 
-			  int mode, 
-			  double u_x_1, 
-			  double u_y_1,
 			  int my_rank,
 			  int num_procs);
   void advance_x();
   void split_segment_linear(int i);
   void split_segment_lagrange_3(int i);
   void refine_segments(double refinement_length);
-  void advance_velocity(std::vector<double> &e_x, std::vector<double> &e_y, 
+  void advance_velocity(std::vector<double> &e_x,
+			std::vector<double> &e_y,
+			std::vector<double> &e_z,
+			std::vector<double> &b_x,
+			std::vector<double> &b_y,
 			std::vector<double> &b_z);
-  void initial_velocity_deceleration(std::vector<double> &e_x, 
+  void initial_velocity_deceleration(std::vector<double> &e_x,
 				     std::vector<double> &e_y,
-				     std::vector<double> &b_z);
-  void deposit_rho(std::vector<double> &rho);
-  void deposit_rho_ngp(std::vector<double> &rho);
-  void deposit_rho_segments_zero(std::vector<double> &rho);
-  void deposit_rho_segments_linear(std::vector<double> &rho);
-  void deposit_j_x(std::vector<double> &j_x);
-  void deposit_j_x_ngp(std::vector<double> &j_x);
-  void deposit_j_x_segments_zero(std::vector<double> &j_x);
-  void deposit_j_x_segments_linear(std::vector<double> &j_x);
-  void deposit_j_y(std::vector<double> &j_y);
-  void deposit_j_y_ngp(std::vector<double> &j_y);
-  void deposit_j_y_segments_zero(std::vector<double> &j_y);
-  void deposit_j_y_segments_linear(std::vector<double> &j_y);
-  void deposit_j_y_segments_gradient(std::vector<double> &j_y, MPI_Comm COMM);
-  void write_phase(std::ofstream &x_ofstream, std::ofstream &u_x_ofstream, 
-		   std::ofstream &u_y_ofstream);
+				     std::vector<double> &e_z,
+				     std::vector<double> &b_x,
+				     std::vector<double> &b_y,
+				     std::vector<double> &b_z);  
+  void deposit_rho_pic_0(std::vector<double> &rho);  
+  void deposit_rho_pic_1(std::vector<double> &rho);
+  void deposit_rho_sic_0(std::vector<double> &rho);
+  void deposit_rho_sic_1(std::vector<double> &rho);
+  
+  void deposit_j_x_pic_0(std::vector<double> &j_x);  
+  void deposit_j_x_pic_1(std::vector<double> &j_x);
+  void deposit_j_x_sic_0(std::vector<double> &j_x);
+  void deposit_j_x_sic_1(std::vector<double> &j_x);
+
+  void deposit_j_y_pic_0(std::vector<double> &j_y);
+  void deposit_j_y_pic_1(std::vector<double> &j_y);
+  void deposit_j_y_sic_0(std::vector<double> &j_y);
+  void deposit_j_y_sic_1(std::vector<double> &j_y);
+
+  void deposit_j_z_pic_0(std::vector<double> &j_z);
+  void deposit_j_z_pic_1(std::vector<double> &j_z);
+  void deposit_j_z_sic_0(std::vector<double> &j_z);
+  void deposit_j_z_sic_1(std::vector<double> &j_z);
+
+  void write_phase(std::ofstream &x_ofstream,
+		   std::ofstream &u_x_ofstream, 
+		   std::ofstream &u_y_ofstream,
+		   std::ofstream &u_z_ofstream);
   void write_particle_diagnostics(int n_t, int my_rank, MPI_Comm COMM);
   void communicate_ghost_particles(MPI_Comm COMM);
-  void u_x_perturbation(double amplitude, int mode_max);
-  void initialize_beat_heating(int mode_1, int mode_2,
-			       double phase_1, double phase_2,
-			       double vel_amp);
-  void deposit_j_x_segments_gradient(std::vector<double> &j_x, MPI_Comm COMM);
-  void deposit_rho_segments_gradient(std::vector<double> &rho,
-				     MPI_Comm COMM);
 };
 
 #endif /* particlespecies_hpp */

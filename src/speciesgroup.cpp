@@ -11,25 +11,6 @@
 #include "particlespecies.hpp"
 #include "utilities.hpp"
 
-
-void SpeciesGroup::initialize_beat_heating(int mode_1, int mode_2,
-					   double phase_1, double phase_2,
-					   double vel_amp)
-{
-  for (int i = 0; i < n_species; i++) {
-    species[i].initialize_beat_heating(mode_1, mode_2, phase_1, phase_2, vel_amp);
-  }
-  return;
-}
-
-void SpeciesGroup::u_x_perturbation(double amplitude, int mode_max)
-{
-  for (int i = 0; i < n_species; i++) {
-    species[i].u_x_perturbation(amplitude, mode_max);
-  }
-  return;
-}
-
 void SpeciesGroup::write_particle_diagnostics(int n_t, int my_rank, MPI_Comm COMM)
 {
   for (int i = 0; i < n_species; i++) {
@@ -38,60 +19,77 @@ void SpeciesGroup::write_particle_diagnostics(int n_t, int my_rank, MPI_Comm COM
   return;
 }
 
-void SpeciesGroup::initial_velocity_deceleration(std::vector<double> &e_x_int, 
+void SpeciesGroup::initial_velocity_deceleration(std::vector<double> &e_x, 
 						 std::vector<double> &e_y,
+						 std::vector<double> &e_z,
+						 std::vector<double> &b_x,
+						 std::vector<double> &b_y,
 						 std::vector<double> &b_z)
 {
   for (int i = 0; i < n_species; i++) {
-    species[i].initial_velocity_deceleration(e_x_int, e_y, b_z);
+    species[i].initial_velocity_deceleration(e_x, e_y, e_z, b_x, b_y, b_z);
   }
   return;
 }
 
-void SpeciesGroup::deposit_j_x(std::vector<double> &j_x, MPI_Comm COMM)
+void SpeciesGroup::deposit_j_x(std::vector<double> &j_x)
 {
   for (int i = 0; i < n_g; i++) {
     j_x[i] = 0.0;
   }
- 
   for (int i = 0; i < n_species; i++) {
     if (method==0) { 
-      species[i].deposit_j_x_ngp(j_x);
+      species[i].deposit_j_x_pic_0(j_x);
     } else if (method==1) { 
-      species[i].deposit_j_x(j_x);
+      species[i].deposit_j_x_pic_1(j_x);
     }
     else if (method==2) {
-      species[i].deposit_j_x_segments_zero(j_x);
+      species[i].deposit_j_x_sic_0(j_x);
     }
     else if (method==3) {
-      species[i].deposit_j_x_segments_linear(j_x);
-    }
-    else if (method==4) {
-      species[i].deposit_j_x_segments_gradient(j_x, COMM);
+      species[i].deposit_j_x_sic_1(j_x);
     }
   }
   return;
 }
 
-void SpeciesGroup::deposit_j_y(std::vector<double> &j_y, MPI_Comm COMM)
+void SpeciesGroup::deposit_j_y(std::vector<double> &j_y)
 {
   for (int i = 0; i < n_g; i++) {
     j_y[i] = 0.0;
   }
   for (int i = 0; i < n_species; i++) {
     if (method==0) { 
-      species[i].deposit_j_y_ngp(j_y);
+      species[i].deposit_j_y_pic_0(j_y);
     } else if (method==1) { 
-      species[i].deposit_j_y(j_y);
+      species[i].deposit_j_y_pic_1(j_y);
     }
     else if (method==2) {
-      species[i].deposit_j_y_segments_zero(j_y);
+      species[i].deposit_j_y_sic_0(j_y);
     }
     else if (method==3) {
-      species[i].deposit_j_y_segments_linear(j_y);
+      species[i].deposit_j_y_sic_1(j_y);
     }
-    else if (method==4) {
-      species[i].deposit_j_y_segments_gradient(j_y, COMM);
+  }
+  return;
+}
+
+void SpeciesGroup::deposit_j_z(std::vector<double> &j_z)
+{
+  for (int i = 0; i < n_g; i++) {
+    j_z[i] = 0.0;
+  }
+  for (int i = 0; i < n_species; i++) {
+    if (method==0) { 
+      species[i].deposit_j_z_pic_0(j_z);
+    } else if (method==1) { 
+      species[i].deposit_j_z_pic_1(j_z);
+    }
+    else if (method==2) {
+      species[i].deposit_j_z_sic_0(j_z);
+    }
+    else if (method==3) {
+      species[i].deposit_j_z_sic_1(j_z);
     }
   }
   return;
@@ -105,58 +103,46 @@ void SpeciesGroup::save_x_old()
   return;
 }
 
-void SpeciesGroup::advance_velocity(std::vector<double> e_x_int, 
-				    std::vector<double> e_y,
-				    std::vector<double> b_z)
+void SpeciesGroup::advance_velocity(std::vector<double> &e_x,
+				    std::vector<double> &e_y,
+				    std::vector<double> &e_z,
+				    std::vector<double> &b_x,
+				    std::vector<double> &b_y,
+				    std::vector<double> &b_z)
 {
   for (int i = 0; i < n_species; i++) {
-    species[i].advance_velocity(e_x_int, e_y, b_z);
+    species[i].advance_velocity(e_x, e_y, e_z, b_x, b_y, b_z);
   }
   return;
 }
 
 void SpeciesGroup::initialize_species(long long n_ppc, 
-				      std::vector<double> u_x_drift, 
-				      std::vector<double> u_y_drift, 
-				      int mode, 
-				      double u_x_1, 
-				      double u_y_1,
 				      int my_rank,
 				      int num_procs)
 {
   for (int i = 0; i < n_species; i++) {
-    species[i].initialize_species(i, n_ppc, u_x_drift[i], u_y_drift[i], mode, u_x_1, u_y_1, my_rank, num_procs);
+    species[i].initialize_species(i, n_ppc, my_rank, num_procs);
   }
   return;
 }
 
-void SpeciesGroup::deposit_rho(std::vector<double> &rho, int n_g, int my_rank, MPI_Comm COMM)
+void SpeciesGroup::deposit_rho(std::vector<double> &rho)
 {
-  // First add neutralizing background density
-  if (my_rank==0) { 
-    for (int i = 0; i < n_g; i++) {
-      rho[i] = 1.0 * n_species;
-    }
-  } else { 
-    for (int i = 0; i < n_g; i++) {
-      rho[i] = 0.0;
-    }
+  for (int i = 0; i < n_g; i++) {
+    rho[i] = 0.0;
   }
   
   for (int i = 0; i < n_species; i++) {
     if (method==0) { 
-      species[i].deposit_rho_ngp(rho);
+      species[i].deposit_rho_pic_0(rho);
     } else if (method==1) { 
-      species[i].deposit_rho(rho);
+      species[i].deposit_rho_pic_1(rho);
     }
     else if (method==2) { 
-      species[i].deposit_rho_segments_zero(rho);
+      species[i].deposit_rho_sic_0(rho);
     }
     else if (method==3) { 
-      species[i].deposit_rho_segments_linear(rho);
-    }
-    else if (method==4) { 
-      species[i].deposit_rho_segments_gradient(rho, COMM);
+      species[i].deposit_rho_sic_1(rho);
     }
   }
   return;

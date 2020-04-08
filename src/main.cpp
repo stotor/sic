@@ -22,8 +22,8 @@ int main(int argc, char *argv[])
   MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
   MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
 
-  if (argc != 4 && argc != 5) {
-    std::cout << "Usage: ./sic <method> <n_ppc> <simulation_type> [<refinement length>]" << std::endl;
+  if (argc != 3 && argc != 4) {
+    std::cout << "Usage: ./sic <method> <n_ppc> [<refinement length>]" << std::endl;
     return 1;
   }
 
@@ -42,128 +42,36 @@ int main(int argc, char *argv[])
   ss << argv[2];
   ss >> n_ppc;
 
-  ss.str(std::string());
-  ss.clear();
-  int simulation_type;
-  ss << argv[3];
-  ss >> simulation_type;
-
   double refinement_length;
-  if (argc == 5) {
+  if (argc == 3) {
     ss.str(std::string());
     ss.clear();
-    ss << argv[4];
+    ss << argv[3];
     ss >> refinement_length;
   } else {
     refinement_length = 0.0;
   }
 
-  int n_species;
-  std::vector<double> u_x_drift, u_y_drift;
-  double u_x_1, u_y_1, e_y_1, b_z_1;
-  int mode, mode_max;
-  double amplitude;
-  int n_t, n_g;
-  double k, dx, dt;
-  int mode_1, mode_2;
-  double phase_1, phase_2, vel_amp;
+  int n_species, n_t, n_g;
+  double dx, dt;
 
-  bool u_x_perturbation = false;
+  // Simulation parameters
+  n_t = 10000;
+  n_g = 1000;
+  dx = 0.014111;
+  dt = 0.01411;
+  n_species = 2;
 
-  switch (simulation_type) {
-  case 0:
-    // Electrostatic wave
-    mode = 1;
-    n_t = 500;
-    n_g = 128;
-    dx = 0.1;
-    dt = 0.09;
-    n_species = 1;
-    u_x_drift.push_back(0.0);
-    u_y_drift.push_back(0.0);
-    u_x_1 = 0.0025;
-    u_y_1 = 0.0;
-    e_y_1 = 0.0;
-    b_z_1 = 0.0;
-    break;
-  case 1:
-    // Electromagnetic wave
-    mode = 1;
-    n_t = 500;
-    n_g = 128;
-    dx = 0.1;
-    dt = 0.09;
-    k = 2.0 * PI * mode / (n_g * dx);
-    n_species = 1;
-    u_x_drift.push_back(0.0);
-    u_y_drift.push_back(0.0);
-    u_x_1 = 0.0;
-    u_y_1 = 0.0025;
-    e_y_1 = u_y_1 * sqrt(1 + k*k);
-    b_z_1 = u_y_1 * k;
-    break;
-  case 2:
-    // Two-stream instability
-    mode = 10;
-    n_t = 500;
-    n_g = 128;
-    dx = 0.1;
-    dt = 0.09;
-    n_species = 2;
-    u_x_drift.push_back(0.176425);
-    u_x_drift.push_back(-0.176425);
-    u_y_drift.push_back(0.0);
-    u_y_drift.push_back(0.0);
-    u_x_1 = 0.00176425;
-    u_y_1 = 0.0;
-    e_y_1 = 0.0;
-    b_z_1 = 0.0;
-    break;
-  case 3:
-    // Weibel
-    n_t = 500;
-    n_g = 128;
-    dx = 0.1;
-    dt = 0.09;
-    n_species = 2;
-    u_x_drift.push_back(0.1);
-    u_x_drift.push_back(-0.1);
-    u_y_drift.push_back(0.5);
-    u_y_drift.push_back(-0.5);
-    u_x_1 = 0.0;
-    u_y_1 = 0.0;
-    mode_max = 64;
-    amplitude = pow(10.0, -6.0);
-    break; 
-  case 4:
-    // Beat heating, currently in progress
-    n_t = 5000;
-    n_g = 1280;
-    dx = 0.1;
-    dt = 0.09;
-    n_species = 1;
-    u_x_drift.push_back(0.0);
-    u_y_drift.push_back(0.0);
-    mode_1 = 1;
-    mode_2 = 36;
-    vel_amp = 0.0025;
-    phase_1 = 0.0;
-    phase_2 = 0.0;
-    break; 
-  }
-  
   if (fmod((n_ppc * double(n_g)), 1.0) != 0.0) {
     std::cout << "Error: n_ppc * n_g is not an integer.";
     return 1;
   }
 
   SpeciesGroup particles(n_species, method, n_ppc, dt, dx, n_g, center_fields, interp_order, num_procs);
-  particles.initialize_species(n_ppc, u_x_drift, u_y_drift, mode, u_x_1, u_y_1, my_rank, num_procs);
+  particles.initialize_species(n_ppc, my_rank, num_procs);
+  
   if (method==2||method==3||method==4) {
     particles.communicate_ghost_particles(MPI_COMM_WORLD);
-  }
-  if (simulation_type == 4) {
-    particles.initialize_beat_heating(mode_1, mode_2, phase_1, phase_2, vel_amp);
   }
 
   Field e_x(n_g, "e_x", my_rank);
@@ -180,22 +88,12 @@ int main(int argc, char *argv[])
   
   Field rho(n_g, "rho", my_rank);
   
-  particles.deposit_rho(rho.field, n_g, my_rank, MPI_COMM_WORLD);
+  particles.deposit_rho(rho.field);
   sum_array_to_root(&rho.field[0], n_g, MPI_COMM_WORLD, my_rank);
 
   if (my_rank==0) {
     initialize_e_x(rho.field, e_x.field, dx, n_g);
-    if (simulation_type == 3) {
-      initialize_fields_weibel(e_y.field, b_z.field, n_g, dx, mode_max, amplitude);
-    } else if (simulation_type == 4) {
-      initialize_beat_heating(e_y.field, b_z.field, n_g, dx, mode_1, mode_2, phase_1, phase_2, vel_amp);
-    } else {
-      initialize_transverse_em_fields(e_y.field, b_z.field, n_g, dx, e_y_1, b_z_1, mode);
-    }
-  }
-
-  if (u_x_perturbation) {
-    particles.u_x_perturbation(amplitude, mode_max);
+    initialize_transverse_em_fields(e_y.field, e_z.field, b_x.field, b_y.field, b_z.field, n_g, dx);
   }
 
   MPI_Bcast(&e_x.field[0], n_g, MPI_DOUBLE, 0, MPI_COMM_WORLD);
@@ -205,10 +103,10 @@ int main(int argc, char *argv[])
   MPI_Bcast(&b_y.field[0], n_g, MPI_DOUBLE, 0, MPI_COMM_WORLD);  
   MPI_Bcast(&b_z.field[0], n_g, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
-  particles.initial_velocity_deceleration(e_x.field, e_y.field, b_z.field);
+  particles.initial_velocity_deceleration(e_x.field, e_y.field, e_z.field, b_x.field, b_y.field, b_z.field);
 
   for (int t = 0; t < n_t; t++) {
-    particles.deposit_rho(rho.field, n_g, my_rank, MPI_COMM_WORLD);
+    particles.deposit_rho(rho.field);
     sum_array_to_root(&rho.field[0], n_g, MPI_COMM_WORLD, my_rank);
     
     if (my_rank==0) {
@@ -228,7 +126,7 @@ int main(int argc, char *argv[])
       b_z.calculate_energy();
     }
 
-    particles.advance_velocity(e_x.field, e_y.field, b_z.field);
+    particles.advance_velocity(e_x.field, e_y.field, e_z.field, b_x.field, b_y.field, b_z.field);
 
     particles.save_x_old();
     particles.advance_x();
@@ -240,13 +138,17 @@ int main(int argc, char *argv[])
       }
     }
 
-    particles.deposit_j_x(j_x.field, MPI_COMM_WORLD);
-    particles.deposit_j_y(j_y.field, MPI_COMM_WORLD);
-    particles.deposit_j_z(j_z.field, MPI_COMM_WORLD);    
+
+    // simulation.deposit_current()
+    particles.deposit_j_x(j_x.field);
+    particles.deposit_j_y(j_y.field);
+    particles.deposit_j_z(j_z.field);
 
     sum_array_to_root(&j_x.field[0], n_g, MPI_COMM_WORLD, my_rank);
     sum_array_to_root(&j_y.field[0], n_g, MPI_COMM_WORLD, my_rank);
-    sum_array_to_root(&j_z.field[0], n_g, MPI_COMM_WORLD, my_rank);    
+    sum_array_to_root(&j_z.field[0], n_g, MPI_COMM_WORLD, my_rank);
+
+    // simulation.advance_em_fields()
     
     if (my_rank==0) {
       j_x.write_field();

@@ -37,40 +37,25 @@ void initialize_e_x(std::vector<double> &rho, std::vector<double> &e_x,
 void e_x_poisson_solve(std::vector<double> &rho, std::vector<double> &e_x, 
 		       double dx, int n_g, std::vector<double> &phi);
 
-void initialize_transverse_em_fields(std::vector<double> &e_y, 
-				     std::vector<double> &b_z, int n_g, 
-				     double dx, double e_y_1, double b_z_1,
-				     int mode);
-
-void initialize_fields_weibel(std::vector<double> &e_y, 
-			      std::vector<double> &b_z,
-			      int n_g, 
-			      double dx,
-			      int mode_max,
-			      double amplitude);
-
-void advance_b_z(std::vector<double> &b_z, std::vector<double> &e_y, double dt, 
-		 double dx, int n_g);
+void initialize_transverse_em_fields(std::vector<double> &e_y,
+				     std::vector<double> &e_z,
+				     std::vector<double> &b_x, 
+				     std::vector<double> &b_y, 
+				     std::vector<double> &b_z,
+				     int n_g, 
+				     double dx);
 void advance_b_y(std::vector<double> &b_y, std::vector<double> &e_z, double dt, 
 		 double dx, int n_g);
-
+void advance_b_z(std::vector<double> &b_z, std::vector<double> &e_y, double dt, 
+		 double dx, int n_g);
 void advance_e_x(std::vector<double> &e_x, std::vector<double> &j_x, double dt, 
 		 double dx, int n_g);
-
 void advance_e_y(std::vector<double> &e_y, std::vector<double> &b_z, 
 		 std::vector<double> &j_y, double dt, 
 		 double dx, int n_g);
 void advance_e_z(std::vector<double> &e_z, std::vector<double> &b_y,
 		 std::vector<double> &j_z, double dt, 
 		 double dx, int n_g);
-
 double sum_of_squares(std::vector<double> &array, int n_values);
-
-void initialize_beat_heating(std::vector<double> &e_y, 
-			     std::vector<double> &b_z,
-			     int n_g, double dx,
-			     int mode_1, int mode_2,
-			     double phase_1, double phase_2,
-			     double vel_amp);
 
 #endif /* fields_hpp */
