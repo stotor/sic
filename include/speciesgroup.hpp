@@ -28,7 +28,11 @@ public:
   std::vector<ParticleSpecies> species;
 
   // Methods
-  void deposit_rho(std::vector<double> &rho);
+  void deposit_rho(std::vector<double> &rho, int my_rank, MPI_Comm COMM);
+  void deposit_j_x(std::vector<double> &j_x, int my_rank, MPI_Comm COMM);
+  void deposit_j_y(std::vector<double> &j_y, int my_rank, MPI_Comm COMM);
+  void deposit_j_z(std::vector<double> &j_z, int my_rank, MPI_Comm COMM);
+  
   void save_x_old();
   void advance_x();
   void refine_segments(double refinement_length);
@@ -38,9 +42,6 @@ public:
 			std::vector<double> &b_x,
 			std::vector<double> &b_y,			
 			std::vector<double> &b_z);
-  void deposit_j_x(std::vector<double> &j_x);
-  void deposit_j_y(std::vector<double> &j_y);
-  void deposit_j_z(std::vector<double> &j_z);
   void initial_velocity_deceleration(std::vector<double> &e_x,
 				     std::vector<double> &e_y,
 				     std::vector<double> &e_z,

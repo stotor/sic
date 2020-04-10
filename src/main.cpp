@@ -56,7 +56,7 @@ int main(int argc, char *argv[])
   double dx, dt;
 
   // Simulation parameters
-  n_t = 10000;
+  n_t = 3545;
   n_g = 1000;
   dx = 0.014111;
   dt = 0.01411;
@@ -88,8 +88,7 @@ int main(int argc, char *argv[])
   
   Field rho(n_g, "rho", my_rank);
   
-  particles.deposit_rho(rho.field);
-  sum_array_to_root(&rho.field[0], n_g, MPI_COMM_WORLD, my_rank);
+  particles.deposit_rho(rho.field, my_rank, MPI_COMM_WORLD);
 
   if (my_rank==0) {
     initialize_e_x(rho.field, e_x.field, dx, n_g);
@@ -106,8 +105,7 @@ int main(int argc, char *argv[])
   particles.initial_velocity_deceleration(e_x.field, e_y.field, e_z.field, b_x.field, b_y.field, b_z.field);
 
   for (int t = 0; t < n_t; t++) {
-    particles.deposit_rho(rho.field);
-    sum_array_to_root(&rho.field[0], n_g, MPI_COMM_WORLD, my_rank);
+    particles.deposit_rho(rho.field, my_rank, MPI_COMM_WORLD);
     
     if (my_rank==0) {
       e_x.write_field();
@@ -140,13 +138,9 @@ int main(int argc, char *argv[])
 
 
     // simulation.deposit_current()
-    particles.deposit_j_x(j_x.field);
-    particles.deposit_j_y(j_y.field);
-    particles.deposit_j_z(j_z.field);
-
-    sum_array_to_root(&j_x.field[0], n_g, MPI_COMM_WORLD, my_rank);
-    sum_array_to_root(&j_y.field[0], n_g, MPI_COMM_WORLD, my_rank);
-    sum_array_to_root(&j_z.field[0], n_g, MPI_COMM_WORLD, my_rank);
+    particles.deposit_j_x(j_x.field, my_rank, MPI_COMM_WORLD);
+    particles.deposit_j_y(j_y.field, my_rank, MPI_COMM_WORLD);
+    particles.deposit_j_z(j_z.field, my_rank, MPI_COMM_WORLD);
 
     // simulation.advance_em_fields()
     

@@ -32,7 +32,7 @@ void SpeciesGroup::initial_velocity_deceleration(std::vector<double> &e_x,
   return;
 }
 
-void SpeciesGroup::deposit_j_x(std::vector<double> &j_x)
+void SpeciesGroup::deposit_j_x(std::vector<double> &j_x, int my_rank, MPI_Comm COMM)
 {
   for (int i = 0; i < n_g; i++) {
     j_x[i] = 0.0;
@@ -50,10 +50,11 @@ void SpeciesGroup::deposit_j_x(std::vector<double> &j_x)
       species[i].deposit_j_x_sic_1(j_x);
     }
   }
+  sum_array_to_root(&j_x[0], n_g, COMM, my_rank);
   return;
 }
 
-void SpeciesGroup::deposit_j_y(std::vector<double> &j_y)
+void SpeciesGroup::deposit_j_y(std::vector<double> &j_y, int my_rank, MPI_Comm COMM)
 {
   for (int i = 0; i < n_g; i++) {
     j_y[i] = 0.0;
@@ -71,10 +72,11 @@ void SpeciesGroup::deposit_j_y(std::vector<double> &j_y)
       species[i].deposit_j_y_sic_1(j_y);
     }
   }
+  sum_array_to_root(&j_y[0], n_g, COMM, my_rank);
   return;
 }
 
-void SpeciesGroup::deposit_j_z(std::vector<double> &j_z)
+void SpeciesGroup::deposit_j_z(std::vector<double> &j_z, int my_rank, MPI_Comm COMM)
 {
   for (int i = 0; i < n_g; i++) {
     j_z[i] = 0.0;
@@ -92,6 +94,7 @@ void SpeciesGroup::deposit_j_z(std::vector<double> &j_z)
       species[i].deposit_j_z_sic_1(j_z);
     }
   }
+  sum_array_to_root(&j_z[0], n_g, COMM, my_rank);
   return;
 }
 
@@ -126,7 +129,7 @@ void SpeciesGroup::initialize_species(long long n_ppc,
   return;
 }
 
-void SpeciesGroup::deposit_rho(std::vector<double> &rho)
+void SpeciesGroup::deposit_rho(std::vector<double> &rho, int my_rank, MPI_Comm COMM)
 {
   for (int i = 0; i < n_g; i++) {
     rho[i] = 0.0;
@@ -145,6 +148,7 @@ void SpeciesGroup::deposit_rho(std::vector<double> &rho)
       species[i].deposit_rho_sic_1(rho);
     }
   }
+  sum_array_to_root(&rho[0], n_g, COMM, my_rank);
   return;
 }
 

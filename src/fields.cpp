@@ -44,11 +44,11 @@ void initialize_transverse_em_fields(std::vector<double> &e_y,
   int mode = 1;
   double k = 2.0 * PI * mode / (n_g * dx);
   for (int i = 0; i < n_g; i++) {
-    e_y[i] = 2.0 * 0.40214 * cos(k * i * dx);
+    e_y[i] = 2.0 * 0.40214 * cos(0.44526860656 * i * dx);
     e_z[i] = 0.0;
     
     b_x[i] = 1.7;
-    b_y[i] = 2.0 * 0.80428 * sin(k * (i + 0.5) * dx);
+    b_y[i] = 2.0 * 0.80428 * sin(0.44526860656 * (i + 0.5) * dx);
     b_z[i] = 0.0;
   }
   return;

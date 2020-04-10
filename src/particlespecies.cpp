@@ -94,7 +94,7 @@ void ParticleSpecies::initialize_species(int species_number,
     u_x[i-i_start] = 0.0;
     u_y[i-i_start] = 0.0;
     if (species_number == 0) {
-      u_z[i-i_start] =   (-2.0 * 0.273055) * cos(k * x[i-i_start]);
+      u_z[i-i_start] =   (-2.0 * 0.273055) * cos(0.44526860656 * x[i-i_start]);
     } else {
       u_z[i-i_start] = 0.0;
     }
