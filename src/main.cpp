@@ -1,7 +1,45 @@
-/**
- * sic
- * - The greatest plasma code of all time
- */
+/*
+           .                                                      ,;           
+          ;Wt                        t                   i      f#i            
+         f#EEj            ..       : ED.                LE    .E#t             
+       .E#f E#,          ,W,     .Et E#K:              L#E   i#W,   :KW,      L
+      iWW;  E#t         t##,    ,W#t E##W;            G#W.  L#D.     ,#W:   ,KG
+     L##LffiE#t        L###,   j###t E#E##t          D#K. :K#Wfff;    ;#W. jWi 
+    tLLG##L E#t      .E#j##,  G#fE#t E#ti##f        E#K.  i##WLLLLt    i#KED.  
+      ,W#i  E#t     ;WW; ##,:K#i E#t E#t ;##D.    .E#E.    .E#L         L#W.   
+     j#E.   E#t    j#E.  ##f#W,  E#t E#ELLE##K:  .K#E        f#E:     .GKj#K.  
+   .D#j     E#t  .D#L    ###K:   E#t E#L;;;;;;, .K#D          ,WW;   iWf  i#K. 
+  ,WK,      E#t :K#t     ##D.    E#t E#t       .W#G            .D#; LK:    t#E 
+  EG.       E#t ...      #G      ..  E#t      :W##########Wt     tt i       tDj
+  ,         ,;.          j                    :,,,,,,,,,,,,,.                  
+                L.                      
+            t   EW:        ,ft          
+            Ej  E##;       t#E          
+            E#, E###t      t#E          
+            E#t E#fE#f     t#E          
+  .......   E#t E#t D#G    t#E .......  
+  GEEEEEEf. E#t E#t  f#E.  t#E GEEEEEEf.
+            E#t E#t   t#K: t#E          
+            E#t E#t    ;#W,t#E          
+            E#t E#t     :K#D#E          
+            E#t E#t      .E##E          
+            E#t ..         G#E          
+            ,;.             fE          
+                             ,                            
+        .,         ,;                              
+       ,Wt       f#i            i              i   
+      i#D.     .E#t            LE             LE   
+     f#f      i#W,            L#E            L#E   
+   .D#i      L#D.            G#W.           G#W.   
+  :KW,     :K#Wfff;         D#K.           D#K.    
+  t#f      i##WLLLLt       E#K.           E#K.     
+   ;#G      .E#L         .E#E.          .E#E.      
+    :KE.      f#E:      .K#E           .K#E        
+     .DW:      ,WW;    .K#D           .K#D         
+       L#,      .D#;  .W#G           .W#G          
+        jt        tt :W##########Wt :W##########Wt 
+                     :,,,,,,,,,,,,,.:,,,,,,,,,,,,,.
+*/
 
 #include <iostream>
 #include <fstream>
@@ -43,7 +81,7 @@ int main(int argc, char *argv[])
   ss >> n_ppc;
 
   double refinement_length;
-  if (argc == 3) {
+  if (argc == 4) {
     ss.str(std::string());
     ss.clear();
     ss << argv[3];
@@ -51,6 +89,8 @@ int main(int argc, char *argv[])
   } else {
     refinement_length = 0.0;
   }
+
+  std::cout << refinement_length << std::endl;
 
   int n_species, n_t, n_g;
   double dx, dt;
@@ -102,11 +142,11 @@ int main(int argc, char *argv[])
   MPI_Bcast(&b_y.field[0], n_g, MPI_DOUBLE, 0, MPI_COMM_WORLD);  
   MPI_Bcast(&b_z.field[0], n_g, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
-  particles.initial_velocity_deceleration(e_x.field, e_y.field, e_z.field, b_x.field, b_y.field, b_z.field);
+  //  particles.initial_velocity_deceleration(e_x.field, e_y.field, e_z.field, b_x.field, b_y.field, b_z.field);
 
   for (int t = 0; t < n_t; t++) {
     particles.deposit_rho(rho.field, my_rank, MPI_COMM_WORLD);
-    
+
     if (my_rank==0) {
       e_x.write_field();
       e_y.write_field();
@@ -135,7 +175,6 @@ int main(int argc, char *argv[])
 	particles.refine_segments(refinement_length);
       }
     }
-
 
     // simulation.deposit_current()
     particles.deposit_j_x(j_x.field, my_rank, MPI_COMM_WORLD);
