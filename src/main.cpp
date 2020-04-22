@@ -142,7 +142,7 @@ int main(int argc, char *argv[])
   MPI_Bcast(&b_y.field[0], n_g, MPI_DOUBLE, 0, MPI_COMM_WORLD);  
   MPI_Bcast(&b_z.field[0], n_g, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
-  //  particles.initial_velocity_deceleration(e_x.field, e_y.field, e_z.field, b_x.field, b_y.field, b_z.field);
+  particles.initial_velocity_deceleration(e_x.field, e_y.field, e_z.field, b_x.field, b_y.field, b_z.field);
 
   for (int t = 0; t < n_t; t++) {
     particles.deposit_rho(rho.field, my_rank, MPI_COMM_WORLD);

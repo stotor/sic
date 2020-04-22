@@ -231,10 +231,10 @@ void ParticleSpecies::initial_velocity_deceleration(std::vector<double> &e_x,
   double e_x_particle, e_y_particle, e_z_particle,
     b_x_particle, b_y_particle, b_z_particle, u_temp_x, u_temp_y, u_temp_z,
     gamma, t_norm, s_norm;
-  double energy = 0.0;
-  double momentum_x = 0.0;
-  double momentum_y = 0.0;
-  double momentum_z = 0.0;  
+  //  double energy = 0.0;
+  //  double momentum_x = 0.0;
+  //  double momentum_y = 0.0;
+  //  double momentum_z = 0.0;  
   int ngp_integer, ngp_half_integer;
   
   for (int i = 0; i < n_p; i++) {
@@ -275,7 +275,7 @@ void ParticleSpecies::initial_velocity_deceleration(std::vector<double> &e_x,
     gamma = sqrt(1.0 + pow(u_x[i], 2) + pow(u_y[i], 2) + pow(u_z[i], 2));
 
     // Calculate time centered energy for diagnostic purposes
-    energy = energy + (charge[i] * rqm) * (pow(u_x[i], 2.0) + pow(u_y[i], 2.0) + pow(u_z[i], 2.0)) / (1.0 + gamma);
+    //    energy = energy + (charge[i] * rqm) * (pow(u_x[i], 2.0) + pow(u_y[i], 2.0) + pow(u_z[i], 2.0)) / (1.0 + gamma);
 
     t_norm = 0.5 * (-0.5 * dt) / (rqm * gamma);
 
@@ -301,16 +301,16 @@ void ParticleSpecies::initial_velocity_deceleration(std::vector<double> &e_x,
     u_y[i] = u_y[i] + e_y_particle * (-1.0 * dt / 2.0) / rqm;
     u_z[i] = u_z[i] + e_z_particle * (-1.0 * dt / 2.0) / rqm;
 
-    momentum_x += charge[i] * rqm * u_x[i];
-    momentum_y += charge[i] * rqm * u_y[i];
-    momentum_z += charge[i] * rqm * u_z[i];
+    //    momentum_x += charge[i] * rqm * u_x[i];
+    //    momentum_y += charge[i] * rqm * u_y[i];
+    //    momentum_z += charge[i] * rqm * u_z[i];
   }
   
-  energy_history.push_back(energy);
-  momentum_x_history.push_back(momentum_x);
-  momentum_y_history.push_back(momentum_y);
-  momentum_z_history.push_back(momentum_z);  
-  n_p_history.push_back(n_p);
+  //  energy_history.push_back(energy);
+  //  momentum_x_history.push_back(momentum_x);
+  //  momentum_y_history.push_back(momentum_y);
+  //  momentum_z_history.push_back(momentum_z);  
+  //  n_p_history.push_back(n_p);
 
   return;
 }
