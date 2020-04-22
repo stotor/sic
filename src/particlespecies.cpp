@@ -53,7 +53,8 @@ double interpolate_field_half_integer(std::vector<double> &field, double x, doub
 void ParticleSpecies::initialize_species(int species_number, 
 					 long long n_ppc, 
 					 int my_rank,
-					 int num_procs)
+					 int num_procs,
+					 int method)
 {
   long long i_start, i_end;
   i_start = n_p * my_rank;
@@ -74,6 +75,7 @@ void ParticleSpecies::initialize_species(int species_number,
   rqm_vector.push_back(1836.0);
 
   this->rqm = rqm_vector[species_number];
+  this->method = method;
   
   // Add ghost tracer particles if using line segments
   if ((method==2)||(method==3)||(method==4)) {
@@ -1034,11 +1036,12 @@ void ParticleSpecies::communicate_ghost_particles(MPI_Comm COMM)
   MPI_Status status;
   int num_procs, my_rank, dest, source;
   int tag = 0;
+  
   MPI_Comm_size(COMM, &num_procs);
   MPI_Comm_rank(COMM, &my_rank);
   dest = mod(my_rank-1, num_procs);
   source = mod(my_rank+1, num_procs);
-
+  
   MPI_Sendrecv(&x[0], 2, MPI_DOUBLE, dest, tag,
 	       &x[n_p], 2, MPI_DOUBLE,
 	       source, tag, COMM, &status);
@@ -1060,16 +1063,16 @@ void ParticleSpecies::communicate_ghost_particles(MPI_Comm COMM)
   MPI_Sendrecv(&lagrangian_id[0], 2, MPI_DOUBLE, dest, tag,
 	       &lagrangian_id[n_p], 2, MPI_DOUBLE,
 	       source, tag, COMM, &status);
-
+  
   lagrangian_id[n_p] += n_ppp;
-
+  
   if (my_rank==(num_procs-1)) {
     x[n_p] += n_g * dx;
     x[n_p+1] += n_g * dx;
     x_old[n_p] += n_g * dx;
     x_old[n_p+1] += n_g * dx;
   }
-
+  
   return;
 }
 

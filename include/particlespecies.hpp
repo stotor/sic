@@ -9,9 +9,8 @@
 
 class ParticleSpecies {
 public:
-  ParticleSpecies(int method, long long n_ppc, double dt, double dx, int n_g, bool center_fields, int interp_order, int num_procs)
+  ParticleSpecies(long long n_ppc, double dt, double dx, int n_g, bool center_fields, int interp_order, int num_procs)
   {
-    this->method = method;
     this->n_p = (n_ppc * n_g) / num_procs;
     this->n_ppp = n_p;
     this->dt = dt;
@@ -57,7 +56,8 @@ public:
   void initialize_species(int species_number, 
 			  long long n_ppc,
 			  int my_rank,
-			  int num_procs);
+			  int num_procs,
+			  int method);
   void advance_x();
   void split_segment_linear(int i);
   void split_segment_lagrange_3(int i);

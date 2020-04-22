@@ -70,10 +70,13 @@ int main(int argc, char *argv[])
 
   std::stringstream ss;
 
-  ss << argv[1];
-  int method;
-  ss >> method;
 
+  std::vector<int> method;
+  method.push_back(1);
+  method.push_back(-1);
+  ss << argv[1];
+  ss >> method[1];
+  
   ss.str(std::string());
   ss.clear();
   long long n_ppc;
@@ -90,16 +93,14 @@ int main(int argc, char *argv[])
     refinement_length = 0.0;
   }
 
-  std::cout << refinement_length << std::endl;
-
   int n_species, n_t, n_g;
   double dx, dt;
 
   // Simulation parameters
-  n_t = 3545;
-  n_g = 1000;
-  dx = 0.014111;
-  dt = 0.01411;
+  n_t = 3000;
+  n_g = 1000/2;
+  dx = 0.014111*2;
+  dt = 0.01411*2;
   n_species = 2;
 
   if (fmod((n_ppc * double(n_g)), 1.0) != 0.0) {
@@ -107,12 +108,10 @@ int main(int argc, char *argv[])
     return 1;
   }
 
-  SpeciesGroup particles(n_species, method, n_ppc, dt, dx, n_g, center_fields, interp_order, num_procs);
-  particles.initialize_species(n_ppc, my_rank, num_procs);
+  SpeciesGroup particles(n_species, n_ppc, dt, dx, n_g, center_fields, interp_order, num_procs);
+  particles.initialize_species(n_ppc, my_rank, num_procs, method);
   
-  if (method==2||method==3||method==4) {
-    particles.communicate_ghost_particles(MPI_COMM_WORLD);
-  }
+  particles.communicate_ghost_particles(MPI_COMM_WORLD);
 
   Field e_x(n_g, "e_x", my_rank);
   Field e_y(n_g, "e_y", my_rank);
@@ -169,11 +168,9 @@ int main(int argc, char *argv[])
     particles.save_x_old();
     particles.advance_x();
 
-    if (method==2||method==3||method==4) {
-      particles.communicate_ghost_particles(MPI_COMM_WORLD);
-      if (refinement_length) {
-	particles.refine_segments(refinement_length);
-      }
+    particles.communicate_ghost_particles(MPI_COMM_WORLD);
+    if (refinement_length) {
+      particles.refine_segments(refinement_length);
     }
 
     // simulation.deposit_current()

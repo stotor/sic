@@ -38,15 +38,15 @@ void SpeciesGroup::deposit_j_x(std::vector<double> &j_x, int my_rank, MPI_Comm C
     j_x[i] = 0.0;
   }
   for (int i = 0; i < n_species; i++) {
-    if (method==0) { 
+    if (species[i].method==0) { 
       species[i].deposit_j_x_pic_0(j_x);
-    } else if (method==1) { 
+    } else if (species[i].method==1) { 
       species[i].deposit_j_x_pic_1(j_x);
     }
-    else if (method==2) {
+    else if (species[i].method==2) {
       species[i].deposit_j_x_sic_0(j_x);
     }
-    else if (method==3) {
+    else if (species[i].method==3) {
       species[i].deposit_j_x_sic_1(j_x);
     }
   }
@@ -60,15 +60,15 @@ void SpeciesGroup::deposit_j_y(std::vector<double> &j_y, int my_rank, MPI_Comm C
     j_y[i] = 0.0;
   }
   for (int i = 0; i < n_species; i++) {
-    if (method==0) { 
+    if (species[i].method==0) { 
       species[i].deposit_j_y_pic_0(j_y);
-    } else if (method==1) { 
+    } else if (species[i].method==1) { 
       species[i].deposit_j_y_pic_1(j_y);
     }
-    else if (method==2) {
+    else if (species[i].method==2) {
       species[i].deposit_j_y_sic_0(j_y);
     }
-    else if (method==3) {
+    else if (species[i].method==3) {
       species[i].deposit_j_y_sic_1(j_y);
     }
   }
@@ -82,15 +82,15 @@ void SpeciesGroup::deposit_j_z(std::vector<double> &j_z, int my_rank, MPI_Comm C
     j_z[i] = 0.0;
   }
   for (int i = 0; i < n_species; i++) {
-    if (method==0) { 
+    if (species[i].method==0) { 
       species[i].deposit_j_z_pic_0(j_z);
-    } else if (method==1) { 
+    } else if (species[i].method==1) { 
       species[i].deposit_j_z_pic_1(j_z);
     }
-    else if (method==2) {
+    else if (species[i].method==2) {
       species[i].deposit_j_z_sic_0(j_z);
     }
-    else if (method==3) {
+    else if (species[i].method==3) {
       species[i].deposit_j_z_sic_1(j_z);
     }
   }
@@ -121,10 +121,11 @@ void SpeciesGroup::advance_velocity(std::vector<double> &e_x,
 
 void SpeciesGroup::initialize_species(long long n_ppc, 
 				      int my_rank,
-				      int num_procs)
+				      int num_procs,
+				      std::vector<int> method)
 {
   for (int i = 0; i < n_species; i++) {
-    species[i].initialize_species(i, n_ppc, my_rank, num_procs);
+    species[i].initialize_species(i, n_ppc, my_rank, num_procs, method[i]);
   }
   return;
 }
@@ -136,15 +137,15 @@ void SpeciesGroup::deposit_rho(std::vector<double> &rho, int my_rank, MPI_Comm C
   }
   
   for (int i = 0; i < n_species; i++) {
-    if (method==0) { 
+    if (species[i].method==0) { 
       species[i].deposit_rho_pic_0(rho);
-    } else if (method==1) { 
+    } else if (species[i].method==1) { 
       species[i].deposit_rho_pic_1(rho);
     }
-    else if (method==2) { 
+    else if (species[i].method==2) { 
       species[i].deposit_rho_sic_0(rho);
     }
-    else if (method==3) { 
+    else if (species[i].method==3) { 
       species[i].deposit_rho_sic_1(rho);
     }
   }
@@ -172,7 +173,9 @@ void SpeciesGroup::refine_segments(double refinement_length)
 void SpeciesGroup::communicate_ghost_particles(MPI_Comm COMM)
 {
   for (int i = 0; i < n_species; i++) {
-    species[i].communicate_ghost_particles(COMM);
+    if (species[i].method > 1) {
+      species[i].communicate_ghost_particles(COMM);
+    }
   }
   return;
 }

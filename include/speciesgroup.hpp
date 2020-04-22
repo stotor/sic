@@ -10,18 +10,17 @@
 
 class SpeciesGroup {
 public:
-  SpeciesGroup(int n_species, int method, long long n_ppc, double dt, double dx, int n_g, bool center_fields, int interp_order, int num_procs) :
-    species(n_species, ParticleSpecies(method, n_ppc, dt, dx, n_g, center_fields, interp_order, num_procs))
+  SpeciesGroup(int n_species, long long n_ppc, double dt, double dx, int n_g, bool center_fields, int interp_order, int num_procs) :
+    species(n_species, ParticleSpecies(n_ppc, dt, dx, n_g, center_fields, interp_order, num_procs))
   {
     this->n_species = n_species;
-    this->method = method;
     this->dt = dt;
     this->dx = dx;
     this->n_g = n_g;
   }
   ~SpeciesGroup() {}
 
-  int n_species, method, n_g;
+  int n_species, n_g;
   double dt, dx;
 
   // Attributes
@@ -51,7 +50,8 @@ public:
   void write_particle_diagnostics(int n_t, int my_rank, MPI_Comm COMM);
   void initialize_species(long long n_ppc, 
 			  int my_rank,
-			  int num_procs);
+			  int num_procs,
+			  std::vector<int> method);
   void communicate_ghost_particles(MPI_Comm COMM);
 };
 
