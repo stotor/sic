@@ -70,7 +70,6 @@ int main(int argc, char *argv[])
 
   std::stringstream ss;
 
-
   std::vector<int> method;
   method.push_back(1);
   method.push_back(-1);
@@ -79,9 +78,11 @@ int main(int argc, char *argv[])
   
   ss.str(std::string());
   ss.clear();
-  long long n_ppc;
+  std::vector<long long> n_ppc;
+  n_ppc.push_back(32);
+  n_ppc.push_back(-1);  
   ss << argv[2];
-  ss >> n_ppc;
+  ss >> n_ppc[1];
 
   double refinement_length;
   if (argc == 4) {
@@ -97,18 +98,13 @@ int main(int argc, char *argv[])
   double dx, dt;
 
   // Simulation parameters
-  n_t = 3000;
+  n_t = 5000;
   n_g = 1000/2;
   dx = 0.014111*2;
   dt = 0.01411*2;
   n_species = 2;
 
-  if (fmod((n_ppc * double(n_g)), 1.0) != 0.0) {
-    std::cout << "Error: n_ppc * n_g is not an integer.";
-    return 1;
-  }
-
-  SpeciesGroup particles(n_species, n_ppc, dt, dx, n_g, center_fields, interp_order, num_procs);
+  SpeciesGroup particles(n_species, dt, dx, n_g, center_fields, interp_order);
   particles.initialize_species(n_ppc, my_rank, num_procs, method);
   
   particles.communicate_ghost_particles(MPI_COMM_WORLD);

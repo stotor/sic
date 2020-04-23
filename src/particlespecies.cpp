@@ -56,6 +56,18 @@ void ParticleSpecies::initialize_species(int species_number,
 					 int num_procs,
 					 int method)
 {
+  this->n_p = (n_ppc * n_g) / num_procs;
+  this->n_ppp = n_p;
+  x.resize(n_p);
+  u_x.resize(n_p);
+  u_y.resize(n_p);
+  u_z.resize(n_p);    
+  x_old.resize(n_p);
+  charge.resize(n_p);
+  lagrangian_id.resize(n_p);
+  gradient.resize(n_p);
+  gradient_old.resize(n_p);
+  
   long long i_start, i_end;
   i_start = n_p * my_rank;
   i_end = i_start + n_p;

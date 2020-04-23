@@ -9,24 +9,13 @@
 
 class ParticleSpecies {
 public:
-  ParticleSpecies(long long n_ppc, double dt, double dx, int n_g, bool center_fields, int interp_order, int num_procs)
+  ParticleSpecies(double dt, double dx, int n_g, bool center_fields, int interp_order)
   {
-    this->n_p = (n_ppc * n_g) / num_procs;
-    this->n_ppp = n_p;
     this->dt = dt;
     this->dx = dx;
     this->n_g = n_g;
     this->center_fields = center_fields;
     this->interp_order = interp_order;
-    x.resize(n_p);
-    u_x.resize(n_p);
-    u_y.resize(n_p);
-    u_z.resize(n_p);    
-    x_old.resize(n_p);
-    charge.resize(n_p);
-    lagrangian_id.resize(n_p);
-    gradient.resize(n_p);
-    gradient_old.resize(n_p);
     return;
   }
 
@@ -53,7 +42,7 @@ public:
   std::string species_name;
 
   // Methods
-  void initialize_species(int species_number, 
+  void initialize_species(int species_number,
 			  long long n_ppc,
 			  int my_rank,
 			  int num_procs,

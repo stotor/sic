@@ -10,8 +10,8 @@
 
 class SpeciesGroup {
 public:
-  SpeciesGroup(int n_species, long long n_ppc, double dt, double dx, int n_g, bool center_fields, int interp_order, int num_procs) :
-    species(n_species, ParticleSpecies(n_ppc, dt, dx, n_g, center_fields, interp_order, num_procs))
+  SpeciesGroup(int n_species, double dt, double dx, int n_g, bool center_fields, int interp_order) :
+    species(n_species, ParticleSpecies(dt, dx, n_g, center_fields, interp_order))
   {
     this->n_species = n_species;
     this->dt = dt;
@@ -48,7 +48,7 @@ public:
 				     std::vector<double> &b_y,
 				     std::vector<double> &b_z);
   void write_particle_diagnostics(int n_t, int my_rank, MPI_Comm COMM);
-  void initialize_species(long long n_ppc, 
+  void initialize_species(std::vector<long long> n_ppc, 
 			  int my_rank,
 			  int num_procs,
 			  std::vector<int> method);

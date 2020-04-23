@@ -119,13 +119,13 @@ void SpeciesGroup::advance_velocity(std::vector<double> &e_x,
   return;
 }
 
-void SpeciesGroup::initialize_species(long long n_ppc, 
+void SpeciesGroup::initialize_species(std::vector<long long> n_ppc,
 				      int my_rank,
 				      int num_procs,
 				      std::vector<int> method)
 {
   for (int i = 0; i < n_species; i++) {
-    species[i].initialize_species(i, n_ppc, my_rank, num_procs, method[i]);
+    species[i].initialize_species(i, n_ppc[i], my_rank, num_procs, method[i]);
   }
   return;
 }
