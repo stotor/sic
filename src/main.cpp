@@ -79,7 +79,7 @@ int main(int argc, char *argv[])
   ss.str(std::string());
   ss.clear();
   std::vector<long long> n_ppc;
-  n_ppc.push_back(32);
+  n_ppc.push_back(128*4);
   n_ppc.push_back(-1);  
   ss << argv[2];
   ss >> n_ppc[1];
@@ -98,7 +98,7 @@ int main(int argc, char *argv[])
   double dx, dt;
 
   // Simulation parameters
-  n_t = 5000;
+  n_t = 5000*2;
   n_g = 1000/2;
   dx = 0.014111*2;
   dt = 0.01411*2;
