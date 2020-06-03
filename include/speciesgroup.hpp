@@ -48,11 +48,13 @@ public:
 				     std::vector<double> &b_y,
 				     std::vector<double> &b_z);
   void write_particle_diagnostics(int n_t, int my_rank, MPI_Comm COMM);
+  void write_phase(int t, int my_rank);  
   void initialize_species(std::vector<long long> n_ppc, 
 			  int my_rank,
 			  int num_procs,
 			  std::vector<int> method);
   void communicate_ghost_particles(MPI_Comm COMM);
+  void calculate_segment_density(MPI_Comm COMM);  
 };
 
 #endif /* speciesgroup_hpp */

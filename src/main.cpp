@@ -71,18 +71,21 @@ int main(int argc, char *argv[])
   std::stringstream ss;
 
   std::vector<int> method;
-  method.push_back(1);
+  method.push_back(-1);
   method.push_back(-1);
   ss << argv[1];
   ss >> method[1];
+  //  method[0] = method[1];
+  method[0] = 1;
   
   ss.str(std::string());
   ss.clear();
   std::vector<long long> n_ppc;
-  n_ppc.push_back(128*4);
+  n_ppc.push_back(-1);
   n_ppc.push_back(-1);  
   ss << argv[2];
   ss >> n_ppc[1];
+  n_ppc[0] = n_ppc[1];
 
   double refinement_length;
   if (argc == 4) {
@@ -98,7 +101,8 @@ int main(int argc, char *argv[])
   double dx, dt;
 
   // Simulation parameters
-  n_t = 5000*2;
+  //  n_t = 5000*2;
+  n_t = 5000*2;  
   n_g = 1000/2;
   dx = 0.014111*2;
   dt = 0.01411*2;
@@ -108,6 +112,7 @@ int main(int argc, char *argv[])
   particles.initialize_species(n_ppc, my_rank, num_procs, method);
   
   particles.communicate_ghost_particles(MPI_COMM_WORLD);
+  particles.calculate_segment_density(MPI_COMM_WORLD);  
 
   Field e_x(n_g, "e_x", my_rank);
   Field e_y(n_g, "e_y", my_rank);
@@ -141,6 +146,10 @@ int main(int argc, char *argv[])
 
   for (int t = 0; t < n_t; t++) {
     particles.deposit_rho(rho.field, my_rank, MPI_COMM_WORLD);
+    //    if (t%10==0) {
+    //      particles.write_phase(t, my_rank);
+    //    }
+
 
     if (my_rank==0) {
       e_x.write_field();
@@ -165,6 +174,7 @@ int main(int argc, char *argv[])
     particles.advance_x();
 
     particles.communicate_ghost_particles(MPI_COMM_WORLD);
+    particles.calculate_segment_density(MPI_COMM_WORLD);
     if (refinement_length) {
       particles.refine_segments(refinement_length);
     }

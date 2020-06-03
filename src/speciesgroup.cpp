@@ -49,6 +49,9 @@ void SpeciesGroup::deposit_j_x(std::vector<double> &j_x, int my_rank, MPI_Comm C
     else if (species[i].method==3) {
       species[i].deposit_j_x_sic_1(j_x);
     }
+    else if (species[i].method==4) {
+      species[i].deposit_j_x_sic_higher_order(j_x);
+    }
   }
   sum_array_to_root(&j_x[0], n_g, COMM, my_rank);
   return;
@@ -71,6 +74,9 @@ void SpeciesGroup::deposit_j_y(std::vector<double> &j_y, int my_rank, MPI_Comm C
     else if (species[i].method==3) {
       species[i].deposit_j_y_sic_1(j_y);
     }
+    else if (species[i].method==4) {
+      species[i].deposit_j_y_sic_1(j_y);
+    }
   }
   sum_array_to_root(&j_y[0], n_g, COMM, my_rank);
   return;
@@ -91,6 +97,9 @@ void SpeciesGroup::deposit_j_z(std::vector<double> &j_z, int my_rank, MPI_Comm C
       species[i].deposit_j_z_sic_0(j_z);
     }
     else if (species[i].method==3) {
+      species[i].deposit_j_z_sic_1(j_z);
+    }
+    else if (species[i].method==4) {
       species[i].deposit_j_z_sic_1(j_z);
     }
   }
@@ -148,10 +157,22 @@ void SpeciesGroup::deposit_rho(std::vector<double> &rho, int my_rank, MPI_Comm C
     else if (species[i].method==3) { 
       species[i].deposit_rho_sic_1(rho);
     }
+    else if (species[i].method==4) { 
+      species[i].deposit_rho_sic_higher_order(rho);
+    }
   }
   sum_array_to_root(&rho[0], n_g, COMM, my_rank);
   return;
 }
+
+void SpeciesGroup::write_phase(int t, int my_rank)
+{
+  for (int i = 0; i < n_species; i++) {
+    species[i].write_phase(i, t, my_rank);
+  }
+  return;
+}
+
 
 void SpeciesGroup::advance_x()
 {
@@ -169,12 +190,21 @@ void SpeciesGroup::refine_segments(double refinement_length)
   return;
 }
 
-
 void SpeciesGroup::communicate_ghost_particles(MPI_Comm COMM)
 {
   for (int i = 0; i < n_species; i++) {
     if (species[i].method > 1) {
       species[i].communicate_ghost_particles(COMM);
+    }
+  }
+  return;
+}
+
+void SpeciesGroup::calculate_segment_density(MPI_Comm COMM)
+{
+  for (int i = 0; i < n_species; i++) {
+    if (species[i].method > 1) {
+      species[i].calculate_segment_density(COMM);
     }
   }
   return;

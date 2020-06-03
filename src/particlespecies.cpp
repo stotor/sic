@@ -58,26 +58,25 @@ void ParticleSpecies::initialize_species(int species_number,
 {
   this->n_p = (n_ppc * n_g) / num_procs;
   this->n_ppp = n_p;
+
+  long long i_start, i_end;
+  i_start = n_p * my_rank;
+  i_end = i_start + n_p;
+
   x.resize(n_p);
   u_x.resize(n_p);
   u_y.resize(n_p);
   u_z.resize(n_p);    
   x_old.resize(n_p);
   charge.resize(n_p);
-  lagrangian_id.resize(n_p);
-  gradient.resize(n_p);
-  gradient_old.resize(n_p);
-  
-  long long i_start, i_end;
-  i_start = n_p * my_rank;
-  i_end = i_start + n_p;
+  lagrangian_id.resize(n_p);  
   
   std::stringstream ss;
   ss << "particles_";
   ss << species_number;
   species_name = ss.str();
 
-  double k = 2.0 * PI / (n_g * dx);
+  //  double k = 2.0 * PI / (n_g * dx);
   double particle_spacing = dx / double(n_ppc);
 
   std::vector<double> density, rqm_vector;
@@ -503,12 +502,192 @@ void ParticleSpecies::deposit_j_x_sic_1(std::vector<double> &j_x)
     right_max = right_max / dx;
     right_max = ceil(right_max);
     
-    // Initial line segment
     deposit_charge_to_left_segment_linear(j_x, x_old[i], x_old[i+1], (charge[i] * (dx / dt)), n_g, dx, right_max);
     deposit_charge_to_left_segment_linear(j_x, x[i], x[i+1], (-1.0) * (charge[i] * (dx / dt)), n_g, dx, right_max);
   }
   return;
 }
+
+// Higher order routines below
+
+double general_xg(double nl, double nr, double n0, double l0, int xg, double  x0, double xa, double xb)
+{
+  return n0*(xa-xb)/(3.0*l0*(nl+nr))*(3*l0*nl*(-2.0+xa+xb-2.0*xg)+(nl-nr)*(3.0*(xa+xb)-2.0*(xa*xa+xa*xb+xb*xb)+3.0*x0*(-2.0+xa+xb-2.0*xg)+3.0*(xa+xb)*xg));
+}
+
+double general_xgp1(double nl, double nr, double n0, double l0, int xg, double x0, double xa, double xb)
+{
+  return n0*(xa-xb)/(3.0*l0*(nl+nr))*(-3.0*l0*nl*(xa+xb-2.0*xg)-(nl-nr)*(-2.0*(xa*xa+xa*xb+xb*xb)+3.0*x0*(xa+xb-2.0*xg)+3.0*(xa+xb)*xg));
+}
+
+void deposit_charge_to_left_segment_higher_order(std::vector<double> &j_x,
+						 double x_tracer_a, 
+						 double x_tracer_b,
+						 double charge,
+						 int n_g,
+						 double dx,
+						 int right_max,
+						 double nl,
+						 double nr)
+{
+  double left, right, charge_left, charge_right, charge_sum, xg, xa, xb, x0, l0, n0;
+  int bound_left, bound_right;
+  left = fmin(x_tracer_a, x_tracer_b) / dx;
+  right = fmax(x_tracer_a, x_tracer_b) / dx;
+  x0 = left;
+  l0 = right - left;
+  bound_left = floor(left);
+  bound_right = ceil(right);
+
+  n0 = charge / l0;
+
+  // If tracers are between two gridpoints
+  
+  if (bound_right == (bound_left + 1)) {
+    xg = bound_left;
+    xa = x0;
+    xb = x0+l0;
+    charge_left = general_xg(nl, nr, n0, l0, xg, x0, xa, xb);
+    charge_right = general_xgp1(nl, nr, n0, l0, xg, x0, xa, xb);
+    j_x[mod(bound_left,n_g)] += charge_left;
+    for (int cell = (bound_left+1); cell < right_max; cell++) {
+      j_x[mod(cell,n_g)] += n0*l0;
+    }
+  }
+  else {
+    // Left end
+    xg = bound_left;
+    xa = x0;
+    xb = bound_left+1;
+    charge_left = general_xg(nl, nr, n0, l0, xg, x0, xa, xb);
+    charge_right = general_xgp1(nl, nr, n0, l0, xg, x0, xa, xb);
+    charge_sum = charge_left + charge_right;
+    
+    j_x[mod(bound_left,n_g)] += charge_left;
+    for (int cell = (bound_left+1); cell < right_max; cell++) {
+      j_x[mod(cell,n_g)] += charge_sum;
+    }
+
+    // Pieces connecting two gridpoints
+    for (int cell = (bound_left+1); cell < (bound_right-1); cell++) {
+      xg = cell;
+      xa = cell;
+      xb = cell+1;
+      charge_left = general_xg(nl, nr, n0, l0, xg, x0, xa, xb);
+      charge_right = general_xgp1(nl, nr, n0, l0, xg, x0, xa, xb);
+      charge_sum = charge_left + charge_right;
+      
+      j_x[mod(cell,n_g)] += charge_left;
+      for (int boundary = (cell+1); boundary < right_max; boundary++) {
+	j_x[mod(boundary,n_g)] += charge_sum;
+      }
+    }
+    
+    // Right end
+    xg = bound_right-1;
+    xa = bound_right-1;
+    xb = x0+l0;
+    charge_left = general_xg(nl, nr, n0, l0, xg, x0, xa, xb);
+    charge_right = general_xgp1(nl, nr, n0, l0, xg, x0, xa, xb);
+    charge_sum = charge_left + charge_right;
+
+    j_x[mod(bound_right-1,n_g)] += charge_left;
+    
+    for (int cell = (bound_right); cell < right_max; cell++) {
+      j_x[mod(cell,n_g)] += charge_sum;
+    }
+  }
+  return;
+}
+
+
+void deposit_rho_segment_higher_order(std::vector<double> &rho,
+				      double x_tracer_a, 
+				      double x_tracer_b,
+				      double charge,
+				      int n_g,
+				      double dx,
+				      double nl,
+				      double nr)
+{
+  double left, right, l0, xg, xa, xb, x0, n0;
+  int bound_left, bound_right;
+  left = fmin(x_tracer_a, x_tracer_b) / dx;
+  right = fmax(x_tracer_a, x_tracer_b) / dx;
+  x0 = left;
+  l0 = right - left;
+  bound_left = floor(left);
+  bound_right = ceil(right);
+
+  n0 = charge / l0;
+
+  // If tracers are between two gridpoints
+  if (bound_right == (bound_left + 1)) {
+    xg = bound_left;
+    xa = x0;
+    xb = x0+l0;
+    rho[mod(bound_left,n_g)] += general_xg(nl, nr, n0, l0, xg, x0, xa, xb);
+    rho[mod(bound_left+1,n_g)] += general_xgp1(nl, nr, n0, l0, xg, x0, xa, xb);
+
+  }
+  else {
+    // Left end
+    xg = bound_left;
+    xa = x0;
+    xb = bound_left+1;
+    rho[mod(bound_left,n_g)] += general_xg(nl, nr, n0, l0, xg, x0, xa, xb);
+    rho[mod(bound_left+1,n_g)] += general_xgp1(nl, nr, n0, l0, xg, x0, xa, xb);
+    // Pieces connecting two gridpoints
+    for (int cell = (bound_left+1); cell < (bound_right-1); cell++) {
+      xg = cell;
+      xa = cell;
+      xb = cell+1;
+      rho[mod(cell,n_g)] += general_xg(nl, nr, n0, l0, xg, x0, xa, xb);
+      rho[mod(cell+1,n_g)] += general_xgp1(nl, nr, n0, l0, xg, x0, xa, xb);
+    }
+    // Right end
+    xg = bound_right-1;
+    xa = bound_right-1;
+    xb = x0+l0;
+    rho[mod(bound_right-1,n_g)] += general_xg(nl, nr, n0, l0, xg, x0, xa, xb);
+    rho[mod(bound_right,n_g)] += general_xgp1(nl, nr, n0, l0, xg, x0, xa, xb);
+  }
+  return;
+}  
+
+void ParticleSpecies::deposit_j_x_sic_higher_order(std::vector<double> &j_x)
+{
+  double right_max;
+  
+  for (int i = 0; i < n_p; i++) {
+    // Index of right bounding gridpoint
+    right_max = fmax(fmax(x_old[i],x_old[i+1]),fmax(x[i],x[i+1]));
+    right_max = right_max / dx;
+    right_max = ceil(right_max);
+    
+    // Initial line segment
+    deposit_charge_to_left_segment_higher_order(j_x, x_old[i], x_old[i+1], (charge[i] * (dx / dt)), n_g, dx, right_max, density[(i+1)-1], density[(i+1)+1]);
+    deposit_charge_to_left_segment_higher_order(j_x, x[i], x[i+1], (-1.0) * (charge[i] * (dx / dt)), n_g, dx, right_max, density_old[(i+1)-1], density_old[(i+1)+1]);
+  }
+  return;
+}
+
+void ParticleSpecies::deposit_rho_sic_higher_order(std::vector<double> &rho)
+{
+  double right_max;
+  
+  for (int i = 0; i < n_p; i++) {
+    // Index of right bounding gridpoint
+    right_max = fmax(fmax(x_old[i],x_old[i+1]),fmax(x[i],x[i+1]));
+    right_max = right_max / dx;
+    right_max = ceil(right_max);
+    
+    deposit_rho_segment_higher_order(rho, x[i], x[i+1], charge[i], n_g, dx, density[(i+1)-1], density[(i+1)+1]);
+  }
+  return;
+}
+
+// Higher order routines above
 
 void ParticleSpecies::deposit_rho_sic_0(std::vector<double> &rho)
 {
@@ -929,20 +1108,32 @@ double put_in_box(double x, double box_length)
 }
 
 
-void ParticleSpecies::write_phase(std::ofstream &x_ofstream, 
-				  std::ofstream &u_x_ofstream,
-				  std::ofstream &u_y_ofstream,
-				  std::ofstream &u_z_ofstream)
+void ParticleSpecies::write_phase(int species_number, int t, int my_rank)
 {
-  std::vector<double> x_in_box(n_p);
-  for (int i = 0; i < n_p; i++) {
-    x_in_box[i] = put_in_box(x[i], n_g*dx);
-  }
+  std::string x_filename;
+  std::string u_x_filename;
+  
+  std::stringstream ss;
+  ss << "x_";
+  ss << species_number;
+  ss << "_";
+  ss << t;
+  ss << "_";
+  ss << my_rank;
+  x_filename = ss.str();
 
-  write_data(x_in_box, x_ofstream, n_p);
-  write_data(u_x, u_x_ofstream, n_p);
-  write_data(u_y, u_y_ofstream, n_p);
-  write_data(u_z, u_z_ofstream, n_p);  
+  ss.str(std::string());
+  ss.clear();
+  ss << "u_x_";
+  ss << species_number;
+  ss << "_";
+  ss << t;
+  ss << "_";
+  ss << my_rank;
+  u_x_filename = ss.str();
+
+  data_to_file(x, x_filename);
+  data_to_file(u_x, u_x_filename);
   return;
 }
 
@@ -1030,9 +1221,13 @@ void ParticleSpecies::refine_segments(double refinement_length)
 {
   double length;
   int i = 0;
+  double max = 0.0;
   
   while (i < n_p) {
     length = fabs(x[i+1] - x[i]);
+    if (length > max) {
+      max = length;
+    }
     if (length > refinement_length) {
       split_segment_lagrange_3(i);
       //split_segment_linear(i);
@@ -1040,6 +1235,7 @@ void ParticleSpecies::refine_segments(double refinement_length)
       i+=1;
     }
   }
+  std::cout << max << std::endl;
   return;
 }
 
@@ -1088,307 +1284,31 @@ void ParticleSpecies::communicate_ghost_particles(MPI_Comm COMM)
   return;
 }
 
-
-
-/*
-
-// GRADIENT CALCULATIONS DO NOT YET WORK WITH REFINEMENT
-
-double linear_correction(double gradient, double midpoint,
-			 double x_a, double x_b)
-{
-  return gradient * 0.5 * ((x_b - midpoint) * (x_b - midpoint) - (x_a - midpoint) * (x_a - midpoint));
-}
-
-void deposit_rho_single_gradient(std::vector<double> &rho, double x_tracer_a, 
-				 double x_tracer_b, double charge, int n_g,
-				 double dx, double gradient)
-{
-  double left, right, length, charge_fraction;
-  double midpoint;
-  int bound_left, bound_right;
-  left = fmin(x_tracer_a, x_tracer_b) / dx;
-  right = fmax(x_tracer_a, x_tracer_b) / dx;
-  length = right - left;
-  bound_left = floor(left);
-  bound_right = ceil(right);
-  midpoint = (right + left) / 2.0;
-
-  // If tracers are between two gridpoints
-  if (bound_right == (bound_left + 1)) {
-    if ((left == bound_left + 0.5) && (right == bound_left + 0.5)) {
-      rho[mod((bound_right),n_g)] += charge;
-    } else if (left >= (bound_left + 0.5)) {
-      rho[mod((bound_right),n_g)] += charge;
-    } else if (right <= (bound_left + 0.5)) {
-      rho[mod((bound_left),n_g)] += charge;
-    } else {
-      rho[mod((bound_left),n_g)] += (bound_left + 0.5 - left) / length * charge + linear_correction(gradient, midpoint, left, (bound_left+0.5))*dx*dx;
-      rho[mod((bound_right),n_g)] += (right - (bound_left + 0.5)) / length * charge + linear_correction(gradient, midpoint, (bound_left+0.5), right)*dx*dx;
-    }
-  }
-  else {
-    // Left end
-    if (left < bound_left + 0.5) {
-      rho[mod(bound_left,n_g)] += charge * (bound_left + 0.5 - left) / length + linear_correction(gradient, midpoint, left, (bound_left+0.5))*dx*dx;
-      rho[mod((bound_left+1),n_g)] += charge * (0.5) / length + linear_correction(gradient, midpoint, bound_left+0.5, bound_left+1)*dx*dx;
-    } else { 
-      rho[mod(bound_left+1,n_g)] += charge * (bound_left + 1.0 - left) / length + linear_correction(gradient, midpoint, left, bound_left+1.0)*dx*dx;
-    }
-
-    // Pieces connecting two gridpoints
-    charge_fraction = (1.0) / length;
-    for (int cell = (bound_left+1); cell < (bound_right-1); cell++) {
-      rho[mod(cell,n_g)] += charge * charge_fraction * 0.5 + linear_correction(gradient, midpoint, cell, cell+0.5)*dx*dx;
-      rho[mod((cell+1),n_g)] += charge * charge_fraction * 0.5 + linear_correction(gradient, midpoint, cell+0.5, cell+1)*dx*dx;
-    }
-    
-    // Right end
-    if (right > bound_right - 0.5) {
-      rho[mod(bound_right-1,n_g)] += charge * (0.5) / length + linear_correction(gradient, midpoint, bound_right-1, bound_right-0.5)*dx*dx;
-      rho[mod(bound_right,n_g)] += charge * (right - (bound_right-0.5)) / length + linear_correction(gradient, midpoint, bound_right-0.5, right)*dx*dx;
-    } else { 
-      rho[mod(bound_right-1,n_g)] += charge * (right - (bound_right-1.0)) / length + linear_correction(gradient, midpoint, bound_right-1.0, right)*dx*dx;
-    }
-  }
-  return;
-}
-*/
-
-/*
-double j_y_grad_portion(double rho_ave, double v_ave, double rho_grad,
-			    double v_grad, double x_ave, double x_a,
-			    double x_b)
-{
-  return rho_ave * v_ave * (x_b - x_a)
-    + 0.5 * (pow((x_b-x_ave), 2) - pow((x_a-x_ave), 2)) * (rho_ave * v_grad + rho_grad * v_ave)
-    + (1.0 / 3.0) *(pow((x_b-x_ave), 3) - pow((x_a-x_ave), 3)) * rho_grad * v_grad;
-}
-
-void deposit_j_y_segment_gradient(std::vector<double> &j_y,
-				  double left, double right,
-				  double v_y_left, double v_y_right, 
-				  double charge, int n_g, double dx,
-				  double gradient)
-{
-  double length, x_ave, v_ave, rho_ave, v_grad, rho_grad;
-  int bound_left, bound_right;
-  left = left / dx;
-  right = right / dx;
-  length = right - left;
-
-  bound_left = floor(left);
-  bound_right = ceil(right);
-  x_ave = (right + left) / 2.0;
-  v_ave = (v_y_left + v_y_right) / 2.0;
-  rho_ave = (charge / length) * dx;
-  v_grad = ((v_y_right - v_y_left) / length) * dx;
-  rho_grad = gradient * dx;
-
-  // If tracers are between two gridpoints
-  if (bound_right == (bound_left + 1)) {
-    if ((left == bound_left + 0.5) && (right == bound_left + 0.5)) {
-      j_y[mod((bound_right),n_g)] += j_y_grad_portion(rho_ave, v_ave, rho_grad, v_grad, x_ave, left, right);
-    } else if (left >= (bound_left + 0.5)) {
-      j_y[mod((bound_right),n_g)] += j_y_grad_portion(rho_ave, v_ave, rho_grad, v_grad, x_ave, left, right);
-    } else if (right <= (bound_left + 0.5)) {
-      j_y[mod((bound_left),n_g)] += j_y_grad_portion(rho_ave, v_ave, rho_grad, v_grad, x_ave, left, right);
-    } else {
-      j_y[mod((bound_left),n_g)] += j_y_grad_portion(rho_ave, v_ave, rho_grad, v_grad, x_ave, left, bound_left+0.5);
-      j_y[mod((bound_right),n_g)] += j_y_grad_portion(rho_ave, v_ave, rho_grad, v_grad, x_ave, bound_left+0.5, right);
-    }
-  }
-  else {
-    // Left end
-    if (left < bound_left + 0.5) {
-      j_y[mod(bound_left,n_g)] += j_y_grad_portion(rho_ave, v_ave, rho_grad, v_grad, x_ave, left, bound_left+0.5);
-      j_y[mod((bound_left+1),n_g)] += j_y_grad_portion(rho_ave, v_ave, rho_grad, v_grad, x_ave, bound_left+0.5, bound_left+1.0);
-    } else { 
-      j_y[mod(bound_left+1,n_g)] += j_y_grad_portion(rho_ave, v_ave, rho_grad, v_grad, x_ave, left, bound_left+1.0);
-    }
-
-    // Pieces connecting two gridpoints
-    for (int cell = (bound_left+1); cell < (bound_right-1); cell++) {
-      j_y[mod(cell,n_g)] += j_y_grad_portion(rho_ave, v_ave, rho_grad, v_grad, x_ave, cell, cell+0.5);
-      j_y[mod((cell+1),n_g)] += j_y_grad_portion(rho_ave, v_ave, rho_grad, v_grad, x_ave, cell+0.5, cell+1.0);
-    }
-    
-    // Right end
-    if (right > bound_right - 0.5) {
-      j_y[mod(bound_right-1,n_g)] += j_y_grad_portion(rho_ave, v_ave, rho_grad, v_grad, x_ave, bound_right-1, bound_right-0.5);
-      j_y[mod(bound_right,n_g)] += j_y_grad_portion(rho_ave, v_ave, rho_grad, v_grad, x_ave, bound_right-0.5, right);
-    } else { 
-      j_y[mod(bound_right-1,n_g)] += j_y_grad_portion(rho_ave, v_ave, rho_grad, v_grad, x_ave, bound_right-1.0, right);
-    }
-  }
-
-  return;
-}
-
-void ParticleSpecies::deposit_j_y_segments_gradient(std::vector<double> &j_y, MPI_Comm COMM)
-{
-  double x_i_tavg, x_ip1_tavg, left, right, v_y_left, v_y_right;
-
-  MPI_Status status;
-  int num_procs, my_rank, dest, source;
-  int tag = 0;
-  MPI_Comm_size(COMM, &num_procs);
-  MPI_Comm_rank(COMM, &my_rank);
-
-  std::vector<double> x_tavg, segment_density, grad_tavg;
-  x_tavg.resize(n_p+1);
-  segment_density.resize(n_p+1);
-  grad_tavg.resize(n_p+1);
-
-  for (int i = 0; i < (n_p+1); i++) {
-    x_tavg[i] = (x[i]+x_old[i]) / 2.0;
-  }
-
-  for (int i = 0; i < (n_p+1); i++) {
-    segment_density[i] = charge[i] / fabs(x_tavg[i+1]-x_tavg[i]);
-  }
-
-  for (int i = 1; i < n_p; i++) {
-    grad_tavg[i] = 0.5 * (segment_density[i+1] - segment_density[i-1]) / (x_tavg[i+1]-x_tavg[i]);
-  }
-
-  dest = mod(my_rank+1, num_procs);
-  source = mod(my_rank-1, num_procs);
-
-  MPI_Sendrecv(&grad_tavg[n_p-1], 1, MPI_DOUBLE, dest, tag,
-	       &grad_tavg[0], 1, MPI_DOUBLE,
-	       source, tag, COMM, &status);
-  
-  for (int i = 0; i < n_p; i++) {
-    x_i_tavg = x_tavg[i];
-    x_ip1_tavg = x_tavg[i+1];
-    if (x_ip1_tavg >= x_i_tavg) {
-      left = x_i_tavg;
-      right = x_ip1_tavg;
-      v_y_left = u_y[i] / sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0));
-      v_y_right = u_y[i+1] / sqrt(1.0 + pow(u_x[i+1], 2.0) + pow(u_y[i+1], 2.0));
-    }
-    else {
-      left = x_ip1_tavg;
-      right = x_i_tavg;
-      v_y_left = u_y[i+1] / sqrt(1.0 + pow(u_x[i+1], 2.0) + pow(u_y[i+1], 2.0));
-      v_y_right = u_y[i] / sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0));
-    }
-    deposit_j_y_segment_gradient(j_y, left, right, v_y_left, v_y_right, charge[i], n_g, dx, grad_tavg[i]);
-  }
-  return;
-}
-*/
-
-/*
-void ParticleSpecies::deposit_rho_segments_gradient(std::vector<double> &rho,
-						    MPI_Comm COMM)
+void ParticleSpecies::calculate_segment_density(MPI_Comm COMM)
 {
   MPI_Status status;
   int num_procs, my_rank, dest, source;
   int tag = 0;
+
   MPI_Comm_size(COMM, &num_procs);
   MPI_Comm_rank(COMM, &my_rank);
-
-  std::vector<double> segment_density;
-  segment_density.resize(n_p+1);
-
-  for (int i = 0; i < (n_p+1); i++) {
-    segment_density[i] = charge[i] / fabs(x[i+1]-x[i]);
-  }
-
-  for (int i = 1; i < n_p; i++) {
-    gradient_old[i] = 0.5 * (segment_density[i+1] - segment_density[i-1]) / (x[i+1]-x[i]);
-  }
-
   dest = mod(my_rank+1, num_procs);
   source = mod(my_rank-1, num_procs);
 
-  MPI_Sendrecv(&gradient_old[n_p-1], 1, MPI_DOUBLE, dest, tag,
-	       &gradient_old[0], 1, MPI_DOUBLE,
-	       source, tag, COMM, &status);
-  
-  for (int i = 0; i < n_p; i++) {
-    deposit_rho_single_gradient(rho, x[i], x[i+1], charge[i], n_g, dx,
-				gradient_old[i]);
-  }
-  return;
-}
-*/
-
-/*
-void ParticleSpecies::deposit_j_x_segments_gradient(std::vector<double> &j_x, MPI_Comm COMM)
-{
-  double left_initial, right_initial, left_final, right_final, length_initial, length_final,
-    charge_initial, charge_final, cell_boundary, midpoint_initial, midpoint_final;
-  int bound_left, bound_right;
-
-  MPI_Status status;
-  int num_procs, my_rank, dest, source;
-  int tag = 0;
-  MPI_Comm_size(COMM, &num_procs);
-  MPI_Comm_rank(COMM, &my_rank);
-
-  std::vector<double> segment_density;
-  segment_density.resize(n_p+1);
+  density.resize(n_p+2);
+  density_old.resize(n_p+2);
 
   for (int i = 0; i < (n_p+1); i++) {
-    segment_density[i] = charge[i] / fabs(x[i+1]-x[i]);
+    density[i+1] = charge[i] / fabs(x[i+1]-x[i]);
+    density_old[i+1] = charge[i] / fabs(x_old[i+1]-x_old[i]);    
   }
-
-  for (int i = 1; i < n_p; i++) {
-    gradient[i] = 0.5 * (segment_density[i+1] - segment_density[i-1]) / (x[i+1]-x[i]);
-  }
-
-  dest = mod(my_rank+1, num_procs);
-  source = mod(my_rank-1, num_procs);
-
-  MPI_Sendrecv(&gradient[n_p-1], 1, MPI_DOUBLE, dest, tag,
-	       &gradient[0], 1, MPI_DOUBLE,
-	       source, tag, COMM, &status);
   
-  for (int i = 0; i < n_p; i++) {
-    // Initial line segment
-    left_initial = fmin(x_old[i], x_old[i+1]) / dx;
-    right_initial = fmax(x_old[i], x_old[i+1]) / dx;
-    length_initial = right_initial - left_initial;
-    midpoint_initial = (left_initial + right_initial) / 2.0;
-    // Final line segment
-    left_final = fmin(x[i], x[i+1]) / dx;
-    right_final = fmax(x[i], x[i+1]) / dx;
-    length_final = right_final - left_final;
-    midpoint_final = (left_final + right_final) / 2.0;
-    // Bounding box
-    bound_left = floor(fmin(left_initial,left_final));
-    bound_right = ceil(fmax(right_initial,right_final));
-    // Loop over cell boundaries that could be affected
-    for (int cell = bound_left; cell < bound_right; cell++) {
-      // Calculate charge initially to the left of the current cell's right boundary
-      cell_boundary = cell + 0.5;
-      if (right_initial <= cell_boundary) {
-	charge_initial = charge[i];
-      } 
-      else if (left_initial >= cell_boundary) {
-	charge_initial = 0.0;
-      }
-      else {
-	charge_initial = charge[i] * (cell_boundary - left_initial) / length_initial
-	  + linear_correction(gradient_old[i], midpoint_initial, left_initial, cell_boundary)*dx*dx;
-      }
-      // Calculate charge finally to the left of the current cell's right boundary
-      if (right_final <= cell_boundary) {
-	charge_final = charge[i];
-      } 
-      else if (left_final >= cell_boundary) {
-	charge_final = 0.0;
-      }
-      else {
-	charge_final = charge[i] * (cell_boundary - left_final) / length_final
-	  + linear_correction(gradient[i], midpoint_final, left_final, cell_boundary)*dx*dx;
-      }
-      j_x[mod(cell,n_g)] += (charge_initial - charge_final) * (dx / dt);
-    }
-  }
+  MPI_Sendrecv(&density[n_p+1], 1, MPI_DOUBLE, dest, tag,
+	       &density[0], 1, MPI_DOUBLE,
+	       source, tag, COMM, &status);
+  MPI_Sendrecv(&density_old[n_p+1], 1, MPI_DOUBLE, dest, tag,
+	       &density_old[0], 1, MPI_DOUBLE,
+	       source, tag, COMM, &status);  
+  
   return;
 }
-*/
