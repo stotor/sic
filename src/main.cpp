@@ -85,7 +85,8 @@ int main(int argc, char *argv[])
   n_ppc.push_back(-1);  
   ss << argv[2];
   ss >> n_ppc[1];
-  n_ppc[0] = n_ppc[1];
+  //  n_ppc[0] = n_ppc[1];
+  n_ppc[0] = 128;
 
   double refinement_length;
   if (argc == 4) {
@@ -102,7 +103,7 @@ int main(int argc, char *argv[])
 
   // Simulation parameters
   //  n_t = 5000*2;
-  n_t = 5000*2;  
+  n_t = 5000/2;  
   n_g = 1000/2;
   dx = 0.014111*2;
   dt = 0.01411*2;

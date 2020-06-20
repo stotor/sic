@@ -4,6 +4,7 @@
 #include <sstream>
 #include <fstream>
 #include <iostream>
+#include <algorithm> 
 
 #include "mpi.h"
 
@@ -520,6 +521,41 @@ double general_xgp1(double nl, double nr, double n0, double l0, int xg, double x
   return n0*(xa-xb)/(3.0*l0*(nl+nr))*(-3.0*l0*nl*(xa+xb-2.0*xg)-(nl-nr)*(-2.0*(xa*xa+xa*xb+xb*xb)+3.0*x0*(xa+xb-2.0*xg)+3.0*(xa+xb)*xg));
 }
 
+double cover_xg(double nl, double nr, double n0, double l0, int xg, double x0, double xa, double xb)
+{      
+  return n0*(3.0*nl*l0+(nl-nr)*(-1.0+3.0*(x0-xg)))/(3*l0*(nl+nr));
+}
+
+double cover_xgp1(double nl, double nr, double n0, double l0, int xg, double x0, double xa, double xb)
+{      
+  return n0*(3.0*nl*l0+(nl-nr)*(-2.0+3.0*(x0-xg)))/(3*l0*(nl+nr));
+}
+
+double left_end_xg(double nl, double nr, double n0, double l0, int xg, double x0, double xa, double xb)
+{
+  return n0*pow(1.0-x0+xg,2)*(nl*3.0*l0+(nr-nl)*(1.0-x0+xg))/(3.0*l0*(nl+nr));
+}
+
+double left_end_xgp1(double nl, double nr, double n0, double l0, int xg, double x0, double xa, double xb)
+{
+  return n0*(1.0-x0+xg)/(3.0*l0*(nl+nr))*((nl-nr)*(x0-xg-1.0)*(2.0+x0-xg)+nl*(3.0*l0*(1.0+x0-xg)));
+}
+
+double right_end_xg(double nl, double nr, double n0, double l0, int xg, double x0, double xa, double xb)
+{
+  return n0*(xg-x0-l0)*(l0*l0*(nl+2.0*nr)+3.0*l0*nl+l0*(2.0*nl+nr)*(-3.0+x0-xg)+(nl-nr)*(-3.0+x0-xg)*(x0-xg))/(3.0*l0*(nl+nr));
+}
+
+double right_end_xgp1(double nl, double nr, double n0, double l0, int xg, double x0, double xa, double xb)
+{
+  return (n0*(l0*(nl+2.0*nr)+(nl-nr)*(x0-xg))*pow(l0+x0-xg,2))/(3.0*l0*(nl+nr));
+}
+
+double q_unweighted(double nl, double nr, double n0, double l0, double x0, double xa, double xb)
+{
+  return (n0*(-2.0*l0*nl-(nl-nr)*(2*x0-xa-xb))*(xa-xb))/(l0*(nl+nr));
+}
+		    
 void deposit_charge_to_left_segment_higher_order(std::vector<double> &j_x,
 						 double x_tracer_a, 
 						 double x_tracer_b,
@@ -530,7 +566,7 @@ void deposit_charge_to_left_segment_higher_order(std::vector<double> &j_x,
 						 double nl,
 						 double nr)
 {
-  double left, right, charge_left, charge_right, charge_sum, xg, xa, xb, x0, l0, n0;
+  double left, right, xg, x0, l0, n0;
   int bound_left, bound_right;
   left = fmin(x_tracer_a, x_tracer_b) / dx;
   right = fmax(x_tracer_a, x_tracer_b) / dx;
@@ -539,64 +575,40 @@ void deposit_charge_to_left_segment_higher_order(std::vector<double> &j_x,
   bound_left = floor(left);
   bound_right = ceil(right);
 
+  if (left == x_tracer_b / dx) {
+    std::swap(nl, nr);
+  }
+
   n0 = charge / l0;
 
   // If tracers are between two gridpoints
   
   if (bound_right == (bound_left + 1)) {
     xg = bound_left;
-    xa = x0;
-    xb = x0+l0;
-    charge_left = general_xg(nl, nr, n0, l0, xg, x0, xa, xb);
-    charge_right = general_xgp1(nl, nr, n0, l0, xg, x0, xa, xb);
-    j_x[mod(bound_left,n_g)] += charge_left;
-    for (int cell = (bound_left+1); cell < right_max; cell++) {
-      j_x[mod(cell,n_g)] += n0*l0;
-    }
+    j_x[mod(bound_left,n_g)] += general_xg(nl, nr, n0, l0, xg, x0, x0, x0+l0);
   }
   else {
     // Left end
     xg = bound_left;
-    xa = x0;
-    xb = bound_left+1;
-    charge_left = general_xg(nl, nr, n0, l0, xg, x0, xa, xb);
-    charge_right = general_xgp1(nl, nr, n0, l0, xg, x0, xa, xb);
-    charge_sum = charge_left + charge_right;
+    j_x[mod(bound_left,n_g)] += left_end_xg(nl, nr, n0, l0, xg, x0, x0, bound_left+1);
     
-    j_x[mod(bound_left,n_g)] += charge_left;
-    for (int cell = (bound_left+1); cell < right_max; cell++) {
-      j_x[mod(cell,n_g)] += charge_sum;
-    }
-
     // Pieces connecting two gridpoints
     for (int cell = (bound_left+1); cell < (bound_right-1); cell++) {
-      xg = cell;
-      xa = cell;
-      xb = cell+1;
-      charge_left = general_xg(nl, nr, n0, l0, xg, x0, xa, xb);
-      charge_right = general_xgp1(nl, nr, n0, l0, xg, x0, xa, xb);
-      charge_sum = charge_left + charge_right;
-      
-      j_x[mod(cell,n_g)] += charge_left;
-      for (int boundary = (cell+1); boundary < right_max; boundary++) {
-	j_x[mod(boundary,n_g)] += charge_sum;
-      }
+      j_x[mod(cell,n_g)] += q_unweighted(nl, nr, n0, l0, x0, x0, cell);
+      j_x[mod(cell,n_g)] += cover_xg(nl, nr, n0, l0, cell, x0, cell, cell+1);	
     }
     
     // Right end
     xg = bound_right-1;
-    xa = bound_right-1;
-    xb = x0+l0;
-    charge_left = general_xg(nl, nr, n0, l0, xg, x0, xa, xb);
-    charge_right = general_xgp1(nl, nr, n0, l0, xg, x0, xa, xb);
-    charge_sum = charge_left + charge_right;
-
-    j_x[mod(bound_right-1,n_g)] += charge_left;
     
-    for (int cell = (bound_right); cell < right_max; cell++) {
-      j_x[mod(cell,n_g)] += charge_sum;
-    }
+    j_x[mod(xg,n_g)] += q_unweighted(nl, nr, n0, l0, x0, x0, xg);
+    j_x[mod(xg,n_g)] += right_end_xg(nl, nr, n0, l0, xg, x0, xg, x0+l0);
   }
+  
+  for (int cell = (bound_right); cell < right_max; cell++) {
+    j_x[mod(cell,n_g)] += charge;
+  }
+  
   return;
 }
 
@@ -612,12 +624,17 @@ void deposit_rho_segment_higher_order(std::vector<double> &rho,
 {
   double left, right, l0, xg, xa, xb, x0, n0;
   int bound_left, bound_right;
+  double debug_charge = 0.0;  
   left = fmin(x_tracer_a, x_tracer_b) / dx;
   right = fmax(x_tracer_a, x_tracer_b) / dx;
   x0 = left;
   l0 = right - left;
   bound_left = floor(left);
   bound_right = ceil(right);
+
+  if (left == x_tracer_b / dx) {
+    std::swap(nl, nr);
+  }
 
   n0 = charge / l0;
 
@@ -628,32 +645,41 @@ void deposit_rho_segment_higher_order(std::vector<double> &rho,
     xb = x0+l0;
     rho[mod(bound_left,n_g)] += general_xg(nl, nr, n0, l0, xg, x0, xa, xb);
     rho[mod(bound_left+1,n_g)] += general_xgp1(nl, nr, n0, l0, xg, x0, xa, xb);
-
+    debug_charge += general_xg(nl, nr, n0, l0, xg, x0, xa, xb);
+    debug_charge += general_xgp1(nl, nr, n0, l0, xg, x0, xa, xb);    
   }
   else {
     // Left end
     xg = bound_left;
     xa = x0;
     xb = bound_left+1;
-    rho[mod(bound_left,n_g)] += general_xg(nl, nr, n0, l0, xg, x0, xa, xb);
-    rho[mod(bound_left+1,n_g)] += general_xgp1(nl, nr, n0, l0, xg, x0, xa, xb);
+    rho[mod(bound_left,n_g)] += left_end_xg(nl, nr, n0, l0, xg, x0, xa, xb);
+    rho[mod(bound_left+1,n_g)] += left_end_xgp1(nl, nr, n0, l0, xg, x0, xa, xb);
+    debug_charge += left_end_xg(nl, nr, n0, l0, xg, x0, xa, xb);
+    debug_charge += left_end_xgp1(nl, nr, n0, l0, xg, x0, xa, xb);    
+    
     // Pieces connecting two gridpoints
     for (int cell = (bound_left+1); cell < (bound_right-1); cell++) {
       xg = cell;
       xa = cell;
       xb = cell+1;
-      rho[mod(cell,n_g)] += general_xg(nl, nr, n0, l0, xg, x0, xa, xb);
-      rho[mod(cell+1,n_g)] += general_xgp1(nl, nr, n0, l0, xg, x0, xa, xb);
+      rho[mod(cell,n_g)] += cover_xg(nl, nr, n0, l0, xg, x0, xa, xb);
+      rho[mod(cell+1,n_g)] += cover_xgp1(nl, nr, n0, l0, xg, x0, xa, xb);
+      debug_charge += cover_xg(nl, nr, n0, l0, xg, x0, xa, xb);
+      debug_charge += cover_xgp1(nl, nr, n0, l0, xg, x0, xa, xb);    
+      
     }
     // Right end
     xg = bound_right-1;
     xa = bound_right-1;
     xb = x0+l0;
-    rho[mod(bound_right-1,n_g)] += general_xg(nl, nr, n0, l0, xg, x0, xa, xb);
-    rho[mod(bound_right,n_g)] += general_xgp1(nl, nr, n0, l0, xg, x0, xa, xb);
+    rho[mod(bound_right-1,n_g)] += right_end_xg(nl, nr, n0, l0, xg, x0, xa, xb);
+    rho[mod(bound_right,n_g)] += right_end_xgp1(nl, nr, n0, l0, xg, x0, xa, xb);
+    debug_charge += right_end_xg(nl, nr, n0, l0, xg, x0, xa, xb);
+    debug_charge += right_end_xgp1(nl, nr, n0, l0, xg, x0, xa, xb);
   }
   return;
-}  
+}
 
 void ParticleSpecies::deposit_j_x_sic_higher_order(std::vector<double> &j_x)
 {
@@ -666,22 +692,15 @@ void ParticleSpecies::deposit_j_x_sic_higher_order(std::vector<double> &j_x)
     right_max = ceil(right_max);
     
     // Initial line segment
-    deposit_charge_to_left_segment_higher_order(j_x, x_old[i], x_old[i+1], (charge[i] * (dx / dt)), n_g, dx, right_max, density[(i+1)-1], density[(i+1)+1]);
-    deposit_charge_to_left_segment_higher_order(j_x, x[i], x[i+1], (-1.0) * (charge[i] * (dx / dt)), n_g, dx, right_max, density_old[(i+1)-1], density_old[(i+1)+1]);
+    deposit_charge_to_left_segment_higher_order(j_x, x_old[i], x_old[i+1], (charge[i] * (dx / dt)), n_g, dx, right_max, density_old[(i+1)-1], density_old[(i+1)+1]);
+    deposit_charge_to_left_segment_higher_order(j_x, x[i], x[i+1], (-1.0) * (charge[i] * (dx / dt)), n_g, dx, right_max, density[(i+1)-1], density[(i+1)+1]);
   }
   return;
 }
 
 void ParticleSpecies::deposit_rho_sic_higher_order(std::vector<double> &rho)
 {
-  double right_max;
-  
   for (int i = 0; i < n_p; i++) {
-    // Index of right bounding gridpoint
-    right_max = fmax(fmax(x_old[i],x_old[i+1]),fmax(x[i],x[i+1]));
-    right_max = right_max / dx;
-    right_max = ceil(right_max);
-    
     deposit_rho_segment_higher_order(rho, x[i], x[i+1], charge[i], n_g, dx, density[(i+1)-1], density[(i+1)+1]);
   }
   return;
@@ -1292,23 +1311,35 @@ void ParticleSpecies::calculate_segment_density(MPI_Comm COMM)
 
   MPI_Comm_size(COMM, &num_procs);
   MPI_Comm_rank(COMM, &my_rank);
-  dest = mod(my_rank+1, num_procs);
-  source = mod(my_rank-1, num_procs);
 
   density.resize(n_p+2);
   density_old.resize(n_p+2);
 
-  for (int i = 0; i < (n_p+1); i++) {
+  for (int i = 0; i < n_p; i++) {
     density[i+1] = charge[i] / fabs(x[i+1]-x[i]);
     density_old[i+1] = charge[i] / fabs(x_old[i+1]-x_old[i]);    
   }
-  
-  MPI_Sendrecv(&density[n_p+1], 1, MPI_DOUBLE, dest, tag,
+
+  dest = mod(my_rank+1, num_procs);
+  source = mod(my_rank-1, num_procs);
+
+  MPI_Sendrecv(&density[n_p], 1, MPI_DOUBLE, dest, tag,
 	       &density[0], 1, MPI_DOUBLE,
 	       source, tag, COMM, &status);
-  MPI_Sendrecv(&density_old[n_p+1], 1, MPI_DOUBLE, dest, tag,
+  MPI_Sendrecv(&density_old[n_p], 1, MPI_DOUBLE, dest, tag,
 	       &density_old[0], 1, MPI_DOUBLE,
+	       source, tag, COMM, &status);
+
+  dest = mod(my_rank-1, num_procs);
+  source = mod(my_rank+1, num_procs);
+
+  MPI_Sendrecv(&density[1], 1, MPI_DOUBLE, dest, tag,
+	       &density[n_p+1], 1, MPI_DOUBLE,
+	       source, tag, COMM, &status);
+  MPI_Sendrecv(&density_old[1], 1, MPI_DOUBLE, dest, tag,
+	       &density_old[n_p+1], 1, MPI_DOUBLE,
 	       source, tag, COMM, &status);  
+
   
   return;
 }
