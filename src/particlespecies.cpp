@@ -105,6 +105,7 @@ void ParticleSpecies::initialize_species(int species_number,
   for (long long i = i_start; i < i_end; i++) {
     charge[i-i_start] = density[species_number] * (1.0 / n_ppc);
     x[i-i_start] = ((long double) i) * particle_spacing + particle_spacing / 2.0;
+    x_old[i-i_start] = ((long double) i) * particle_spacing + particle_spacing / 2.0;
     u_x[i-i_start] = 0.0;
     u_y[i-i_start] = 0.0;
     if (species_number == 0) {
@@ -574,39 +575,59 @@ void deposit_charge_to_left_segment_higher_order(std::vector<double> &j_x,
   l0 = right - left;
   bound_left = floor(left);
   bound_right = ceil(right);
-
-  if (left == x_tracer_b / dx) {
-    std::swap(nl, nr);
-  }
-
-  n0 = charge / l0;
-
-  // If tracers are between two gridpoints
-  
-  if (bound_right == (bound_left + 1)) {
-    xg = bound_left;
-    j_x[mod(bound_left,n_g)] += general_xg(nl, nr, n0, l0, xg, x0, x0, x0+l0);
-  }
-  else {
-    // Left end
-    xg = bound_left;
-    j_x[mod(bound_left,n_g)] += left_end_xg(nl, nr, n0, l0, xg, x0, x0, bound_left+1);
     
-    // Pieces connecting two gridpoints
-    for (int cell = (bound_left+1); cell < (bound_right-1); cell++) {
-      j_x[mod(cell,n_g)] += q_unweighted(nl, nr, n0, l0, x0, x0, cell);
-      j_x[mod(cell,n_g)] += cover_xg(nl, nr, n0, l0, cell, x0, cell, cell+1);	
+  if (l0 == 0.0) {
+
+    j_x[mod(bound_left,n_g)] += charge * (bound_right - left);
+    for (int cell = (bound_left+1); cell < right_max; cell++) {
+      j_x[mod(cell,n_g)] += charge;
     }
+
+  } else {
     
-    // Right end
-    xg = bound_right-1;
+    n0 = charge / l0;
+
+    if (left == x_tracer_b / dx) {
+      std::swap(nl, nr);
+    }
+
+    if (nl == 0.0 && nr == 0.0) {
+      nl = 1.0;
+      nr = 1.0;
+    } else if (nl == 0.0) {
+      nl = 1.0;
+      nr = 0.0;
+    } else if (nr == 0.0) {
+      nl = 0.0;
+      nr = 1.0;
+    }
+
+    if (bound_right == (bound_left + 1)) {
+      xg = bound_left;
+      j_x[mod(bound_left,n_g)] += general_xg(nl, nr, n0, l0, xg, x0, x0, x0+l0);
+    }
+    else {
+
+      // Left end
+      xg = bound_left;
+      j_x[mod(bound_left,n_g)] += left_end_xg(nl, nr, n0, l0, xg, x0, x0, bound_left+1);
     
-    j_x[mod(xg,n_g)] += q_unweighted(nl, nr, n0, l0, x0, x0, xg);
-    j_x[mod(xg,n_g)] += right_end_xg(nl, nr, n0, l0, xg, x0, xg, x0+l0);
-  }
+      // Pieces connecting two gridpoints
+      for (int cell = (bound_left+1); cell < (bound_right-1); cell++) {
+	j_x[mod(cell,n_g)] += q_unweighted(nl, nr, n0, l0, x0, x0, cell);
+	j_x[mod(cell,n_g)] += cover_xg(nl, nr, n0, l0, cell, x0, cell, cell+1);	
+      }
+
+      // Right end
+      xg = bound_right-1;
+    
+      j_x[mod(xg,n_g)] += q_unweighted(nl, nr, n0, l0, x0, x0, xg);
+      j_x[mod(xg,n_g)] += right_end_xg(nl, nr, n0, l0, xg, x0, xg, x0+l0);
+    }
   
-  for (int cell = (bound_right); cell < right_max; cell++) {
-    j_x[mod(cell,n_g)] += charge;
+    for (int cell = (bound_right); cell < right_max; cell++) {
+      j_x[mod(cell,n_g)] += charge;
+    }
   }
   
   return;
@@ -624,7 +645,6 @@ void deposit_rho_segment_higher_order(std::vector<double> &rho,
 {
   double left, right, l0, xg, xa, xb, x0, n0;
   int bound_left, bound_right;
-  double debug_charge = 0.0;  
   left = fmin(x_tracer_a, x_tracer_b) / dx;
   right = fmax(x_tracer_a, x_tracer_b) / dx;
   x0 = left;
@@ -632,51 +652,58 @@ void deposit_rho_segment_higher_order(std::vector<double> &rho,
   bound_left = floor(left);
   bound_right = ceil(right);
 
-  if (left == x_tracer_b / dx) {
-    std::swap(nl, nr);
-  }
-
-  n0 = charge / l0;
 
   // If tracers are between two gridpoints
-  if (bound_right == (bound_left + 1)) {
-    xg = bound_left;
-    xa = x0;
-    xb = x0+l0;
-    rho[mod(bound_left,n_g)] += general_xg(nl, nr, n0, l0, xg, x0, xa, xb);
-    rho[mod(bound_left+1,n_g)] += general_xgp1(nl, nr, n0, l0, xg, x0, xa, xb);
-    debug_charge += general_xg(nl, nr, n0, l0, xg, x0, xa, xb);
-    debug_charge += general_xgp1(nl, nr, n0, l0, xg, x0, xa, xb);    
-  }
-  else {
-    // Left end
-    xg = bound_left;
-    xa = x0;
-    xb = bound_left+1;
-    rho[mod(bound_left,n_g)] += left_end_xg(nl, nr, n0, l0, xg, x0, xa, xb);
-    rho[mod(bound_left+1,n_g)] += left_end_xgp1(nl, nr, n0, l0, xg, x0, xa, xb);
-    debug_charge += left_end_xg(nl, nr, n0, l0, xg, x0, xa, xb);
-    debug_charge += left_end_xgp1(nl, nr, n0, l0, xg, x0, xa, xb);    
-    
-    // Pieces connecting two gridpoints
-    for (int cell = (bound_left+1); cell < (bound_right-1); cell++) {
-      xg = cell;
-      xa = cell;
-      xb = cell+1;
-      rho[mod(cell,n_g)] += cover_xg(nl, nr, n0, l0, xg, x0, xa, xb);
-      rho[mod(cell+1,n_g)] += cover_xgp1(nl, nr, n0, l0, xg, x0, xa, xb);
-      debug_charge += cover_xg(nl, nr, n0, l0, xg, x0, xa, xb);
-      debug_charge += cover_xgp1(nl, nr, n0, l0, xg, x0, xa, xb);    
-      
+  if (l0 == 0.0) {
+    rho[mod(bound_left,n_g)] += charge * (bound_right - left);
+    rho[mod(bound_left+1,n_g)] += charge * (1.0 - (bound_right - left));
+  } else {
+    n0 = charge / l0;
+
+    if (left == x_tracer_b / dx) {
+      std::swap(nl, nr);
     }
-    // Right end
-    xg = bound_right-1;
-    xa = bound_right-1;
-    xb = x0+l0;
-    rho[mod(bound_right-1,n_g)] += right_end_xg(nl, nr, n0, l0, xg, x0, xa, xb);
-    rho[mod(bound_right,n_g)] += right_end_xgp1(nl, nr, n0, l0, xg, x0, xa, xb);
-    debug_charge += right_end_xg(nl, nr, n0, l0, xg, x0, xa, xb);
-    debug_charge += right_end_xgp1(nl, nr, n0, l0, xg, x0, xa, xb);
+    
+    if (nl == 0.0 && nr == 0.0) {
+      nl = 1.0;
+      nr = 1.0;
+    } else if (nl == 0.0) {
+      nl = 1.0;
+      nr = 0.0;
+    } else if (nr == 0.0) {
+      nl = 0.0;
+      nr = 1.0;
+    }
+    
+    if (bound_right == (bound_left + 1)) {
+      xg = bound_left;
+      xa = x0;
+      xb = x0+l0;
+      rho[mod(bound_left,n_g)] += general_xg(nl, nr, n0, l0, xg, x0, xa, xb);
+      rho[mod(bound_left+1,n_g)] += general_xgp1(nl, nr, n0, l0, xg, x0, xa, xb);
+    }
+    else {
+      // Left end
+      xg = bound_left;
+      xa = x0;
+      xb = bound_left+1;
+      rho[mod(bound_left,n_g)] += left_end_xg(nl, nr, n0, l0, xg, x0, xa, xb);
+      rho[mod(bound_left+1,n_g)] += left_end_xgp1(nl, nr, n0, l0, xg, x0, xa, xb);
+      // Pieces connecting two gridpoints
+      for (int cell = (bound_left+1); cell < (bound_right-1); cell++) {
+	xg = cell;
+	xa = cell;
+	xb = cell+1;
+	rho[mod(cell,n_g)] += cover_xg(nl, nr, n0, l0, xg, x0, xa, xb);
+	rho[mod(cell+1,n_g)] += cover_xgp1(nl, nr, n0, l0, xg, x0, xa, xb);
+      }
+      // Right end
+      xg = bound_right-1;
+      xa = bound_right-1;
+      xb = x0+l0;
+      rho[mod(bound_right-1,n_g)] += right_end_xg(nl, nr, n0, l0, xg, x0, xa, xb);
+      rho[mod(bound_right,n_g)] += right_end_xgp1(nl, nr, n0, l0, xg, x0, xa, xb);
+    }
   }
   return;
 }
@@ -1316,10 +1343,39 @@ void ParticleSpecies::calculate_segment_density(MPI_Comm COMM)
   density_old.resize(n_p+2);
 
   for (int i = 0; i < n_p; i++) {
-    density[i+1] = charge[i] / fabs(x[i+1]-x[i]);
-    density_old[i+1] = charge[i] / fabs(x_old[i+1]-x_old[i]);    
-  }
+    if (fabs(x[i+1]-x[i]) == 0.0) {
+      std::cout << "zero at rank " << my_rank << std::endl;
+      density[i+1] = 0.0;
+    } else {
+      density[i+1] = charge[i] / fabs(x[i+1]-x[i]);
+      
+      if (std::isinf(density[i+1])) {
+	std::cout << "INFINITY" << std::endl;
+	density[i+1] = 0.0;
+      }
+      if (std::isnan(density[i+1])) {
+	std::cout << "NAN" << std::endl;
+      }
+      
+    }
+    
+    if (fabs(x_old[i+1]-x_old[i]) == 0.0) {
+      std::cout << "zero at rank " << my_rank << std::endl;
+      density_old[i+1] = 0.0;
+    } else{
+      density_old[i+1] = charge[i] / fabs(x_old[i+1]-x_old[i]);    
 
+      if (std::isinf(density_old[i+1])) {
+	std::cout << "INFINITY" << std::endl;
+	density_old[i+1] = 0.0;
+      }
+      if (std::isnan(density_old[i+1])) {
+	std::cout << "NAN" << std::endl;
+      }
+      
+    }
+  }
+  
   dest = mod(my_rank+1, num_procs);
   source = mod(my_rank-1, num_procs);
 
