@@ -4,7 +4,7 @@
 #include <sstream>
 #include <fstream>
 #include <iostream>
-#include <algorithm> 
+#include <algorithm>
 
 #include "mpi.h"
 
@@ -719,8 +719,18 @@ void ParticleSpecies::deposit_j_x_sic_higher_order(std::vector<double> &j_x)
     right_max = ceil(right_max);
     
     // Initial line segment
-    deposit_charge_to_left_segment_higher_order(j_x, x_old[i], x_old[i+1], (charge[i] * (dx / dt)), n_g, dx, right_max, density_old[(i+1)-1], density_old[(i+1)+1]);
-    deposit_charge_to_left_segment_higher_order(j_x, x[i], x[i+1], (-1.0) * (charge[i] * (dx / dt)), n_g, dx, right_max, density[(i+1)-1], density[(i+1)+1]);
+    // HYBRID DEBUG
+    if (fabs(x[i+1]-x[i])/dx > 0.001) {
+      deposit_charge_to_left_segment_higher_order(j_x, x[i], x[i+1], (-1.0) * (charge[i] * (dx / dt)), n_g, dx, right_max, density[(i+1)-1], density[(i+1)+1]);
+    } else {
+      deposit_charge_to_left_segment_linear(j_x, x[i], x[i+1], (-1.0) * (charge[i] * (dx / dt)), n_g, dx, right_max);
+    }
+    if (fabs(x_old[i+1]-x_old[i])/dx > 0.001) {
+      deposit_charge_to_left_segment_higher_order(j_x, x_old[i], x_old[i+1], (charge[i] * (dx / dt)), n_g, dx, right_max, density_old[(i+1)-1], density_old[(i+1)+1]);
+    } else {
+      deposit_charge_to_left_segment_linear(j_x, x_old[i], x_old[i+1], (charge[i] * (dx / dt)), n_g, dx, right_max);
+    }
+
   }
   return;
 }
@@ -728,7 +738,12 @@ void ParticleSpecies::deposit_j_x_sic_higher_order(std::vector<double> &j_x)
 void ParticleSpecies::deposit_rho_sic_higher_order(std::vector<double> &rho)
 {
   for (int i = 0; i < n_p; i++) {
-    deposit_rho_segment_higher_order(rho, x[i], x[i+1], charge[i], n_g, dx, density[(i+1)-1], density[(i+1)+1]);
+    // HYBRID DEBUG
+    if (fabs(x[i+1]-x[i])/dx > 0.001) {
+      deposit_rho_segment_higher_order(rho, x[i], x[i+1], charge[i], n_g, dx, density[(i+1)-1], density[(i+1)+1]);
+    } else {
+      deposit_rho_sic_1_segment(rho, x[i], x[i+1], charge[i], n_g, dx);
+    }
   }
   return;
 }
@@ -1346,8 +1361,8 @@ void ParticleSpecies::calculate_segment_density(MPI_Comm COMM)
     if (fabs(x[i+1]-x[i]) == 0.0) {
       std::cout << "zero at rank " << my_rank << std::endl;
       density[i+1] = 0.0;
-    } else {
-      density[i+1] = charge[i] / fabs(x[i+1]-x[i]);
+    } else{
+      density[i+1] = charge[i] / fabs(x[i+1]-x[i]);    
       
       if (std::isinf(density[i+1])) {
 	std::cout << "INFINITY" << std::endl;
@@ -1358,13 +1373,12 @@ void ParticleSpecies::calculate_segment_density(MPI_Comm COMM)
       }
       
     }
-    
     if (fabs(x_old[i+1]-x_old[i]) == 0.0) {
       std::cout << "zero at rank " << my_rank << std::endl;
       density_old[i+1] = 0.0;
     } else{
       density_old[i+1] = charge[i] / fabs(x_old[i+1]-x_old[i]);    
-
+      
       if (std::isinf(density_old[i+1])) {
 	std::cout << "INFINITY" << std::endl;
 	density_old[i+1] = 0.0;
@@ -1374,6 +1388,7 @@ void ParticleSpecies::calculate_segment_density(MPI_Comm COMM)
       }
       
     }
+
   }
   
   dest = mod(my_rank+1, num_procs);
