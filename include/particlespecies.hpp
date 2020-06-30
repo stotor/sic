@@ -79,11 +79,13 @@ public:
   void deposit_j_y_pic_1(std::vector<double> &j_y);
   void deposit_j_y_sic_0(std::vector<double> &j_y);
   void deposit_j_y_sic_1(std::vector<double> &j_y);
+  void deposit_j_y_sic_higher_order(std::vector<double> &j_y);  
 
   void deposit_j_z_pic_0(std::vector<double> &j_z);
   void deposit_j_z_pic_1(std::vector<double> &j_z);
   void deposit_j_z_sic_0(std::vector<double> &j_z);
   void deposit_j_z_sic_1(std::vector<double> &j_z);
+  void deposit_j_z_sic_higher_order(std::vector<double> &j_z);  
 
   void write_phase(int species_number, int t, int my_rank);
   void write_particle_diagnostics(int n_t, int my_rank, MPI_Comm COMM);

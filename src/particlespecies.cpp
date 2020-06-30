@@ -11,6 +11,9 @@
 #include "particlespecies.hpp"
 #include "utilities.hpp"
 
+// Hybrid debug
+#define CUTOFF 0.0
+
 int get_nearest_gridpoint(double x)
 {
   int nearest_gridpoint;
@@ -512,6 +515,16 @@ void ParticleSpecies::deposit_j_x_sic_1(std::vector<double> &j_x)
 
 // Higher order routines below
 
+double full_xg(double nl, double nr, double n0, double l0, int xg, double  x0, double xa, double xb)
+{
+  return  l0*n0*((1.0-l0/3.0-x0+xg)-l0*nr/(3.0*(nl+nr)));
+}
+
+double full_xgp1(double nl, double nr, double n0, double l0, int xg, double x0, double xa, double xb)
+{
+  return  l0*n0*(l0+l0*nr/(nl+nr)+3.0*(x0-xg))/3.0;
+}
+
 double general_xg(double nl, double nr, double n0, double l0, int xg, double  x0, double xa, double xb)
 {
   return n0*(xa-xb)/(3.0*l0*(nl+nr))*(3*l0*nl*(-2.0+xa+xb-2.0*xg)+(nl-nr)*(3.0*(xa+xb)-2.0*(xa*xa+xa*xb+xb*xb)+3.0*x0*(-2.0+xa+xb-2.0*xg)+3.0*(xa+xb)*xg));
@@ -556,6 +569,57 @@ double q_unweighted(double nl, double nr, double n0, double l0, double x0, doubl
 {
   return (n0*(-2.0*l0*nl-(nl-nr)*(2*x0-xa-xb))*(xa-xb))/(l0*(nl+nr));
 }
+
+double full_j_t_xg(double nl, double nr, double vl, double vr, double n0, double l0, int xg, double  x0, double xa, double xb)
+{
+  return l0*n0*(-l0*(nl*(vl+vr)+nr*(vl+3.0*vr))-2.0*(nl*(2.0*vl+vr)+nr*(vl+2.0*vr))*(-1.0+x0-xg))/(6.0*(nl+nr));
+}
+
+double full_j_t_xgp1(double nl, double nr, double vl, double vr, double n0, double l0, int xg, double x0, double xa, double xb)
+{
+  return l0*n0*(l0*(nl+nr)*vl+l0*(nl+3.0*nr)*vr+2.0*(nl*(2.0*vl+vr)+nr*(vl+2.0*vr))*(x0-xg))/(6.0*(nl+nr));
+}
+
+double cover_j_t_xg(double nl, double nr, double vl, double vr, double n0, double l0, int xg, double x0, double xa, double xb)
+{      
+  return n0/(6.0*l0*l0*(nl+nr))*(nr*(vr+2.0*vr*(-2.0+3.0*x0-3.0*xg)*(x0-xg)+
+	   vl*(-1.0+4.0*x0-6.0*pow(x0-xg,2)-4.0*xg+l0*(2.0-6.0*x0+6.0*xg)))+ 
+	   nl*(vl*(1.0+6.0*l0*l0-4.0*x0+4.0*l0*(-1.0+3.0*x0-3.0*xg)+6.0*pow(x0-xg,2)+4.0*xg)+
+	   vr*(-1.0+4.0*x0-6.0*pow(x0-xg,2)-4.0*xg+l0*(2.0-6.0*x0+6.0*xg))));
+}
+
+double cover_j_t_xgp1(double nl, double nr, double vl, double vr, double n0, double l0, int xg, double x0, double xa, double xb)
+{      
+  return n0/(6.0*l0*l0*(nl+nr))*(3.0*nr*vr+2.0*nr*vr*(-4.0+3.0*x0-3.0*xg)*(x0-xg)+
+	   nl*vl*(3.0+6.0*l0*l0-8.0*x0+4.0*l0*(-2.0+3.0*x0-3.0*xg)+6.0*pow(x0-xg,2)+8.0*xg)+ 
+	   nr*vl*(-3.0+8.0*x0-6.0*pow(x0-xg,2)-8.0*xg+l0*(4.0-6.0*x0+6.0*xg))+ 
+	   nl*vr*(-3.0+8.0*x0-6.0*pow(x0-xg,2)-8.0*xg+l0*(4.0-6.0*x0+6.0*xg)));
+}
+
+double left_end_j_t_xg(double nl, double nr, double vl, double vr, double n0, double l0, int xg, double x0, double xa, double xb)
+{
+  return n0*pow(1.0-x0+xg,2)*(-1.0*nr*(-1.0+x0-xg)*(vl*(-1.0+2.0*l0+x0-xg)+ 
+           vr*(1.0-x0+xg))+nl*(-1.0*vr*(-1.0+x0-xg)*(-1.0+2.0*l0+x0-xg)+
+           vl*(6.0*l0*l0+4.0*l0*(-1.0+x0-xg)+pow(1.0-x0+xg,2))))/(6.0*l0*l0*(nl+nr));
+}
+
+double left_end_j_t_xgp1(double nl, double nr, double vl, double vr, double n0, double l0, int xg, double x0, double xa, double xb)
+{
+  return n0/(6.0*l0*l0*(nl+nr))*(nr*(2.0*l0*vl*(2.0+x0-xg)+vl*(-1.0+x0-xg)*(3.0+x0-xg)-vr*(-1.0+x0-xg)*(3.0+x0-xg))*pow(1.0-x0+xg,2)-
+           nl*(-1.0+x0-xg)*(-vr*(2.0*l0*(2.0+x0-xg)+(-1.0+x0-xg)*(3.0+x0-xg))*(-1.0+x0-xg)+vl*(6.0*l0*l0*(1.0+x0-xg)+4.0*l0*(-1.0+x0-xg)*(2.0+x0-xg)+(3.0+x0-xg)*pow(1-x0+xg,2))));
+}
+
+double right_end_j_t_xg(double nl, double nr, double vl, double vr, double n0, double l0, int xg, double x0, double xa, double xb)
+{
+  return n0/(6.0*l0*l0*(nl+nr))*(-pow(l0,4)*(nl*(vl+vr)+nr*(vl+3.0*vr))-2.0*pow(l0,3)*(nl*(2.0*vl+vr)+nr*(vl+2.0*vr))*(-1.0+x0-xg)-
+				  6.0*l0*l0*nl*vl*(-2.0+x0-xg)*(x0-xg) -2.0*l0*(2.0*nl*vl-nr*vl-nl*vr)*(-3.0+x0-xg)*pow(x0-xg,2) -(nl-nr)*(vl-vr)*(-4.0+x0-xg)*pow(x0-xg,3));
+}
+
+double right_end_j_t_xgp1(double nl, double nr, double vl, double vr, double n0, double l0, int xg, double x0, double xa, double xb)
+{
+  return n0*(l0*l0*(nl*(vl+vr)+nr*(vl+3.0*vr))+2.0*l0*(nl*vl-nr*vr)*(x0-xg)+(nl-nr)*(vl-vr)*pow(x0-xg,2))*pow(l0+x0-xg,2)/(6.0*l0*l0*(nl+nr));
+}
+
 		    
 void deposit_charge_to_left_segment_higher_order(std::vector<double> &j_x,
 						 double x_tracer_a, 
@@ -604,7 +668,7 @@ void deposit_charge_to_left_segment_higher_order(std::vector<double> &j_x,
 
     if (bound_right == (bound_left + 1)) {
       xg = bound_left;
-      j_x[mod(bound_left,n_g)] += general_xg(nl, nr, n0, l0, xg, x0, x0, x0+l0);
+      j_x[mod(bound_left,n_g)] += full_xg(nl, nr, n0, l0, xg, x0, x0, x0+l0);
     }
     else {
 
@@ -652,7 +716,6 @@ void deposit_rho_segment_higher_order(std::vector<double> &rho,
   bound_left = floor(left);
   bound_right = ceil(right);
 
-
   // If tracers are between two gridpoints
   if (l0 == 0.0) {
     rho[mod(bound_left,n_g)] += charge * (bound_right - left);
@@ -679,8 +742,8 @@ void deposit_rho_segment_higher_order(std::vector<double> &rho,
       xg = bound_left;
       xa = x0;
       xb = x0+l0;
-      rho[mod(bound_left,n_g)] += general_xg(nl, nr, n0, l0, xg, x0, xa, xb);
-      rho[mod(bound_left+1,n_g)] += general_xgp1(nl, nr, n0, l0, xg, x0, xa, xb);
+      rho[mod(bound_left,n_g)] += full_xg(nl, nr, n0, l0, xg, x0, xa, xb);
+      rho[mod(bound_left+1,n_g)] += full_xgp1(nl, nr, n0, l0, xg, x0, xa, xb);
     }
     else {
       // Left end
@@ -718,14 +781,13 @@ void ParticleSpecies::deposit_j_x_sic_higher_order(std::vector<double> &j_x)
     right_max = right_max / dx;
     right_max = ceil(right_max);
     
-    // Initial line segment
     // HYBRID DEBUG
-    if (fabs(x[i+1]-x[i])/dx > 0.001) {
+    if (fabs(x[i+1]-x[i])/dx > CUTOFF) {
       deposit_charge_to_left_segment_higher_order(j_x, x[i], x[i+1], (-1.0) * (charge[i] * (dx / dt)), n_g, dx, right_max, density[(i+1)-1], density[(i+1)+1]);
     } else {
       deposit_charge_to_left_segment_linear(j_x, x[i], x[i+1], (-1.0) * (charge[i] * (dx / dt)), n_g, dx, right_max);
     }
-    if (fabs(x_old[i+1]-x_old[i])/dx > 0.001) {
+    if (fabs(x_old[i+1]-x_old[i])/dx > CUTOFF) {
       deposit_charge_to_left_segment_higher_order(j_x, x_old[i], x_old[i+1], (charge[i] * (dx / dt)), n_g, dx, right_max, density_old[(i+1)-1], density_old[(i+1)+1]);
     } else {
       deposit_charge_to_left_segment_linear(j_x, x_old[i], x_old[i+1], (charge[i] * (dx / dt)), n_g, dx, right_max);
@@ -739,7 +801,7 @@ void ParticleSpecies::deposit_rho_sic_higher_order(std::vector<double> &rho)
 {
   for (int i = 0; i < n_p; i++) {
     // HYBRID DEBUG
-    if (fabs(x[i+1]-x[i])/dx > 0.001) {
+    if (fabs(x[i+1]-x[i])/dx > CUTOFF) {
       deposit_rho_segment_higher_order(rho, x[i], x[i+1], charge[i], n_g, dx, density[(i+1)-1], density[(i+1)+1]);
     } else {
       deposit_rho_sic_1_segment(rho, x[i], x[i+1], charge[i], n_g, dx);
@@ -1077,6 +1139,137 @@ void ParticleSpecies::deposit_j_z_sic_1(std::vector<double> &j_z)
       v_z_right = u_z[i] / sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0) + pow(u_z[i], 2.0));
     }
     deposit_j_t_segment_linear(j_z, left, right, v_z_left, v_z_right, charge[i], n_g, dx);
+  }
+  return;
+}
+
+
+void deposit_j_t_segment_higher_order(std::vector<double> &j_t,
+				      double x_tracer_a, 
+				      double x_tracer_b,
+				      double charge,
+				      int n_g,
+				      double dx,
+				      double nl,
+				      double nr,
+				      double vl,
+				      double vr)
+{
+  double left, right, l0, xg, xa, xb, x0, n0, v_ave;
+  int bound_left, bound_right;
+  left = fmin(x_tracer_a, x_tracer_b) / dx;
+  right = fmax(x_tracer_a, x_tracer_b) / dx;
+  x0 = left;
+  l0 = right - left;
+  bound_left = floor(left);
+  bound_right = ceil(right);
+
+  // If tracers are between two gridpoints
+  if (l0 == 0.0) {
+    v_ave = (vl + vr) / 2.0;
+    j_t[mod(bound_left,n_g)] += charge * v_ave * (bound_right - left);
+    j_t[mod(bound_left+1,n_g)] += charge * v_ave * (1.0 - (bound_right - left));
+  } else {
+    n0 = charge / l0;
+
+    if (left == x_tracer_b / dx) {
+      std::swap(nl, nr);
+      std::swap(vl, vr);
+    }
+    
+    if (nl == 0.0 && nr == 0.0) {
+      nl = 1.0;
+      nr = 1.0;
+    } else if (nl == 0.0) {
+      nl = 1.0;
+      nr = 0.0;
+    } else if (nr == 0.0) {
+      nl = 0.0;
+      nr = 1.0;
+    }
+    
+    if (bound_right == (bound_left + 1)) {
+      xg = bound_left;
+      xa = x0;
+      xb = x0+l0;
+      j_t[mod(bound_left,n_g)] += full_j_t_xg(nl, nr, vl, vr, n0, l0, xg, x0, xa, xb);
+      j_t[mod(bound_left+1,n_g)] += full_j_t_xgp1(nl, nr, vl, vr, n0, l0, xg, x0, xa, xb);
+    }
+    else {
+      // Left end
+      xg = bound_left;
+      xa = x0;
+      xb = bound_left+1;
+      j_t[mod(bound_left,n_g)] += left_end_j_t_xg(nl, nr, vl, vr, n0, l0, xg, x0, xa, xb);
+      j_t[mod(bound_left+1,n_g)] += left_end_j_t_xgp1(nl, nr, vl, vr, n0, l0, xg, x0, xa, xb);
+      // Pieces connecting two gridpoints
+      for (int cell = (bound_left+1); cell < (bound_right-1); cell++) {
+	xg = cell;
+	xa = cell;
+	xb = cell+1;
+	j_t[mod(bound_left,n_g)] += cover_j_t_xg(nl, nr, vl, vr, n0, l0, xg, x0, xa, xb);
+	j_t[mod(bound_left+1,n_g)] += cover_j_t_xgp1(nl, nr, vl, vr, n0, l0, xg, x0, xa, xb);
+      }
+      // Right end
+      xg = bound_right-1;
+      xa = bound_right-1;
+      xb = x0+l0;
+      j_t[mod(bound_right-1,n_g)] += right_end_xg(nl, nr, n0, l0, xg, x0, xa, xb);
+      j_t[mod(bound_right,n_g)] += right_end_xgp1(nl, nr, n0, l0, xg, x0, xa, xb);
+    }
+  }
+  return;
+}
+
+
+void ParticleSpecies::deposit_j_y_sic_higher_order(std::vector<double> &j_y)
+{
+  double xl, xr, vl, vr, nl, nr;
+  for (int i = 0; i < n_p; i++) {
+    nl = density[(i+1)-1];
+    nr = density[(i+1)+1];
+    xl = (x_old[i] + x[i]) / 2.0;
+    xr = (x_old[i+1] + x[i+1]) / 2.0;
+    vl = u_y[i] / sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0) + pow(u_z[i], 2.0));
+    vr = u_y[i+1] / sqrt(1.0 + pow(u_x[i+1], 2.0) + pow(u_y[i+1], 2.0) + pow(u_z[i+1], 2.0));
+
+    // Hybrid debug
+    if (fabs(xr-xl) > CUTOFF) {
+      deposit_j_t_segment_higher_order(j_y, xl, xr, charge[i], n_g, dx, nl, nr, vl, vr);
+    } else {
+      if (xl>xr) {
+	std::swap(xl, xr);
+	std::swap(nl, nr);
+	std::swap(vl, vr);
+      }
+      deposit_j_t_segment_linear(j_y, xl, xr, vl, vr, charge[i], n_g, dx);
+    }
+  }
+  return;
+}
+
+void ParticleSpecies::deposit_j_z_sic_higher_order(std::vector<double> &j_z)
+{
+  double xl, xr, vl, vr, nl, nr;
+  for (int i = 0; i < n_p; i++) {
+    nl = density[(i+1)-1];
+    nr = density[(i+1)+1];
+    xl = (x_old[i] + x[i]) / 2.0;
+    xr = (x_old[i+1] + x[i+1]) / 2.0;
+    vl = u_z[i] / sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0) + pow(u_z[i], 2.0));
+    vr = u_z[i+1] / sqrt(1.0 + pow(u_x[i+1], 2.0) + pow(u_y[i+1], 2.0) + pow(u_z[i+1], 2.0));
+    
+    // Hybrid debug
+    if (fabs(xr-xl) > CUTOFF) {
+      deposit_j_t_segment_higher_order(j_z, xl, xr, charge[i], n_g, dx, nl, nr, vl, vr);
+    } else {
+      if (xl>xr) {
+	std::swap(xl, xr);
+	std::swap(nl, nr);
+	std::swap(vl, vr);
+      }
+      deposit_j_t_segment_linear(j_z, xl, xr, vl, vr, charge[i], n_g, dx);
+    }
   }
   return;
 }
