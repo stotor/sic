@@ -34,7 +34,7 @@ public:
 
   std::vector<double> x, u_x, u_y, u_z, x_old, lagrangian_id,
     energy_history, momentum_x_history, momentum_y_history, momentum_z_history,
-    n_p_history, density, density_old;
+    n_p_history, density, density_old, density_tavg;
 
   double rqm; // Reciprocal charge to mass ratio
   std::vector<double> charge; // Particle charge divided by grid spacing

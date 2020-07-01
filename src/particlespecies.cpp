@@ -1208,13 +1208,12 @@ void ParticleSpecies::deposit_j_y_sic_higher_order(std::vector<double> &j_y)
 {
   double xl, xr, vl, vr, nl, nr;
   for (int i = 0; i < n_p; i++) {
-    nl = density[(i+1)-1];
-    nr = density[(i+1)+1];
     xl = (x_old[i] + x[i]) / 2.0;
     xr = (x_old[i+1] + x[i+1]) / 2.0;
     vl = u_y[i] / sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0) + pow(u_z[i], 2.0));
     vr = u_y[i+1] / sqrt(1.0 + pow(u_x[i+1], 2.0) + pow(u_y[i+1], 2.0) + pow(u_z[i+1], 2.0));
-
+    nl = density_tavg[(i+1)-1];
+    nr = density_tavg[(i+1)+1];
     deposit_j_t_segment_higher_order(j_y, xl, xr, charge[i], n_g, dx, nl, nr, vl, vr);
   }
   return;
@@ -1224,13 +1223,12 @@ void ParticleSpecies::deposit_j_z_sic_higher_order(std::vector<double> &j_z)
 {
   double xl, xr, vl, vr, nl, nr;
   for (int i = 0; i < n_p; i++) {
-    nl = density[(i+1)-1];
-    nr = density[(i+1)+1];
     xl = (x_old[i] + x[i]) / 2.0;
     xr = (x_old[i+1] + x[i+1]) / 2.0;
     vl = u_z[i] / sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0) + pow(u_z[i], 2.0));
     vr = u_z[i+1] / sqrt(1.0 + pow(u_x[i+1], 2.0) + pow(u_y[i+1], 2.0) + pow(u_z[i+1], 2.0));
-    
+    nl = density_tavg[(i+1)-1];
+    nr = density_tavg[(i+1)+1];
     deposit_j_t_segment_higher_order(j_z, xl, xr, charge[i], n_g, dx, nl, nr, vl, vr);
   }
   return;
@@ -1511,39 +1509,23 @@ void ParticleSpecies::calculate_segment_density(MPI_Comm COMM)
 
   density.resize(n_p+2);
   density_old.resize(n_p+2);
+  density_tavg.resize(n_p+2);  
 
   for (int i = 0; i < n_p; i++) {
-    if (fabs(x[i+1]-x[i]) == 0.0) {
-      std::cout << "zero at rank " << my_rank << std::endl;
+    density[i+1] = charge[i] / fabs(x[i+1]-x[i]);
+    if (fabs(x[i+1]-x[i]) == 0.0 or std::isinf(density[i+1])) {
       density[i+1] = 0.0;
-    } else{
-      density[i+1] = charge[i] / fabs(x[i+1]-x[i]);    
-      
-      if (std::isinf(density[i+1])) {
-	std::cout << "INFINITY" << std::endl;
-	density[i+1] = 0.0;
-      }
-      if (std::isnan(density[i+1])) {
-	std::cout << "NAN" << std::endl;
-      }
-      
     }
-    if (fabs(x_old[i+1]-x_old[i]) == 0.0) {
-      std::cout << "zero at rank " << my_rank << std::endl;
+    
+    density_old[i+1] = charge[i] / fabs(x_old[i+1]-x_old[i]);
+    if (fabs(x_old[i+1]-x_old[i]) == 0.0 or std::isinf(density_old[i+1])) {
       density_old[i+1] = 0.0;
-    } else{
-      density_old[i+1] = charge[i] / fabs(x_old[i+1]-x_old[i]);    
-      
-      if (std::isinf(density_old[i+1])) {
-	std::cout << "INFINITY" << std::endl;
-	density_old[i+1] = 0.0;
-      }
-      if (std::isnan(density_old[i+1])) {
-	std::cout << "NAN" << std::endl;
-      }
-      
     }
 
+    density_tavg[i+1] = 2.0 * charge[i] / fabs(x[i+1]+x_old[i+1]-x[i]-x_old[i]);
+    if (fabs(x[i+1]+x_old[i+1]-x[i]-x_old[i]) == 0.0 or std::isinf(density_tavg[i+1])) {
+      density_tavg[i+1] = 0.0;
+    }
   }
   
   dest = mod(my_rank+1, num_procs);
@@ -1555,6 +1537,9 @@ void ParticleSpecies::calculate_segment_density(MPI_Comm COMM)
   MPI_Sendrecv(&density_old[n_p], 1, MPI_DOUBLE, dest, tag,
 	       &density_old[0], 1, MPI_DOUBLE,
 	       source, tag, COMM, &status);
+  MPI_Sendrecv(&density_tavg[n_p], 1, MPI_DOUBLE, dest, tag,
+	       &density_tavg[0], 1, MPI_DOUBLE,
+	       source, tag, COMM, &status);
 
   dest = mod(my_rank-1, num_procs);
   source = mod(my_rank+1, num_procs);
@@ -1564,6 +1549,9 @@ void ParticleSpecies::calculate_segment_density(MPI_Comm COMM)
 	       source, tag, COMM, &status);
   MPI_Sendrecv(&density_old[1], 1, MPI_DOUBLE, dest, tag,
 	       &density_old[n_p+1], 1, MPI_DOUBLE,
+	       source, tag, COMM, &status);  
+  MPI_Sendrecv(&density_tavg[1], 1, MPI_DOUBLE, dest, tag,
+	       &density_tavg[n_p+1], 1, MPI_DOUBLE,
 	       source, tag, COMM, &status);  
 
   
