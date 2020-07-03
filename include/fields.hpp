@@ -43,7 +43,8 @@ void initialize_transverse_em_fields(std::vector<double> &e_y,
 				     std::vector<double> &b_y, 
 				     std::vector<double> &b_z,
 				     int n_g, 
-				     double dx);
+				     double dx,
+				     int simulation_type);
 void advance_b_y(std::vector<double> &b_y, std::vector<double> &e_z, double dt, 
 		 double dx, int n_g);
 void advance_b_z(std::vector<double> &b_z, std::vector<double> &e_y, double dt, 

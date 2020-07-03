@@ -46,7 +46,8 @@ public:
 			  long long n_ppc,
 			  int my_rank,
 			  int num_procs,
-			  int method);
+			  int method,
+			  int simulation_type);
   void advance_x();
   void split_segment_linear(int i);
   void split_segment_lagrange_3(int i);

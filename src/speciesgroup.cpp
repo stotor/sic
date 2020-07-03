@@ -131,18 +131,25 @@ void SpeciesGroup::advance_velocity(std::vector<double> &e_x,
 void SpeciesGroup::initialize_species(std::vector<long long> n_ppc,
 				      int my_rank,
 				      int num_procs,
-				      std::vector<int> method)
+				      std::vector<int> method,
+				      int simulation_type)
 {
   for (int i = 0; i < n_species; i++) {
-    species[i].initialize_species(i, n_ppc[i], my_rank, num_procs, method[i]);
+    species[i].initialize_species(i, n_ppc[i], my_rank, num_procs, method[i], simulation_type);
   }
   return;
 }
 
-void SpeciesGroup::deposit_rho(std::vector<double> &rho, int my_rank, MPI_Comm COMM)
+void SpeciesGroup::deposit_rho(std::vector<double> &rho, double rho_bg, int my_rank, MPI_Comm COMM)
 {
-  for (int i = 0; i < n_g; i++) {
-    rho[i] = 0.0;
+  if (my_rank==0) {
+    for (int i = 0; i < n_g; i++) {
+      rho[i] = rho_bg;
+    }
+  } else {
+    for (int i = 0; i < n_g; i++) {
+      rho[i] = 0.0;
+    }
   }
   
   for (int i = 0; i < n_species; i++) {

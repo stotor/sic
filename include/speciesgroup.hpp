@@ -27,7 +27,7 @@ public:
   std::vector<ParticleSpecies> species;
 
   // Methods
-  void deposit_rho(std::vector<double> &rho, int my_rank, MPI_Comm COMM);
+  void deposit_rho(std::vector<double> &rho, double rho_bg, int my_rank, MPI_Comm COMM);
   void deposit_j_x(std::vector<double> &j_x, int my_rank, MPI_Comm COMM);
   void deposit_j_y(std::vector<double> &j_y, int my_rank, MPI_Comm COMM);
   void deposit_j_z(std::vector<double> &j_z, int my_rank, MPI_Comm COMM);
@@ -52,7 +52,8 @@ public:
   void initialize_species(std::vector<long long> n_ppc, 
 			  int my_rank,
 			  int num_procs,
-			  std::vector<int> method);
+			  std::vector<int> method,
+			  int simulation_type);
   void communicate_ghost_particles(MPI_Comm COMM);
   void calculate_segment_density(MPI_Comm COMM);  
 };

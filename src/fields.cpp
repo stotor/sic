@@ -33,27 +33,59 @@ void Field::set_field_to_zero()
   return;
 }
 
+void add_weibel_perturbation(std::vector<double> &b_z,
+			     int n_g,
+			     double dx)
+{
+  double k, phase, pi;
+  int mode_max = 64;
+  double amplitude = pow(10.0, -6.0);
+  pi = 4.0 * atan(1.0);
+  srand(0);
+  for (int mode = 1; mode <= mode_max; mode++) {
+    k = 2.0 * pi * mode / (n_g * dx);
+    phase = 2.0 * pi * random_double();
+    for (int i = 0; i < n_g; i++) {
+      b_z[i] += amplitude * cos(k * (i + 0.5) * dx + phase);
+    }
+  }
+  return;
+}
+
 void initialize_transverse_em_fields(std::vector<double> &e_y,
 				     std::vector<double> &e_z,
 				     std::vector<double> &b_x,
 				     std::vector<double> &b_y,
 				     std::vector<double> &b_z,
 				     int n_g, 
-				     double dx)
+				     double dx,
+				     int simulation_type)
 {
-  //  int mode = 1;
-  //  double k = 2.0 * PI * mode / (n_g * dx);
-  for (int i = 0; i < n_g; i++) {
-    e_y[i] = 2.0 * 0.40214 * cos(0.44526860656 * i * dx);
-    e_z[i] = 0.0;
+  if (simulation_type == 0 or simulation_type == 1) {
+    for (int i = 0; i < n_g; i++) {
+      e_y[i] = 0.0;
+      e_z[i] = 0.0;
     
-    b_x[i] = 1.7;
-    b_y[i] = 2.0 * 0.80428 * sin(0.44526860656 * (i + 0.5) * dx);
-    b_z[i] = 0.0;
+      b_x[i] = 0.0;
+      b_y[i] = 0.0;
+      b_z[i] = 0.0;
+    }
+
+    if (simulation_type == 1) {
+      add_weibel_perturbation(b_z, n_g, dx);
+    }
+  } else if (simulation_type == 2) {
+    for (int i = 0; i < n_g; i++) {
+      e_y[i] = 2.0 * 0.40214 * cos(0.44526860656 * i * dx);
+      e_z[i] = 0.0;
+    
+      b_x[i] = 1.7;
+      b_y[i] = 2.0 * 0.80428 * sin(0.44526860656 * (i + 0.5) * dx);
+      b_z[i] = 0.0;
+    }
   }
   return;
 }
-
 
 void initialize_e_x(std::vector<double> &rho, std::vector<double> &e_x, 
 		    double dx, int n_g)
@@ -62,13 +94,11 @@ void initialize_e_x(std::vector<double> &rho, std::vector<double> &e_x,
   e_x[0] = 0.0;
   for (int i = 1; i < n_g; i++) {
     e_x[i] = e_x[i-1] + dx * rho[i];
-  }
-
-  // Subtract average field
-  for (int i = 0; i < n_g; i++) {
     e_x_ave = e_x_ave + e_x[i];
   }
+  
   e_x_ave = e_x_ave / double(n_g);
+  
   for (int i = 0; i < n_g; i++) {
     e_x[i] = e_x[i] - e_x_ave;
   }

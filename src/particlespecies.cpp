@@ -55,7 +55,8 @@ void ParticleSpecies::initialize_species(int species_number,
 					 long long n_ppc, 
 					 int my_rank,
 					 int num_procs,
-					 int method)
+					 int method,
+					 int simulation_type)
 {
   this->n_p = (n_ppc * n_g) / num_procs;
   this->n_ppp = n_p;
@@ -67,27 +68,17 @@ void ParticleSpecies::initialize_species(int species_number,
   x.resize(n_p);
   u_x.resize(n_p);
   u_y.resize(n_p);
-  u_z.resize(n_p);    
+  u_z.resize(n_p);  
   x_old.resize(n_p);
   charge.resize(n_p);
-  lagrangian_id.resize(n_p);  
+  lagrangian_id.resize(n_p);
   
   std::stringstream ss;
   ss << "particles_";
   ss << species_number;
   species_name = ss.str();
 
-  //  double k = 2.0 * PI / (n_g * dx);
   double particle_spacing = dx / double(n_ppc);
-
-  std::vector<double> density, rqm_vector;
-  density.push_back(-1.0);
-  density.push_back(1.0);
-  rqm_vector.push_back(-1.0);
-  rqm_vector.push_back(1836.0);
-
-  this->rqm = rqm_vector[species_number];
-  this->method = method;
   
   // Add ghost tracer particles if using line segments
   if ((method==2)||(method==3)||(method==4)) {
@@ -97,23 +88,70 @@ void ParticleSpecies::initialize_species(int species_number,
       u_y.push_back(0.0);
       u_z.push_back(0.0);      
       x.push_back(0.0);
-      x_old.push_back(0);
+      x_old.push_back(0.0);
       lagrangian_id.push_back(0.0);
     }
   }
-  
+
+  std::vector<double> density, rqm_vector, u_x_drift, u_y_drift;
+  double k = 0.0;  
+  double u_x_1 = 0.0;
+
+  if (simulation_type == 0) {
+    // Electrostatic wave
+    density.push_back(-1.0);
+    density.push_back(-1.0);
+    rqm_vector.push_back(-1.0);
+    rqm_vector.push_back(-1.0);
+    u_x_drift.push_back(0.176425);
+    u_x_drift.push_back(-0.176425);
+    u_y_drift.push_back(0.0);
+    u_y_drift.push_back(0.0);
+    
+    k = 10.0 * (2.0 * (4.0*atan(1.0)) / (n_g * dx));
+    u_x_1 = 0.00176425;
+    
+  } else if (simulation_type == 1) {
+    // Weibel
+    density.push_back(-1.0);
+    density.push_back(-1.0);
+    rqm_vector.push_back(-1.0);
+    rqm_vector.push_back(-1.0);
+    u_x_drift.push_back(0.1);
+    u_x_drift.push_back(-0.1);
+    u_y_drift.push_back(0.5);
+    u_y_drift.push_back(-0.5);
+    
+  } else if (simulation_type == 2) {
+    // Whistler heating
+    density.push_back(-1.0);
+    density.push_back(1.0);
+    rqm_vector.push_back(-1.0);
+    rqm_vector.push_back(1836.0);
+    u_x_drift.push_back(0.0);
+    u_x_drift.push_back(0.0);
+    u_y_drift.push_back(0.0);
+    u_y_drift.push_back(0.0);    
+  }
+
+  this->rqm = rqm_vector[species_number];
+  this->method = method;
+
   for (long long i = i_start; i < i_end; i++) {
+    lagrangian_id[i-i_start] = i - i_start;    
     charge[i-i_start] = density[species_number] * (1.0 / n_ppc);
     x[i-i_start] = ((long double) i) * particle_spacing + particle_spacing / 2.0;
     x_old[i-i_start] = ((long double) i) * particle_spacing + particle_spacing / 2.0;
-    u_x[i-i_start] = 0.0;
-    u_y[i-i_start] = 0.0;
-    if (species_number == 0) {
-      u_z[i-i_start] =   (-2.0 * 0.273055) * cos(0.44526860656 * x[i-i_start]);
-    } else {
-      u_z[i-i_start] = 0.0;
+    
+    u_x[i-i_start] = u_x_drift[species_number];    
+    u_y[i-i_start] = u_y_drift[species_number];
+    u_z[i-i_start] = 0.0;
+    
+    if (simulation_type == 0) {
+      u_x[i-i_start] += u_x_1 * sin(k * x[i-i_start]);
+    } else if (simulation_type == 2 and species_number == 0) {
+      u_z[i-i_start] += (-2.0 * 0.273055) * cos(0.44526860656 * x[i-i_start]);
     }
-    lagrangian_id[i-i_start] = i - i_start;
   }
 
   return;
@@ -1196,8 +1234,8 @@ void deposit_j_t_segment_higher_order(std::vector<double> &j_t,
       xg = bound_right-1;
       xa = bound_right-1;
       xb = x0+l0;
-      j_t[mod(bound_right-1,n_g)] += right_end_xg(nl, nr, n0, l0, xg, x0, xa, xb);
-      j_t[mod(bound_right,n_g)] += right_end_xgp1(nl, nr, n0, l0, xg, x0, xa, xb);
+      j_t[mod(bound_right-1,n_g)] += right_end_j_t_xg(nl, nr, vl, vr, n0, l0, xg, x0, xa, xb);
+      j_t[mod(bound_right,n_g)] += right_end_j_t_xgp1(nl, nr, vl, vr, n0, l0, xg, x0, xa, xb);
     }
   }
   return;

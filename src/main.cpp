@@ -75,8 +75,8 @@ int main(int argc, char *argv[])
   method.push_back(-1);
   ss << argv[1];
   ss >> method[1];
-  //  method[0] = method[1];
-  method[0] = 1;
+  method[0] = method[1];
+  //  method[0] = 1;
   
   ss.str(std::string());
   ss.clear();
@@ -85,8 +85,8 @@ int main(int argc, char *argv[])
   n_ppc.push_back(-1);  
   ss << argv[2];
   ss >> n_ppc[1];
-  //  n_ppc[0] = n_ppc[1];
-  n_ppc[0] = 131072;
+  n_ppc[0] = n_ppc[1];
+  //n_ppc[0] = 131072;
 
   double refinement_length;
   if (argc == 4) {
@@ -99,18 +99,32 @@ int main(int argc, char *argv[])
   }
 
   int n_species, n_t, n_g;
-  double dx, dt;
+  double dx, dt, rho_bg;
 
-  // Simulation parameters
-  //  n_t = 5000*2;
-  n_t = 5000;  
-  n_g = 1000/2;
-  dx = 0.014111*2;
-  dt = 0.01411*2;
-  n_species = 2;
+  int simulation_type = 0;
+
+  if (simulation_type==0 or simulation_type==1) {
+    // Weibel and two-stream parameters
+    n_t = 500;
+    n_g = 128;
+    dx = 0.1;
+    dt = 0.09;
+    n_species = 2;
+    rho_bg = 2.0;
+  }
+  else if (simulation_type==2) {
+    // Whistler heating parameters
+    //    n_t = 5000;
+    n_t = 2500;
+    n_g = 1000/2;
+    dx = 0.014111*2;
+    dt = 0.01411*2;
+    n_species = 2;
+    rho_bg = 0.0;
+  }
 
   SpeciesGroup particles(n_species, dt, dx, n_g, center_fields, interp_order);
-  particles.initialize_species(n_ppc, my_rank, num_procs, method);
+  particles.initialize_species(n_ppc, my_rank, num_procs, method, simulation_type);
   
   particles.communicate_ghost_particles(MPI_COMM_WORLD);
   particles.calculate_segment_density(MPI_COMM_WORLD);  
@@ -129,11 +143,11 @@ int main(int argc, char *argv[])
   
   Field rho(n_g, "rho", my_rank);
   
-  particles.deposit_rho(rho.field, my_rank, MPI_COMM_WORLD);
+  particles.deposit_rho(rho.field, rho_bg, my_rank, MPI_COMM_WORLD);
 
   if (my_rank==0) {
     initialize_e_x(rho.field, e_x.field, dx, n_g);
-    initialize_transverse_em_fields(e_y.field, e_z.field, b_x.field, b_y.field, b_z.field, n_g, dx);
+    initialize_transverse_em_fields(e_y.field, e_z.field, b_x.field, b_y.field, b_z.field, n_g, dx, simulation_type);
   }
 
   MPI_Bcast(&e_x.field[0], n_g, MPI_DOUBLE, 0, MPI_COMM_WORLD);
@@ -146,11 +160,10 @@ int main(int argc, char *argv[])
   particles.initial_velocity_deceleration(e_x.field, e_y.field, e_z.field, b_x.field, b_y.field, b_z.field);
 
   for (int t = 0; t < n_t; t++) {
-    particles.deposit_rho(rho.field, my_rank, MPI_COMM_WORLD);
+    particles.deposit_rho(rho.field, rho_bg, my_rank, MPI_COMM_WORLD);
     //    if (t%10==0) {
     //      particles.write_phase(t, my_rank);
     //    }
-
 
     if (my_rank==0) {
       e_x.write_field();
@@ -173,7 +186,6 @@ int main(int argc, char *argv[])
 
     particles.save_x_old();
     particles.advance_x();
-
 
     particles.communicate_ghost_particles(MPI_COMM_WORLD);
     particles.calculate_segment_density(MPI_COMM_WORLD);
