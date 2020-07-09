@@ -61,7 +61,7 @@ void initialize_transverse_em_fields(std::vector<double> &e_y,
 				     double dx,
 				     int simulation_type)
 {
-  if (simulation_type == 0 or simulation_type == 1) {
+  if (simulation_type == -1 or simulation_type == 0 or simulation_type == 1) {
     for (int i = 0; i < n_g; i++) {
       e_y[i] = 0.0;
       e_z[i] = 0.0;

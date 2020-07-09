@@ -49,7 +49,7 @@ public:
 				     std::vector<double> &b_z);
   void write_particle_diagnostics(int n_t, int my_rank, MPI_Comm COMM);
   void write_phase(int t, int my_rank);  
-  void initialize_species(std::vector<long long> n_ppc, 
+  void initialize_species(std::vector<double> n_ppc, 
 			  int my_rank,
 			  int num_procs,
 			  std::vector<int> method,

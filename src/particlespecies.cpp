@@ -52,13 +52,13 @@ double interpolate_field_half_integer(std::vector<double> &field, double x, doub
 }
 
 void ParticleSpecies::initialize_species(int species_number, 
-					 long long n_ppc, 
+					 double n_ppc, 
 					 int my_rank,
 					 int num_procs,
 					 int method,
 					 int simulation_type)
 {
-  this->n_p = (n_ppc * n_g) / num_procs;
+  this->n_p = round((n_ppc * n_g) / num_procs);
   this->n_ppp = n_p;
 
   long long i_start, i_end;
@@ -78,7 +78,7 @@ void ParticleSpecies::initialize_species(int species_number,
   ss << species_number;
   species_name = ss.str();
 
-  double particle_spacing = dx / double(n_ppc);
+  double particle_spacing = dx / n_ppc;
   
   // Add ghost tracer particles if using line segments
   if (method>1) {
@@ -97,8 +97,16 @@ void ParticleSpecies::initialize_species(int species_number,
   double k = 0.0;  
   double u_x_1 = 0.0;
 
-  if (simulation_type == 0) {
+  if (simulation_type == -1) {
     // Electrostatic wave
+    density.push_back(-1.0);
+    rqm_vector.push_back(-1.0);
+    u_x_drift.push_back(0.0);
+    u_y_drift.push_back(0.0);
+    k = (2.0 * (4.0*atan(1.0)) / (n_g * dx));
+    u_x_1 = 0.0025;
+  } else if (simulation_type == 0) {
+    // Two-stream instability
     density.push_back(-1.0);
     density.push_back(-1.0);
     rqm_vector.push_back(-1.0);
@@ -147,7 +155,7 @@ void ParticleSpecies::initialize_species(int species_number,
     u_y[i-i_start] = u_y_drift[species_number];
     u_z[i-i_start] = 0.0;
     
-    if (simulation_type == 0) {
+    if (simulation_type == -1 or simulation_type == 0) {
       u_x[i-i_start] += u_x_1 * sin(k * x[i-i_start]);
     } else if (simulation_type == 2 and species_number == 0) {
       u_z[i-i_start] += (-2.0 * 0.273055) * cos(0.44526860656 * x[i-i_start]);
@@ -939,7 +947,7 @@ void ParticleSpecies::deposit_j_x_sic_higher_order_0(std::vector<double> &j_x)
   for (int i = 0; i < n_p; i++) {
     // Index of right bounding gridpoint
     right_max = fmax(fmax(x_old[i],x_old[i+1]),fmax(x[i],x[i+1]));
-    right_max = right_max / dx;
+    right_max = right_max / dx + 0.5; // account for shift in the calculations below
     right_max = ceil(right_max);
     
     deposit_charge_to_left_segment_higher_order_0(j_x, x[i], x[i+1], (-1.0) * (charge[i] * (dx / dt)), n_g, dx, right_max, density[(i+1)-1], density[(i+1)+1]);

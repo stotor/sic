@@ -43,7 +43,7 @@ public:
 
   // Methods
   void initialize_species(int species_number,
-			  long long n_ppc,
+			  double n_ppc,
 			  int my_rank,
 			  int num_procs,
 			  int method,

@@ -80,7 +80,7 @@ int main(int argc, char *argv[])
   
   ss.str(std::string());
   ss.clear();
-  std::vector<long long> n_ppc;
+  std::vector<double> n_ppc;
   n_ppc.push_back(-1);
   n_ppc.push_back(-1);  
   ss << argv[2];
@@ -101,7 +101,7 @@ int main(int argc, char *argv[])
   int n_species, n_t, n_g;
   double dx, dt, rho_bg;
 
-  int simulation_type = 0;
+  int simulation_type = -1;
 
   if (simulation_type==0 or simulation_type==1) {
     // Weibel and two-stream parameters
@@ -121,6 +121,15 @@ int main(int argc, char *argv[])
     dt = 0.01411*2;
     n_species = 2;
     rho_bg = 0.0;
+  }
+  else if (simulation_type==-1) {
+    // Plasma wave parameters
+    n_t = 500;
+    n_g = 128;
+    dx = 0.1;
+    dt = 0.09;
+    n_species = 1;
+    rho_bg = 1.0;
   }
 
   SpeciesGroup particles(n_species, dt, dx, n_g, center_fields, interp_order);

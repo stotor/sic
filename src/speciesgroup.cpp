@@ -137,7 +137,7 @@ void SpeciesGroup::advance_velocity(std::vector<double> &e_x,
   return;
 }
 
-void SpeciesGroup::initialize_species(std::vector<long long> n_ppc,
+void SpeciesGroup::initialize_species(std::vector<double> n_ppc,
 				      int my_rank,
 				      int num_procs,
 				      std::vector<int> method,
