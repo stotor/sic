@@ -100,6 +100,7 @@ int main(int argc, char *argv[])
 
   int n_species, n_t, n_g;
   double dx, dt, rho_bg;
+  bool gravity = false;
 
   int simulation_type = -1;
 
@@ -124,12 +125,21 @@ int main(int argc, char *argv[])
   }
   else if (simulation_type==-1) {
     // Plasma wave parameters
-    n_t = 500;
-    n_g = 128;
-    dx = 0.1;
-    dt = 0.09;
+    n_t = 500*4;
+    n_g = 128*4;
+    dx = 0.1/4;
+    dt = 0.09/4;
     n_species = 1;
     rho_bg = 1.0;
+  }
+  else if (simulation_type==-2) {
+    // Two-stream one mode
+    n_t = 2000*4;
+    n_g = 128*4;
+    dx = 0.01/4;
+    dt = 0.009/4;
+    n_species = 2;
+    rho_bg = 2.0;
   }
 
   SpeciesGroup particles(n_species, dt, dx, n_g, center_fields, interp_order);
@@ -155,7 +165,7 @@ int main(int argc, char *argv[])
   particles.deposit_rho(rho.field, rho_bg, my_rank, MPI_COMM_WORLD);
 
   if (my_rank==0) {
-    initialize_e_x(rho.field, e_x.field, dx, n_g);
+    initialize_e_x(rho.field, e_x.field, dx, n_g, gravity);
     initialize_transverse_em_fields(e_y.field, e_z.field, b_x.field, b_y.field, b_z.field, n_g, dx, simulation_type);
   }
 
@@ -212,7 +222,7 @@ int main(int argc, char *argv[])
       j_y.write_field();
       j_z.write_field();
       
-      advance_e_x(e_x.field, j_x.field, dt, dx, n_g);
+      advance_e_x(e_x.field, j_x.field, dt, dx, n_g, gravity);
       
       advance_b_z(b_z.field, e_y.field, dt/2.0, dx, n_g);
       advance_e_y(e_y.field, b_z.field, j_y.field, dt, dx, n_g);

@@ -32,7 +32,7 @@ public:
 };
 
 void initialize_e_x(std::vector<double> &rho, std::vector<double> &e_x, 
-		    double dx, int n_g);
+		    double dx, int n_g, bool gravity);
 
 void e_x_poisson_solve(std::vector<double> &rho, std::vector<double> &e_x, 
 		       double dx, int n_g, std::vector<double> &phi);
@@ -50,7 +50,7 @@ void advance_b_y(std::vector<double> &b_y, std::vector<double> &e_z, double dt,
 void advance_b_z(std::vector<double> &b_z, std::vector<double> &e_y, double dt, 
 		 double dx, int n_g);
 void advance_e_x(std::vector<double> &e_x, std::vector<double> &j_x, double dt, 
-		 double dx, int n_g);
+		 double dx, int n_g, bool gravity);
 void advance_e_y(std::vector<double> &e_y, std::vector<double> &b_z, 
 		 std::vector<double> &j_y, double dt, 
 		 double dx, int n_g);

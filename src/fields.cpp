@@ -88,7 +88,7 @@ void initialize_transverse_em_fields(std::vector<double> &e_y,
 }
 
 void initialize_e_x(std::vector<double> &rho, std::vector<double> &e_x, 
-		    double dx, int n_g)
+		    double dx, int n_g, bool gravity)
 {
   double e_x_ave = 0.0;
   e_x[0] = 0.0;
@@ -101,6 +101,11 @@ void initialize_e_x(std::vector<double> &rho, std::vector<double> &e_x,
   
   for (int i = 0; i < n_g; i++) {
     e_x[i] = e_x[i] - e_x_ave;
+  }
+  if (gravity) {
+    for (int i = 0; i < n_g; i++) {
+      e_x[i] = -1.0 * e_x[i];
+    }
   }
 
   return;
@@ -150,10 +155,16 @@ void advance_b_z(std::vector<double> &b_z, std::vector<double> &e_y, double dt,
 }
 
 void advance_e_x(std::vector<double> &e_x, std::vector<double> &j_x, double dt, 
-		 double dx, int n_g)
+		 double dx, int n_g, bool gravity)
 {
-  for (int i = 0; i < n_g; i++) {
-    e_x[i] = e_x[i] - dt * j_x[i];
+  if (gravity) {
+    for (int i = 0; i < n_g; i++) {
+      e_x[i] = e_x[i] + dt * j_x[i];
+    }
+  } else {
+    for (int i = 0; i < n_g; i++) {
+      e_x[i] = e_x[i] - dt * j_x[i];
+    }
   }
   return;
 }

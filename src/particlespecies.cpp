@@ -140,7 +140,21 @@ void ParticleSpecies::initialize_species(int species_number,
     u_x_drift.push_back(0.0);
     u_y_drift.push_back(0.0);
     u_y_drift.push_back(0.0);    
-  }
+  } else if (simulation_type == -2) {
+    // Two-stream instability single mode
+    density.push_back(-1.0);
+    density.push_back(-1.0);
+    rqm_vector.push_back(-1.0);
+    rqm_vector.push_back(-1.0);
+    u_x_drift.push_back(0.176425);
+    u_x_drift.push_back(-0.176425);
+    u_y_drift.push_back(0.0);
+    u_y_drift.push_back(0.0);
+    
+    k = (2.0 * (4.0*atan(1.0)) / (n_g * dx));
+    u_x_1 = 0.00176425;
+ }
+
 
   this->rqm = rqm_vector[species_number];
   this->method = method;
@@ -155,7 +169,7 @@ void ParticleSpecies::initialize_species(int species_number,
     u_y[i-i_start] = u_y_drift[species_number];
     u_z[i-i_start] = 0.0;
     
-    if (simulation_type == -1 or simulation_type == 0) {
+    if (simulation_type == -2 or simulation_type == 0 or simulation_type==-1) {
       u_x[i-i_start] += u_x_1 * sin(k * x[i-i_start]);
     } else if (simulation_type == 2 and species_number == 0) {
       u_z[i-i_start] += (-2.0 * 0.273055) * cos(0.44526860656 * x[i-i_start]);
