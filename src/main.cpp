@@ -102,7 +102,7 @@ int main(int argc, char *argv[])
   double dx, dt, rho_bg;
   bool gravity = false;
 
-  int simulation_type = -1;
+  int simulation_type = 1;
 
   if (simulation_type==0 or simulation_type==1) {
     // Weibel and two-stream parameters
@@ -125,12 +125,13 @@ int main(int argc, char *argv[])
   }
   else if (simulation_type==-1) {
     // Plasma wave parameters
-    n_t = 500*4;
+    n_t = 500*2;
     n_g = 128*4;
     dx = 0.1/4;
     dt = 0.09/4;
     n_species = 1;
     rho_bg = 1.0;
+    gravity = false;
   }
   else if (simulation_type==-2) {
     // Two-stream one mode
@@ -212,7 +213,6 @@ int main(int argc, char *argv[])
       particles.refine_segments(refinement_length);
     }
 
-    // simulation.deposit_current()
     particles.deposit_j_x(j_x.field, my_rank, MPI_COMM_WORLD);
     particles.deposit_j_y(j_y.field, my_rank, MPI_COMM_WORLD);
     particles.deposit_j_z(j_z.field, my_rank, MPI_COMM_WORLD);

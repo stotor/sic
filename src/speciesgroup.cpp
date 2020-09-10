@@ -55,6 +55,9 @@ void SpeciesGroup::deposit_j_x(std::vector<double> &j_x, int my_rank, MPI_Comm C
     else if (species[i].method==5) {
       species[i].deposit_j_x_sic_higher_order_1(j_x);
     }
+    else if (species[i].method==6) {
+      species[i].deposit_j_x_sic_higher_order_center(j_x);
+    }
   }
   sum_array_to_root(&j_x[0], n_g, COMM, my_rank);
   return;
@@ -83,6 +86,9 @@ void SpeciesGroup::deposit_j_y(std::vector<double> &j_y, int my_rank, MPI_Comm C
     else if (species[i].method==5) {
       species[i].deposit_j_y_sic_higher_order_1(j_y);
     }
+    else if (species[i].method==6) {
+      species[i].deposit_j_y_sic_higher_order_center(j_y);
+    }
   }
   sum_array_to_root(&j_y[0], n_g, COMM, my_rank);
   return;
@@ -110,6 +116,9 @@ void SpeciesGroup::deposit_j_z(std::vector<double> &j_z, int my_rank, MPI_Comm C
     }
     else if (species[i].method==5) {
       species[i].deposit_j_z_sic_higher_order_1(j_z);
+    }
+    else if (species[i].method==6) {
+      species[i].deposit_j_z_sic_higher_order_center(j_z);
     }
   }
   sum_array_to_root(&j_z[0], n_g, COMM, my_rank);
@@ -178,6 +187,9 @@ void SpeciesGroup::deposit_rho(std::vector<double> &rho, double rho_bg, int my_r
     }
     else if (species[i].method==5) { 
       species[i].deposit_rho_sic_higher_order_1(rho);
+    }
+    else if (species[i].method==6) { 
+      species[i].deposit_rho_sic_higher_order_center(rho);
     }
   }
   sum_array_to_root(&rho[0], n_g, COMM, my_rank);

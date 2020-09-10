@@ -104,7 +104,8 @@ void ParticleSpecies::initialize_species(int species_number,
     u_x_drift.push_back(0.0);
     u_y_drift.push_back(0.0);
     k = (2.0 * (4.0*atan(1.0)) / (n_g * dx));
-    u_x_1 = 0.0025;
+    //    u_x_1 = 0.0025;
+    u_x_1 = 0.1;
   } else if (simulation_type == 0) {
     // Two-stream instability
     density.push_back(-1.0);
@@ -1004,6 +1005,184 @@ void ParticleSpecies::deposit_rho_sic_higher_order_1(std::vector<double> &rho)
 
 
 // Higher order routines above
+
+double linear_interp(double a, double b, double x0, double l0, double x)
+{
+  return a + (b - a) * (x - x0) / l0;
+}
+
+void deposit_rho_segment_higher_order_center(std::vector<double> &rho,
+					     double x_tracer_a, 
+					     double x_tracer_b,
+					     double charge,
+					     int n_g,
+					     double dx,
+					     double nl,
+					     double nr)
+{
+  double left, right, l0, x0, n0, a, b;
+  int bound_left, bound_right, swap;
+  left = fmin(x_tracer_a, x_tracer_b) / dx;
+  right = fmax(x_tracer_a, x_tracer_b) / dx;
+  x0 = left;
+  l0 = right - left;
+  bound_left = floor(left);
+  bound_right = ceil(right);
+
+  n0 = charge / l0;
+
+  swap = 0;
+  if (left == x_tracer_b / dx) {
+    swap = 1;
+    std::swap(nl, nr);
+  }
+    
+  if (nl == 0.0 && nr == 0.0) {
+    nl = 1.0;
+    nr = 1.0;
+  } else if (nl == 0.0) {
+    nl = 1.0;
+    nr = 0.0;
+  } else if (nr == 0.0) {
+    nl = 0.0;
+    nr = 1.0;
+  }
+
+  a = 2.0 * nl * n0 / (nl + nr);
+  b = 2.0 * nr * n0 / (nl + nr);
+
+  if (bound_left==left) {
+    if (swap == 0) {
+      rho[mod(bound_left,n_g)] += linear_interp(a, b, x0, l0, bound_left);
+    }
+  }
+  for (int cell = (bound_left+1); cell < bound_right; cell++) {
+    rho[mod(cell,n_g)] += linear_interp(a, b, x0, l0, cell);
+  }
+  if (bound_right==right) {
+    if (swap == 1) {
+      rho[mod(bound_right,n_g)] += linear_interp(a, b, x0, l0, bound_right);
+    }
+  }
+
+  return;
+}
+
+void ParticleSpecies::deposit_rho_sic_higher_order_center(std::vector<double> &rho)
+{
+  for (int i = 0; i < n_p; i++) {
+    deposit_rho_segment_higher_order_center(rho, x[i], x[i+1], charge[i], n_g, dx, density[(i+1)-1], density[(i+1)+1]);
+  }
+  return;
+}
+
+void deposit_j_segment_higher_order_center(std::vector<double> &j,
+					   double x_tracer_a, 
+					   double x_tracer_b,
+					   double charge,
+					   int n_g,
+					   double dx,
+					   double nl,
+					   double nr,
+					   double vl,
+					   double vr)
+{
+  double left, right, l0, x0, n0, a, b;
+  int bound_left, bound_right, swap;
+  left = fmin(x_tracer_a, x_tracer_b) / dx;
+  right = fmax(x_tracer_a, x_tracer_b) / dx;
+  x0 = left;
+  l0 = right - left;
+  bound_left = floor(left);
+  bound_right = ceil(right);
+
+  n0 = charge / l0;
+
+  swap = 0;
+  if (left == x_tracer_b / dx) {
+    std::swap(nl, nr);
+    std::swap(vl, vr);
+    swap = 1;
+  }
+    
+  if (nl == 0.0 && nr == 0.0) {
+    nl = 1.0;
+    nr = 1.0;
+  } else if (nl == 0.0) {
+    nl = 1.0;
+    nr = 0.0;
+  } else if (nr == 0.0) {
+    nl = 0.0;
+    nr = 1.0;
+  }
+
+  a = 2.0 * nl * n0 / (nl + nr);
+  b = 2.0 * nr * n0 / (nl + nr);
+
+  if (bound_left==left) {
+    if (swap == 0) {
+      j[mod(bound_left,n_g)] += linear_interp(a, b, x0, l0, bound_left) * linear_interp(vl, vr, x0, l0, bound_left);
+    }
+  }
+  for (int cell = (bound_left+1); cell < bound_right; cell++) {
+    j[mod(cell,n_g)] += linear_interp(a, b, x0, l0, cell) * linear_interp(vl, vr, x0, l0, bound_left);
+  }
+  if (bound_right==right) {
+    if (swap == 1) {
+      j[mod(bound_right,n_g)] += linear_interp(a, b, x0, l0, bound_right) * linear_interp(vl, vr, x0, l0, bound_left);
+    }
+  }
+
+  return;
+}
+
+
+void ParticleSpecies::deposit_j_x_sic_higher_order_center(std::vector<double> &j_x)
+{
+  double xl, xr, vl, vr, nl, nr;
+  for (int i = 0; i < n_p; i++) {
+    xl = (x_old[i] + x[i]) / 2.0 + dx / 2.0;
+    xr = (x_old[i+1] + x[i+1]) / 2.0 + dx / 2.0;
+    vl = u_x[i] / sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0) + pow(u_z[i], 2.0));
+    vr = u_x[i+1] / sqrt(1.0 + pow(u_x[i+1], 2.0) + pow(u_y[i+1], 2.0) + pow(u_z[i+1], 2.0));
+    nl = density_tavg[(i+1)-1];
+    nr = density_tavg[(i+1)+1];
+    deposit_j_segment_higher_order_center(j_x, xl, xr, charge[i], n_g, dx, nl, nr, vl, vr);
+  }
+  return;
+}
+
+void ParticleSpecies::deposit_j_y_sic_higher_order_center(std::vector<double> &j_y)
+{
+  double xl, xr, vl, vr, nl, nr;
+  for (int i = 0; i < n_p; i++) {
+    xl = (x_old[i] + x[i]) / 2.0;
+    xr = (x_old[i+1] + x[i+1]) / 2.0;
+    vl = u_y[i] / sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0) + pow(u_z[i], 2.0));
+    vr = u_y[i+1] / sqrt(1.0 + pow(u_x[i+1], 2.0) + pow(u_y[i+1], 2.0) + pow(u_z[i+1], 2.0));
+    nl = density_tavg[(i+1)-1];
+    nr = density_tavg[(i+1)+1];
+    deposit_j_segment_higher_order_center(j_y, xl, xr, charge[i], n_g, dx, nl, nr, vl, vr);
+  }
+  return;
+}
+
+void ParticleSpecies::deposit_j_z_sic_higher_order_center(std::vector<double> &j_z)
+{
+  double xl, xr, vl, vr, nl, nr;
+  for (int i = 0; i < n_p; i++) {
+    xl = (x_old[i] + x[i]) / 2.0;
+    xr = (x_old[i+1] + x[i+1]) / 2.0;
+    vl = u_z[i] / sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0) + pow(u_z[i], 2.0));
+    vr = u_z[i+1] / sqrt(1.0 + pow(u_x[i+1], 2.0) + pow(u_y[i+1], 2.0) + pow(u_z[i+1], 2.0));
+    nl = density_tavg[(i+1)-1];
+    nr = density_tavg[(i+1)+1];
+    deposit_j_segment_higher_order_center(j_z, xl, xr, charge[i], n_g, dx, nl, nr, vl, vr);
+  }
+  return;
+}
+
+// Higher order center routines above
 
 void ParticleSpecies::deposit_rho_sic_0(std::vector<double> &rho)
 {
