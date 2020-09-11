@@ -104,8 +104,7 @@ void ParticleSpecies::initialize_species(int species_number,
     u_x_drift.push_back(0.0);
     u_y_drift.push_back(0.0);
     k = (2.0 * (4.0*atan(1.0)) / (n_g * dx));
-    //    u_x_1 = 0.0025;
-    u_x_1 = 0.1;
+    u_x_1 = 0.0025;
   } else if (simulation_type == 0) {
     // Two-stream instability
     density.push_back(-1.0);
@@ -1141,8 +1140,8 @@ void ParticleSpecies::deposit_j_x_sic_higher_order_center(std::vector<double> &j
 {
   double xl, xr, vl, vr, nl, nr;
   for (int i = 0; i < n_p; i++) {
-    xl = (x_old[i] + x[i]) / 2.0 + dx / 2.0;
-    xr = (x_old[i+1] + x[i+1]) / 2.0 + dx / 2.0;
+    xl = (x_old[i] + x[i]) / 2.0 - dx / 2.0;
+    xr = (x_old[i+1] + x[i+1]) / 2.0 - dx / 2.0;
     vl = u_x[i] / sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0) + pow(u_z[i], 2.0));
     vr = u_x[i+1] / sqrt(1.0 + pow(u_x[i+1], 2.0) + pow(u_y[i+1], 2.0) + pow(u_z[i+1], 2.0));
     nl = density_tavg[(i+1)-1];
