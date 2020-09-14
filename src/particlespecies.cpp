@@ -1124,11 +1124,11 @@ void deposit_j_segment_higher_order_center(std::vector<double> &j,
     }
   }
   for (int cell = (bound_left+1); cell < bound_right; cell++) {
-    j[mod(cell,n_g)] += linear_interp(a, b, x0, l0, cell) * linear_interp(vl, vr, x0, l0, bound_left);
+    j[mod(cell,n_g)] += linear_interp(a, b, x0, l0, cell) * linear_interp(vl, vr, x0, l0, cell);
   }
   if (bound_right==right) {
     if (swap == 1) {
-      j[mod(bound_right,n_g)] += linear_interp(a, b, x0, l0, bound_right) * linear_interp(vl, vr, x0, l0, bound_left);
+      j[mod(bound_right,n_g)] += linear_interp(a, b, x0, l0, bound_right) * linear_interp(vl, vr, x0, l0, bound_right);
     }
   }
 
