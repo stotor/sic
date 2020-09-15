@@ -56,6 +56,9 @@ void SpeciesGroup::deposit_j_x(std::vector<double> &j_x, int my_rank, MPI_Comm C
       species[i].deposit_j_x_sic_higher_order_1(j_x);
     }
     else if (species[i].method==6) {
+      species[i].deposit_j_x_sic_center(j_x);
+    }
+    else if (species[i].method==7) {
       species[i].deposit_j_x_sic_higher_order_center(j_x);
     }
   }
@@ -87,6 +90,9 @@ void SpeciesGroup::deposit_j_y(std::vector<double> &j_y, int my_rank, MPI_Comm C
       species[i].deposit_j_y_sic_higher_order_1(j_y);
     }
     else if (species[i].method==6) {
+      species[i].deposit_j_y_sic_center(j_y);
+    }
+    else if (species[i].method==7) {
       species[i].deposit_j_y_sic_higher_order_center(j_y);
     }
   }
@@ -118,6 +124,9 @@ void SpeciesGroup::deposit_j_z(std::vector<double> &j_z, int my_rank, MPI_Comm C
       species[i].deposit_j_z_sic_higher_order_1(j_z);
     }
     else if (species[i].method==6) {
+      species[i].deposit_j_z_sic_center(j_z);
+    }
+    else if (species[i].method==7) {
       species[i].deposit_j_z_sic_higher_order_center(j_z);
     }
   }
@@ -189,6 +198,9 @@ void SpeciesGroup::deposit_rho(std::vector<double> &rho, double rho_bg, int my_r
       species[i].deposit_rho_sic_higher_order_1(rho);
     }
     else if (species[i].method==6) { 
+      species[i].deposit_rho_sic_center(rho);
+    }
+    else if (species[i].method==7) { 
       species[i].deposit_rho_sic_higher_order_center(rho);
     }
   }

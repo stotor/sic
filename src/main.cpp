@@ -125,10 +125,10 @@ int main(int argc, char *argv[])
   }
   else if (simulation_type==-1) {
     // Plasma wave parameters
-    n_t = 500*2;
-    n_g = 128*4;
-    dx = 0.1/4;
-    dt = 0.09/4;
+    n_t = 500;
+    n_g = 128;
+    dx = 0.1;
+    dt = 0.09;
     n_species = 1;
     rho_bg = 1.0;
     gravity = false;
