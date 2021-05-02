@@ -2242,6 +2242,125 @@ void ParticleSpecies::deposit_j_x_pic_1(std::vector<double> &j_x)
   return;
 }
 
+void ParticleSpecies::deposit_j_x_pic_2(std::vector<double> &j_x)
+{
+  double x0, x1, xa, xb, q_norm;
+  int ngp0, ngp1, delta;
+  for (int i = 0; i < n_p; i++) {
+    q_norm = charge[i] * dx / dt;
+    x0 = x_old[i] / dx;
+    x1 = x[i] / dx;
+    ngp0 = get_nearest_gridpoint(x0);
+    ngp1 = get_nearest_gridpoint(x1);
+    delta = ngp1 - ngp0;
+    x0 = x0 - ngp0;
+    x1 = x1 - ngp0;      
+    
+    if (delta==0) {
+      xa = x0;
+      xb = x1;
+      j_x[mod(ngp0-1,n_g)] += (q_norm * (xa - xb)*(-1.0 + xa + xb)) / 2.0;
+      j_x[mod(ngp0,n_g)] += (q_norm * (-(xa*(1.0 + xa)) + xb + xb*xb)) / 2.0;
+    } 
+    else {
+      xa = x0;
+      xb = delta * 0.5;      
+      j_x[mod(ngp0-1,n_g)] += (q_norm * (xa - xb)*(-1.0 + xa + xb)) / 2.0;
+      j_x[mod(ngp0,n_g)] += (q_norm * (-(xa*(1.0 + xa)) + xb + xb*xb)) / 2.0;
+
+      xa = -1.0 * xb;
+      xb = x1 - delta;
+      j_x[mod(ngp1-1,n_g)] += (q_norm * (xa - xb)*(-1.0 + xa + xb)) / 2.0;
+      j_x[mod(ngp1,n_g)] += (q_norm * (-(xa*(1.0 + xa)) + xb + xb*xb)) / 2.0;
+
+    }
+  }
+
+  return;
+}
+
+void ParticleSpecies::deposit_j_x_pic_3(std::vector<double> &j_x)
+{
+  double x0, x1, xa, xb, q_norm;
+  int i_l_0, i_l_1, delta;
+  for (int i = 0; i < n_p; i++) {
+    q_norm = charge[i] * dx / dt;
+    x0 = x_old[i] / dx;
+    x1 = x[i] / dx;
+    i_l_0 = get_nearest_gridpoint(x0);
+    i_l_1 = get_nearest_gridpoint(x1);
+    delta = i_l_1 - i_l_0;
+    x0 = x0 - i_l_0;
+    x1 = x1 - i_l_0;
+    
+    if (delta==0) {
+      xa = x0;
+      xb = x1;
+      j_x[mod((i_l_0-1),n_g)] += -1.0 * (q_norm * (pow((-0.5 + xa), 3) - pow((-0.5 + xb), 3))) / 6.0;
+      j_x[mod(i_l_0,n_g)] += (q_norm * (-9.0*xa + 4.0*pow(xa, 3) + 9.0*xb - 4.0*pow(xb, 3))) / 12.0;
+      j_x[mod((i_l_0+1),n_g)] += (q_norm * (-1.0*(xa*(3.0 + 6.0*xa + 4.0*xa*xa)) + xb*(3.0 + 6.0*xb + 4.0*xb*xb))) / 24.0;
+    } 
+    else {
+      xa = x0;
+      xb = delta * 0.5;
+      j_x[mod((i_l_0-1),n_g)] += -1.0 * (q_norm * (pow((-0.5 + xa), 3) - pow((-0.5 + xb), 3))) / 6.0;
+      j_x[mod(i_l_0,n_g)] += (q_norm * (-9.0*xa + 4.0*pow(xa, 3) + 9.0*xb - 4.0*pow(xb, 3))) / 12.0;
+      j_x[mod((i_l_0+1),n_g)] += (q_norm * (-1.0*(xa*(3.0 + 6.0*xa + 4.0*xa*xa)) + xb*(3.0 + 6.0*xb + 4.0*xb*xb))) / 24.0;
+
+      xa = -1.0 * xb;
+      xb = x1 - delta;
+      j_x[mod((i_l_1-1),n_g)] += -1.0 * (q_norm * (pow((-0.5 + xa), 3) - pow((-0.5 + xb), 3))) / 6.0;
+      j_x[mod(i_l_1,n_g)] += (q_norm * (-9.0*xa + 4.0*pow(xa, 3) + 9.0*xb - 4.0*pow(xb, 3))) / 12.0;
+      j_x[mod((i_l_1+1),n_g)] += (q_norm * (-1.0*(xa*(3.0 + 6.0*xa + 4.0*xa*xa)) + xb*(3.0 + 6.0*xb + 4.0*xb*xb))) / 24.0;
+    }
+  }
+
+  return;
+}
+
+
+void ParticleSpecies::deposit_j_x_pic_4(std::vector<double> &j_x)
+{
+  double x0, x1, xa, xb, q_norm;
+  int ngp0, ngp1, delta;
+  for (int i = 0; i < n_p; i++) {
+    q_norm = charge[i] * dx / dt;
+    x0 = x_old[i] / dx;
+    x1 = x[i] / dx;
+    ngp0 = get_nearest_gridpoint(x0);
+    ngp1 = get_nearest_gridpoint(x1);
+    delta = ngp1 - ngp0;
+    x0 = x0 - ngp0;
+    x1 = x1 - ngp0;      
+    
+    if (delta==0) {
+      xa = x0;
+      xb = x1;
+      j_x[mod((ngp0-2),n_g)] += -1.0 * (q_norm*(-1.0 * pow((1.0 - 2.0*xa), 4) + pow((1.0 - 2.0*xb), 4))) / 384.0;
+      j_x[mod((ngp0-1),n_g)] += (q_norm*(xa*(-23.0 + xa*(15.0 + 4.0*xa - 6.0*xa*xa)) + xb*(23.0 + xb*(-15.0 - 4.0*xb + 6.0*xb*xb)))) / 48.0;
+      j_x[mod(ngp0,n_g)] += (q_norm*(xa*(-23.0 + xa*(-15.0 + 4.0*xa + 6.0*xa*xa)) + xb*(23.0 + xb*(15.0 - 2.0*xb*(2.0 + 3.0*xb))))) / 48.0;
+      j_x[mod((ngp0+1),n_g)] += -1.0 * (q_norm*(xa - xb)*(1.0 + xa + xb)*(1.0 + 2.0*xa*(1.0 + xa) + 2.0*xb*(1.0 + xb))) / 48.0;
+    } 
+    else {
+      xa = x0;
+      xb = delta * 0.5;
+      j_x[mod((ngp0-2),n_g)] += -1.0 * (q_norm*(-1.0 * pow((1.0 - 2.0*xa), 4) + pow((1.0 - 2.0*xb), 4))) / 384.0;
+      j_x[mod((ngp0-1),n_g)] += (q_norm*(xa*(-23.0 + xa*(15.0 + 4.0*xa - 6.0*xa*xa)) + xb*(23.0 + xb*(-15.0 - 4.0*xb + 6.0*xb*xb)))) / 48.0;
+      j_x[mod(ngp0,n_g)] += (q_norm*(xa*(-23.0 + xa*(-15.0 + 4.0*xa + 6.0*xa*xa)) + xb*(23.0 + xb*(15.0 - 2.0*xb*(2.0 + 3.0*xb))))) / 48.0;
+      j_x[mod((ngp0+1),n_g)] += -1.0 * (q_norm*(xa - xb)*(1.0 + xa + xb)*(1.0 + 2.0*xa*(1.0 + xa) + 2.0*xb*(1.0 + xb))) / 48.0;
+
+      xa = -1.0 * xb;
+      xb = x1 - delta;
+      j_x[mod((ngp1-2),n_g)] += -1.0 * (q_norm*(-1.0 * pow((1.0 - 2.0*xa), 4) + pow((1.0 - 2.0*xb), 4))) / 384.0;
+      j_x[mod((ngp1-1),n_g)] += (q_norm*(xa*(-23.0 + xa*(15.0 + 4.0*xa - 6.0*xa*xa)) + xb*(23.0 + xb*(-15.0 - 4.0*xb + 6.0*xb*xb)))) / 48.0;
+      j_x[mod(ngp1,n_g)] += (q_norm*(xa*(-23.0 + xa*(-15.0 + 4.0*xa + 6.0*xa*xa)) + xb*(23.0 + xb*(15.0 - 2.0*xb*(2.0 + 3.0*xb))))) / 48.0;
+      j_x[mod((ngp1+1),n_g)] += -1.0 * (q_norm*(xa - xb)*(1.0 + xa + xb)*(1.0 + 2.0*xa*(1.0 + xa) + 2.0*xb*(1.0 + xb))) / 48.0;
+    }
+  }
+
+  return;
+}
+
 double put_in_box(double x, double box_length)
 {
   if (x < 0.0) {
