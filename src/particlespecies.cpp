@@ -22,33 +22,138 @@ int get_nearest_gridpoint(double x)
   return nearest_gridpoint;
 }
 
-double interpolate_field_integer(std::vector<double> &field, double x, double dx, int n_g)
+double interpolate_field_0(std::vector<double> &field,
+			   double x,
+			   int n_g)
 {
-  int i_lower;
-  double alpha, beta;
-  // Normalize x to cell length
-  x = x / dx;
-  // index of left bounding gridpoint
-  i_lower = floor(x);
-  alpha = 1.0 - (x - i_lower);
-  beta = 1.0 - alpha;
-  return (alpha * field[mod(i_lower,n_g)]) + (beta * field[mod((i_lower+1),n_g)]);
+  int ngp;
+  double interpolated_field;
+  ngp = get_nearest_gridpoint(x);
+  interpolated_field = field[mod(ngp, n_g)];
+  return interpolated_field;
 }
 
-double interpolate_field_half_integer(std::vector<double> &field, double x, double dx, 
-				      int n_g)
+double interpolate_field_1(std::vector<double> &field,
+			   double x,
+			   int n_g)
 {
   int i_lower;
-  double alpha, beta;
-  // Shift position so that zero lies at the first half-integer gridpoint
-  x = x - dx / 2.0;
+  double interpolated_field, w1, w2, delta;
+  i_lower = floor(x);
+  delta = x - (i_lower+0.5);
+  
+  w1 = 0.5 - delta;
+  w2 = 0.5 + delta;
+
+  interpolated_field = w1 * field[mod(i_lower,n_g)]
+    + w2 * field[mod((i_lower+1),n_g)];
+
+  return interpolated_field;
+}
+
+double interpolate_field_2(std::vector<double> &field,
+			   double x,
+			   int n_g)
+{
+  int ngp;
+  double interpolated_field, w1, w2, w3, delta;
+  ngp = get_nearest_gridpoint(x);  
+  delta = x - ngp;
+  
+  w1 = 0.5 * pow((0.5 - delta), 2);
+  w2 = 0.75 - delta * delta;
+  w3 = 0.5 * pow((0.5 + delta), 2);
+
+  interpolated_field = w1 * field[mod((ngp-1),n_g)]
+    + w2 * field[mod(ngp,n_g)]
+    + w3 * field[mod((ngp+1),n_g)];
+
+  return interpolated_field;
+}
+
+double interpolate_field_3(std::vector<double> &field,
+			   double x,
+			   int n_g)
+{
+  int i_lower;
+  double interpolated_field, w1, w2, w3, w4, delta;
+  i_lower = floor(x);
+  delta = x - (i_lower+0.5);
+
+  w1 = -1.0 * pow((-0.5 + delta), 3) / 6.0;
+  w2 = (4.0 - 6.0 * pow((0.5 + delta), 2) + 3.0 * pow((0.5 + delta), 3)) / 6.0;
+  w3 = (23.0 + 30.0*delta - 12.0*pow(delta, 2) - 24.0*pow(delta,3)) / 48.0;
+  w4 = pow((0.5 + delta), 3) / 6.0;
+  
+  interpolated_field = w1 * field[mod((i_lower-1),n_g)]
+    + w2 * field[mod(i_lower,n_g)]
+    + w3 * field[mod((i_lower+1),n_g)]
+    + w4 * field[mod((i_lower+2),n_g)];    
+
+  return interpolated_field;
+}
+
+double interpolate_field_4(std::vector<double> &field,
+			   double x,
+			   int n_g)
+{
+  int ngp;
+  double interpolated_field, w1, w2, w3, w4, w5, delta;
+  ngp = get_nearest_gridpoint(x);  
+  delta = x - ngp;
+
+  w1 = pow((1.0 - 2.0*delta), 4) / 384.0;
+  w2 = (19.0 - 44.0*delta + 24.0*pow(delta, 2) + 16.0*pow(delta,3) - 16.0*pow(delta, 4))/96.0;
+  w3 = 0.5989583333333334 - (5.0*pow(delta, 2))/8.0 + pow(delta, 4)/4.0;
+  w4 = (19.0 + 44.0*delta + 24.0*pow(delta, 2) - 16.0*pow(delta, 3) - 16*pow(delta,4))/96.0;
+  w5 = pow((1.0 + 2.0*delta), 4) / 384.0;
+  
+  interpolated_field = w1 * field[mod((ngp-2),n_g)]
+    + w2 * field[mod((ngp-1),n_g)]
+    + w3 * field[mod(ngp,n_g)]
+    + w4 * field[mod((ngp+1),n_g)]
+    + w5 * field[mod((ngp+2),n_g)];  
+
+  return interpolated_field;
+}
+
+double interpolate_field(std::vector<double> &field,
+			 double x,
+			 double dx,
+			 int n_g,
+			 bool shift,
+			 int order)
+{
+  double interpolated_field;
+  // Shift position only for fields where zero lies at the first half-integer gridpoint 
+  if (shift) {
+    x = x - dx / 2.0;
+  }
   // Normalize x to cell length
   x = x / dx;
+
+  switch (order) {
+  case 0 :
+    interpolated_field = interpolate_field_0(field, x, n_g);
+    break;
+  case 1 :
+    interpolated_field = interpolate_field_1(field, x, n_g);
+    break;
+  case 2 :
+    interpolated_field = interpolate_field_2(field, x, n_g);
+    break;
+  case 3 :
+    interpolated_field = interpolate_field_3(field, x, n_g);
+    break;
+  case 4 :
+    interpolated_field = interpolate_field_4(field, x, n_g);
+    break;
+  default:
+    std::cout << "Error, selected interpolation order not implemented." << std::endl;
+  }
+  
   // Index of left bounding gridpoint
-  i_lower = floor(x);
-  alpha = 1.0 - (x - i_lower);
-  beta = 1.0 - alpha;
-  return (alpha * field[mod(i_lower,n_g)]) + (beta * field[mod((i_lower+1),n_g)]);
+  return interpolated_field;
 }
 
 void ParticleSpecies::initialize_species(int species_number, 
@@ -203,41 +308,26 @@ void ParticleSpecies::advance_velocity(std::vector<double> &e_x,
   double momentum_x = 0.0;
   double momentum_y = 0.0;
   double momentum_z = 0.0;  
-  int ngp_integer, ngp_half_integer;
+  bool shift;
   
   for (int i = 0; i < n_p; i++) {
     b_x_particle = b_x[0]; // Uniform field
-    if (interp_order==0) {
-      if (center_fields) {
-	ngp_integer = get_nearest_gridpoint(x[i] / dx);
-	e_x_particle = e_x_int[mod(ngp_integer, n_g)];
-	e_y_particle = e_y[mod(ngp_integer, n_g)];
-	e_z_particle = e_z[mod(ngp_integer, n_g)];
-	b_y_particle = b_y_int[mod(ngp_integer, n_g)];	
-	b_z_particle = b_z_int[mod(ngp_integer, n_g)];
-      } else {
-	ngp_integer = get_nearest_gridpoint(x[i] / dx);
-	ngp_half_integer = get_nearest_gridpoint((x[i]-0.5) / dx);
-	e_x_particle = e_x[mod(ngp_half_integer, n_g)];
-	e_y_particle = e_y[mod(ngp_integer, n_g)];
-	e_z_particle = e_z[mod(ngp_integer, n_g)];	
-	b_y_particle = b_y[mod(ngp_half_integer, n_g)];
-	b_z_particle = b_z[mod(ngp_half_integer, n_g)];	
-      }
+
+    if (center_fields) {
+      shift = false;
+      e_x_particle = interpolate_field(e_x_int, x[i], dx, n_g, shift, interp_order);
+      e_y_particle = interpolate_field(e_y, x[i], dx, n_g, shift, interp_order);
+      e_z_particle = interpolate_field(e_z, x[i], dx, n_g, shift, interp_order);
+      b_y_particle = interpolate_field(b_y_int, x[i], dx, n_g, shift, interp_order);
+      b_z_particle = interpolate_field(b_z_int, x[i], dx, n_g, shift, interp_order);
     } else {
-      if (center_fields) {
-	e_x_particle = interpolate_field_integer(e_x_int, x[i], dx, n_g);
-	e_y_particle = interpolate_field_integer(e_y, x[i], dx, n_g);
-	e_z_particle = interpolate_field_integer(e_z, x[i], dx, n_g);
-	b_y_particle = interpolate_field_integer(b_y_int, x[i], dx, n_g);
-	b_z_particle = interpolate_field_integer(b_z_int, x[i], dx, n_g);
-      } else {
-	e_x_particle = interpolate_field_half_integer(e_x, x[i], dx, n_g);
-	e_y_particle = interpolate_field_integer(e_y, x[i], dx, n_g);
-	e_z_particle = interpolate_field_integer(e_z, x[i], dx, n_g);
-	b_y_particle = interpolate_field_half_integer(b_y, x[i], dx, n_g);
-	b_z_particle = interpolate_field_half_integer(b_z, x[i], dx, n_g);
-      }
+      shift = true;
+      e_x_particle = interpolate_field(e_x, x[i], dx, n_g, shift, interp_order);
+      b_y_particle = interpolate_field(b_y, x[i], dx, n_g, shift, interp_order);
+      b_z_particle = interpolate_field(b_z, x[i], dx, n_g, shift, interp_order);
+      shift = false;
+      e_y_particle = interpolate_field(e_y, x[i], dx, n_g, shift, interp_order);
+      e_z_particle = interpolate_field(e_z, x[i], dx, n_g, shift, interp_order);
     }
 
     u_x[i] = u_x[i] + e_x_particle * (dt / 2.0) / rqm;
@@ -306,47 +396,33 @@ void ParticleSpecies::initial_velocity_deceleration(std::vector<double> &e_x,
   double e_x_particle, e_y_particle, e_z_particle,
     b_x_particle, b_y_particle, b_z_particle, u_temp_x, u_temp_y, u_temp_z,
     gamma, t_norm, s_norm;
+  bool shift;
   //  double energy = 0.0;
   //  double momentum_x = 0.0;
   //  double momentum_y = 0.0;
   //  double momentum_z = 0.0;  
-  int ngp_integer, ngp_half_integer;
   
   for (int i = 0; i < n_p; i++) {
     b_x_particle = b_x[0]; // Uniform field
-    if (interp_order==0) {
-      if (center_fields) {
-	ngp_integer = get_nearest_gridpoint(x[i] / dx);
-	e_x_particle = e_x_int[mod(ngp_integer, n_g)];
-	e_y_particle = e_y[mod(ngp_integer, n_g)];
-	e_z_particle = e_z[mod(ngp_integer, n_g)];
-	b_y_particle = b_y_int[mod(ngp_integer, n_g)];	
-	b_z_particle = b_z_int[mod(ngp_integer, n_g)];
-      } else {
-	ngp_integer = get_nearest_gridpoint(x[i] / dx);
-	ngp_half_integer = get_nearest_gridpoint((x[i]-0.5) / dx);
-	e_x_particle = e_x[mod(ngp_half_integer, n_g)];
-	e_y_particle = e_y[mod(ngp_integer, n_g)];
-	e_z_particle = e_z[mod(ngp_integer, n_g)];	
-	b_y_particle = b_y[mod(ngp_half_integer, n_g)];
-	b_z_particle = b_z[mod(ngp_half_integer, n_g)];	
-      }
+
+    if (center_fields) {
+      shift = false;
+      e_x_particle = interpolate_field(e_x_int, x[i], dx, n_g, shift, interp_order);
+      e_y_particle = interpolate_field(e_y, x[i], dx, n_g, shift, interp_order);
+      e_z_particle = interpolate_field(e_z, x[i], dx, n_g, shift, interp_order);
+      b_y_particle = interpolate_field(b_y_int, x[i], dx, n_g, shift, interp_order);
+      b_z_particle = interpolate_field(b_z_int, x[i], dx, n_g, shift, interp_order);
     } else {
-      if (center_fields) {
-	e_x_particle = interpolate_field_integer(e_x_int, x[i], dx, n_g);
-	e_y_particle = interpolate_field_integer(e_y, x[i], dx, n_g);
-	e_z_particle = interpolate_field_integer(e_z, x[i], dx, n_g);
-	b_y_particle = interpolate_field_integer(b_y_int, x[i], dx, n_g);
-	b_z_particle = interpolate_field_integer(b_z_int, x[i], dx, n_g);
-      } else {
-	e_x_particle = interpolate_field_half_integer(e_x, x[i], dx, n_g);
-	e_y_particle = interpolate_field_integer(e_y, x[i], dx, n_g);
-	e_z_particle = interpolate_field_integer(e_z, x[i], dx, n_g);
-	b_y_particle = interpolate_field_half_integer(b_y, x[i], dx, n_g);
-	b_z_particle = interpolate_field_half_integer(b_z, x[i], dx, n_g);
-      }
+      shift = true;
+      e_x_particle = interpolate_field(e_x, x[i], dx, n_g, shift, interp_order);
+      b_y_particle = interpolate_field(b_y, x[i], dx, n_g, shift, interp_order);
+      b_z_particle = interpolate_field(b_z, x[i], dx, n_g, shift, interp_order);
+      shift = false;
+      e_y_particle = interpolate_field(e_y, x[i], dx, n_g, shift, interp_order);
+      e_z_particle = interpolate_field(e_z, x[i], dx, n_g, shift, interp_order);
     }
 
+    
     gamma = sqrt(1.0 + pow(u_x[i], 2) + pow(u_y[i], 2) + pow(u_z[i], 2));
 
     // Calculate time centered energy for diagnostic purposes
@@ -1378,60 +1454,348 @@ void ParticleSpecies::deposit_j_x_sic_0(std::vector<double> &j_x)
   return;
 }
 
-void ParticleSpecies::deposit_rho_pic_1(std::vector<double> &rho)
+void ParticleSpecies::deposit_rho_pic_0(std::vector<double> &rho)
 {
-  double lower_weight, x_normalized;
-  int lower;
+  int ngp;
+  double x_n;
+
   for (int i = 0; i < n_p; i++) {
-    x_normalized = x[i] / dx;
-    lower = floor(x_normalized);
-    lower_weight = double(lower) + 1.0 - x_normalized;
-    rho[mod(floor(lower),n_g)] += charge[i] * lower_weight;
-    rho[mod(floor(lower+1),n_g)] += charge[i] * (1.0 - lower_weight);
+    x_n = x[i] / dx;
+    ngp = get_nearest_gridpoint(x_n);
+    rho[mod(ngp,n_g)] += charge[i];
   }
   return;
 }
 
-void ParticleSpecies::deposit_rho_pic_0(std::vector<double> &rho)
+void ParticleSpecies::deposit_rho_pic_1(std::vector<double> &rho)
 {
-  double x_normalized;
-  int nearest_gridpoint;
+  int i_lower;
+  double x_n, w1, w2, delta;
+
   for (int i = 0; i < n_p; i++) {
-    x_normalized = x[i] / dx;
-    nearest_gridpoint = get_nearest_gridpoint(x_normalized);
-    rho[mod(nearest_gridpoint,n_g)] += charge[i];
+    x_n = x[i] / dx;
+    i_lower = floor(x_n);
+    delta = x_n - (i_lower+0.5);
+
+    w1 = 0.5 - delta;
+    w2 = 0.5 + delta;
+
+    rho[mod(i_lower,n_g)] += charge[i] * w1;
+    rho[mod((i_lower+1),n_g)] += charge[i] * w2;
+  }
+  return;
+}
+
+void ParticleSpecies::deposit_rho_pic_2(std::vector<double> &rho)
+{
+  int ngp;
+  double x_n, w1, w2, w3, delta;
+
+  for (int i = 0; i < n_p; i++) {
+    x_n = x[i] / dx;
+    ngp = get_nearest_gridpoint(x_n);
+    delta = x_n - ngp;
+
+    w1 = 0.5 * pow((0.5 - delta), 2);
+    w2 = 0.75 - delta * delta;
+    w3 = 0.5 * pow((0.5 + delta), 2);
+
+    rho[mod((ngp-1),n_g)] += charge[i] * w1;
+    rho[mod(ngp,n_g)] += charge[i] * w2;
+    rho[mod((ngp+1),n_g)] += charge[i] * w3;
+  }
+  return;
+}
+
+void ParticleSpecies::deposit_rho_pic_3(std::vector<double> &rho)
+{
+  int i_lower;
+  double x_n, w1, w2, w3, w4, delta;
+
+  for (int i = 0; i < n_p; i++) {
+    x_n = x[i] / dx;
+    i_lower = floor(x_n);
+    delta = x_n - (i_lower+0.5);
+
+    w1 = -1.0 * pow((-0.5 + delta), 3) / 6.0;
+    w2 = (4.0 - 6.0 * pow((0.5 + delta), 2) + 3.0 * pow((0.5 + delta), 3)) / 6.0;
+    w3 = (23.0 + 30.0*delta - 12.0*pow(delta, 2) - 24.0*pow(delta,3)) / 48.0;
+    w4 = pow((0.5 + delta), 3) / 6.0;
+
+    rho[mod((i_lower-1),n_g)] += charge[i] * w1;
+    rho[mod(i_lower,n_g)] += charge[i] * w2;
+    rho[mod((i_lower+1),n_g)] += charge[i] * w3;
+    rho[mod((i_lower+2),n_g)] += charge[i] * w4;
+  }
+  return;
+}
+
+void ParticleSpecies::deposit_rho_pic_4(std::vector<double> &rho)
+{
+  int ngp;
+  double x_n, w1, w2, w3, w4, w5, delta;
+
+  for (int i = 0; i < n_p; i++) {
+    x_n = x[i] / dx;
+    ngp = get_nearest_gridpoint(x_n);
+    delta = x_n - ngp;
+
+    w1 = pow((1.0 - 2.0*delta), 4) / 384.0;
+    w2 = (19.0 - 44.0*delta + 24.0*pow(delta, 2) + 16.0*pow(delta,3) - 16.0*pow(delta, 4))/96.0;
+    w3 = 0.5989583333333334 - (5.0*pow(delta, 2))/8.0 + pow(delta, 4)/4.0;
+    w4 = (19.0 + 44.0*delta + 24.0*pow(delta, 2) - 16.0*pow(delta, 3) - 16*pow(delta,4))/96.0;
+    w5 = pow((1.0 + 2.0*delta), 4) / 384.0;
+
+    rho[mod((ngp-2),n_g)] += charge[i] * w1;
+    rho[mod((ngp-1),n_g)] += charge[i] * w2;
+    rho[mod(ngp,n_g)] += charge[i] * w3;
+    rho[mod((ngp+1),n_g)] += charge[i] * w4;
+    rho[mod((ngp+2),n_g)] += charge[i] * w5;
   }
   return;
 }
 
 void ParticleSpecies::deposit_j_y_pic_0(std::vector<double> &j_y)
 {
-  double x_tavg, gamma;
-  int nearest_gridpoint;
+  int ngp;
+  double x_n, x_tavg, gamma, j_y_i;
+
   for (int i = 0; i < n_p; i++) {
     x_tavg = (x[i] + x_old[i]) / 2.0;
-    x_tavg = x_tavg / dx;
-    nearest_gridpoint = get_nearest_gridpoint(x_tavg);
+    x_n = x_tavg / dx;
     gamma = sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0) + pow(u_z[i], 2.0));
-    j_y[mod(nearest_gridpoint,n_g)] += charge[i] * u_y[i] / gamma;
+    j_y_i = charge[i] * u_y[i] / gamma;
+
+    ngp = get_nearest_gridpoint(x_n);
+    j_y[mod(ngp,n_g)] += j_y_i;
+  }
+  return;
+}
+
+void ParticleSpecies::deposit_j_y_pic_1(std::vector<double> &j_y)
+{
+  int i_lower;
+  double x_n, w1, w2, delta, x_tavg, gamma, j_y_i;
+
+  for (int i = 0; i < n_p; i++) {
+    x_tavg = (x[i] + x_old[i]) / 2.0;
+    x_n = x_tavg / dx;
+    gamma = sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0) + pow(u_z[i], 2.0));
+    j_y_i = charge[i] * u_y[i] / gamma;    
+
+    i_lower = floor(x_n);
+    delta = x_n - (i_lower+0.5);
+
+    w1 = 0.5 - delta;
+    w2 = 0.5 + delta;
+
+    j_y[mod(i_lower,n_g)] += w1 * j_y_i;
+    j_y[mod((i_lower+1),n_g)] += w2 * j_y_i;
+  }
+  return;
+}
+
+void ParticleSpecies::deposit_j_y_pic_2(std::vector<double> &j_y)
+{
+  int ngp;
+  double x_n, w1, w2, w3, delta, x_tavg, gamma, j_y_i;
+
+  for (int i = 0; i < n_p; i++) {
+    x_tavg = (x[i] + x_old[i]) / 2.0;
+    x_n = x_tavg / dx;
+    gamma = sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0) + pow(u_z[i], 2.0));
+    j_y_i = charge[i] * u_y[i] / gamma;    
+
+    ngp = get_nearest_gridpoint(x_n);
+    delta = x_n - ngp;
+
+    w1 = 0.5 * pow((0.5 - delta), 2);
+    w2 = 0.75 - delta * delta;
+    w3 = 0.5 * pow((0.5 + delta), 2);
+
+    j_y[mod((ngp-1),n_g)] += w1 * j_y_i;
+    j_y[mod(ngp,n_g)] += w2 * j_y_i;
+    j_y[mod((ngp+1),n_g)] += w3 * j_y_i;
+  }
+  return;
+}
+
+void ParticleSpecies::deposit_j_y_pic_3(std::vector<double> &j_y)
+{
+  int i_lower;
+  double x_n, w1, w2, w3, w4, delta, x_tavg, gamma, j_y_i;
+
+  for (int i = 0; i < n_p; i++) {
+    x_tavg = (x[i] + x_old[i]) / 2.0;
+    x_n = x_tavg / dx;
+    gamma = sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0) + pow(u_z[i], 2.0));
+    j_y_i = charge[i] * u_y[i] / gamma;    
+
+    i_lower = floor(x_n);
+    delta = x_n - (i_lower+0.5);
+
+    w1 = -1.0 * pow((-0.5 + delta), 3) / 6.0;
+    w2 = (4.0 - 6.0 * pow((0.5 + delta), 2) + 3.0 * pow((0.5 + delta), 3)) / 6.0;
+    w3 = (23.0 + 30.0*delta - 12.0*pow(delta, 2) - 24.0*pow(delta,3)) / 48.0;
+    w4 = pow((0.5 + delta), 3) / 6.0;
+
+    j_y[mod((i_lower-1),n_g)] += w1 * j_y_i;
+    j_y[mod(i_lower,n_g)] += w2 * j_y_i;
+    j_y[mod((i_lower+1),n_g)] += w3 * j_y_i;
+    j_y[mod((i_lower+2),n_g)] += w4 * j_y_i;
+  }
+  return;
+}
+
+void ParticleSpecies::deposit_j_y_pic_4(std::vector<double> &j_y)
+{
+  int ngp;
+  double x_n, w1, w2, w3, w4, w5, delta, x_tavg, gamma, j_y_i;
+
+  for (int i = 0; i < n_p; i++) {
+    x_tavg = (x[i] + x_old[i]) / 2.0;
+    x_n = x_tavg / dx;
+    gamma = sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0) + pow(u_z[i], 2.0));
+    j_y_i = charge[i] * u_y[i] / gamma;    
+
+    ngp = get_nearest_gridpoint(x_n);
+    delta = x_n - ngp;
+
+    w1 = pow((1.0 - 2.0*delta), 4) / 384.0;
+    w2 = (19.0 - 44.0*delta + 24.0*pow(delta, 2) + 16.0*pow(delta,3) - 16.0*pow(delta, 4))/96.0;
+    w3 = 0.5989583333333334 - (5.0*pow(delta, 2))/8.0 + pow(delta, 4)/4.0;
+    w4 = (19.0 + 44.0*delta + 24.0*pow(delta, 2) - 16.0*pow(delta, 3) - 16*pow(delta,4))/96.0;
+    w5 = pow((1.0 + 2.0*delta), 4) / 384.0;
+
+    j_y[mod((ngp-2),n_g)] += w1 * j_y_i;
+    j_y[mod((ngp-1),n_g)] += w2 * j_y_i;
+    j_y[mod(ngp,n_g)] += w3 * j_y_i;
+    j_y[mod((ngp+1),n_g)] += w4 * j_y_i;
+    j_y[mod((ngp+2),n_g)] += w5 * j_y_i;
   }
   return;
 }
 
 void ParticleSpecies::deposit_j_z_pic_0(std::vector<double> &j_z)
 {
-  double x_tavg, gamma;
-  int nearest_gridpoint;
+  int ngp;
+  double x_n, x_tavg, gamma, j_z_i;
+
   for (int i = 0; i < n_p; i++) {
     x_tavg = (x[i] + x_old[i]) / 2.0;
-    x_tavg = x_tavg / dx;
-    nearest_gridpoint = get_nearest_gridpoint(x_tavg);
+    x_n = x_tavg / dx;
     gamma = sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0) + pow(u_z[i], 2.0));
-    j_z[mod(nearest_gridpoint,n_g)] += charge[i] * u_z[i] / gamma;
+    j_z_i = charge[i] * u_z[i] / gamma;
+
+    ngp = get_nearest_gridpoint(x_n);
+    j_z[mod(ngp,n_g)] += j_z_i;
   }
   return;
 }
 
+void ParticleSpecies::deposit_j_z_pic_1(std::vector<double> &j_z)
+{
+  int i_lower;
+  double x_n, w1, w2, delta, x_tavg, gamma, j_z_i;
+
+  for (int i = 0; i < n_p; i++) {
+    x_tavg = (x[i] + x_old[i]) / 2.0;
+    x_n = x_tavg / dx;
+    gamma = sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0) + pow(u_z[i], 2.0));
+    j_z_i = charge[i] * u_z[i] / gamma;
+
+    i_lower = floor(x_n);
+    delta = x_n - (i_lower+0.5);
+
+    w1 = 0.5 - delta;
+    w2 = 0.5 + delta;
+
+    j_z[mod(i_lower,n_g)] += w1 * j_z_i;
+    j_z[mod((i_lower+1),n_g)] += w2 * j_z_i;
+  }
+  return;
+}
+
+void ParticleSpecies::deposit_j_z_pic_2(std::vector<double> &j_z)
+{
+  int ngp;
+  double x_n, w1, w2, w3, delta, x_tavg, gamma, j_z_i;
+
+  for (int i = 0; i < n_p; i++) {
+    x_tavg = (x[i] + x_old[i]) / 2.0;
+    x_n = x_tavg / dx;
+    gamma = sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0) + pow(u_z[i], 2.0));
+    j_z_i = charge[i] * u_z[i] / gamma;    
+
+    ngp = get_nearest_gridpoint(x_n);
+    delta = x_n - ngp;
+
+    w1 = 0.5 * pow((0.5 - delta), 2);
+    w2 = 0.75 - delta * delta;
+    w3 = 0.5 * pow((0.5 + delta), 2);
+
+    j_z[mod((ngp-1),n_g)] += w1 * j_z_i;
+    j_z[mod(ngp,n_g)] += w2 * j_z_i;
+    j_z[mod((ngp+1),n_g)] += w3 * j_z_i;
+  }
+  return;
+}
+
+void ParticleSpecies::deposit_j_z_pic_3(std::vector<double> &j_z)
+{
+  int i_lower;
+  double x_n, w1, w2, w3, w4, delta, x_tavg, gamma, j_z_i;
+
+  for (int i = 0; i < n_p; i++) {
+    x_tavg = (x[i] + x_old[i]) / 2.0;
+    x_n = x_tavg / dx;
+    gamma = sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0) + pow(u_z[i], 2.0));
+    j_z_i = charge[i] * u_z[i] / gamma;
+
+    i_lower = floor(x_n);
+    delta = x_n - (i_lower+0.5);
+
+    w1 = -1.0 * pow((-0.5 + delta), 3) / 6.0;
+    w2 = (4.0 - 6.0 * pow((0.5 + delta), 2) + 3.0 * pow((0.5 + delta), 3)) / 6.0;
+    w3 = (23.0 + 30.0*delta - 12.0*pow(delta, 2) - 24.0*pow(delta,3)) / 48.0;
+    w4 = pow((0.5 + delta), 3) / 6.0;
+
+    j_z[mod((i_lower-1),n_g)] += w1 * j_z_i;
+    j_z[mod(i_lower,n_g)] += w2 * j_z_i;
+    j_z[mod((i_lower+1),n_g)] += w3 * j_z_i;
+    j_z[mod((i_lower+2),n_g)] += w4 * j_z_i;
+  }
+  return;
+}
+
+void ParticleSpecies::deposit_j_z_pic_4(std::vector<double> &j_z)
+{
+  int ngp;
+  double x_n, w1, w2, w3, w4, w5, delta, x_tavg, gamma, j_z_i;
+
+  for (int i = 0; i < n_p; i++) {
+    x_tavg = (x[i] + x_old[i]) / 2.0;
+    x_n = x_tavg / dx;
+    gamma = sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0) + pow(u_z[i], 2.0));
+    j_z_i = charge[i] * u_z[i] / gamma;
+
+    ngp = get_nearest_gridpoint(x_n);
+    delta = x_n - ngp;
+
+    w1 = pow((1.0 - 2.0*delta), 4) / 384.0;
+    w2 = (19.0 - 44.0*delta + 24.0*pow(delta, 2) + 16.0*pow(delta,3) - 16.0*pow(delta, 4))/96.0;
+    w3 = 0.5989583333333334 - (5.0*pow(delta, 2))/8.0 + pow(delta, 4)/4.0;
+    w4 = (19.0 + 44.0*delta + 24.0*pow(delta, 2) - 16.0*pow(delta, 3) - 16*pow(delta,4))/96.0;
+    w5 = pow((1.0 + 2.0*delta), 4) / 384.0;
+
+    j_z[mod((ngp-2),n_g)] += w1 * j_z_i;
+    j_z[mod((ngp-1),n_g)] += w2 * j_z_i;
+    j_z[mod(ngp,n_g)] += w3 * j_z_i;
+    j_z[mod((ngp+1),n_g)] += w4 * j_z_i;
+    j_z[mod((ngp+2),n_g)] += w5 * j_z_i;
+  }
+  return;
+}
 
 double interpolate_segment_velocity(double v_left, double v_right, 
 				    double length, double distance_from_left)
@@ -1877,43 +2241,6 @@ void ParticleSpecies::deposit_j_x_pic_1(std::vector<double> &j_x)
   }
   return;
 }
-
-void ParticleSpecies::deposit_j_y_pic_1(std::vector<double> &j_y)
-{
-  int i_lower;
-  double alpha, beta, x_tavg, gamma;
-  for (int i = 0; i < n_p; i++) {
-    x_tavg = (x[i] + x_old[i]) / 2.0;
-    x_tavg = x_tavg / dx;
-    i_lower = floor(x_tavg);
-    alpha = 1.0 - (x_tavg - i_lower);
-    beta = 1.0 - alpha;
-
-    gamma = sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0) + pow(u_z[i], 2.0));
-    j_y[mod(i_lower,n_g)] += alpha * charge[i] * u_y[i] / gamma;
-    j_y[mod((i_lower+1),n_g)] += beta * charge[i] * u_y[i] / gamma;
-  }
-  return;
-}
-
-void ParticleSpecies::deposit_j_z_pic_1(std::vector<double> &j_z)
-{
-  int i_lower;
-  double alpha, beta, x_tavg, gamma;
-  for (int i = 0; i < n_p; i++) {
-    x_tavg = (x[i] + x_old[i]) / 2.0;
-    x_tavg = x_tavg / dx;
-    i_lower = floor(x_tavg);
-    alpha = 1.0 - (x_tavg - i_lower);
-    beta = 1.0 - alpha;
-
-    gamma = sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0) + pow(u_z[i], 2.0));
-    j_z[mod(i_lower,n_g)] += alpha * charge[i] * u_z[i] / gamma;
-    j_z[mod((i_lower+1),n_g)] += beta * charge[i] * u_z[i] / gamma;
-  }
-  return;
-}
-
 
 double put_in_box(double x, double box_length)
 {
