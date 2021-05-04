@@ -66,7 +66,6 @@ int main(int argc, char *argv[])
   }
 
   bool center_fields = true;
-  int interp_order = 1;
 
   std::stringstream ss;
 
@@ -77,6 +76,7 @@ int main(int argc, char *argv[])
   ss >> method[1];
   method[0] = method[1];
   //  method[0] = 1;
+  int interp_order = method[0] % 4;
   
   ss.str(std::string());
   ss.clear();

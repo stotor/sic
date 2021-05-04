@@ -38,30 +38,33 @@ void SpeciesGroup::deposit_j_x(std::vector<double> &j_x, int my_rank, MPI_Comm C
     j_x[i] = 0.0;
   }
   for (int i = 0; i < n_species; i++) {
-    if (species[i].method==0) { 
+    switch (species[i].method) {
+    case 0 :
       species[i].deposit_j_x_pic_0(j_x);
-    } else if (species[i].method==1) { 
+      break;
+    case 1 :
       species[i].deposit_j_x_pic_1(j_x);
-    }
-    else if (species[i].method==2) {
+      break;
+    case 2 :
+      species[i].deposit_j_x_pic_2(j_x);      
+      break;
+    case 3 :
+      species[i].deposit_j_x_pic_3(j_x);      
+      break;
+    case 4 :
+      species[i].deposit_j_x_pic_4(j_x);
+      break;
+    case 5 :
       species[i].deposit_j_x_sic_0(j_x);
-    }
-    else if (species[i].method==3) {
+      break;
+    case 6 :
       species[i].deposit_j_x_sic_1(j_x);
-    }
-    else if (species[i].method==4) {
-      species[i].deposit_j_x_sic_higher_order_0(j_x);
-    }
-    else if (species[i].method==5) {
-      species[i].deposit_j_x_sic_higher_order_1(j_x);
-    }
-    else if (species[i].method==6) {
-      species[i].deposit_j_x_sic_center(j_x);
-    }
-    else if (species[i].method==7) {
-      species[i].deposit_j_x_sic_higher_order_center(j_x);
+      break;
+    default:
+    std::cout << "Error, selected interpolation order not implemented." << std::endl;
     }
   }
+    
   sum_array_to_root(&j_x[0], n_g, COMM, my_rank);
   return;
 }
@@ -72,28 +75,30 @@ void SpeciesGroup::deposit_j_y(std::vector<double> &j_y, int my_rank, MPI_Comm C
     j_y[i] = 0.0;
   }
   for (int i = 0; i < n_species; i++) {
-    if (species[i].method==0) { 
+    switch (species[i].method) {
+    case 0 :
       species[i].deposit_j_y_pic_0(j_y);
-    } else if (species[i].method==1) { 
+      break;
+    case 1 :
       species[i].deposit_j_y_pic_1(j_y);
-    }
-    else if (species[i].method==2) {
+      break;
+    case 2 :
+      species[i].deposit_j_y_pic_2(j_y);
+      break;
+    case 3 :
+      species[i].deposit_j_y_pic_3(j_y);
+      break;
+    case 4 :
+      species[i].deposit_j_y_pic_4(j_y);
+      break;
+    case 5 :
       species[i].deposit_j_y_sic_0(j_y);
-    }
-    else if (species[i].method==3) {
+      break;
+    case 6 :
       species[i].deposit_j_y_sic_1(j_y);
-    }
-    else if (species[i].method==4) {
-      species[i].deposit_j_y_sic_higher_order_0(j_y);
-    }
-    else if (species[i].method==5) {
-      species[i].deposit_j_y_sic_higher_order_1(j_y);
-    }
-    else if (species[i].method==6) {
-      species[i].deposit_j_y_sic_center(j_y);
-    }
-    else if (species[i].method==7) {
-      species[i].deposit_j_y_sic_higher_order_center(j_y);
+      break;
+    default:
+    std::cout << "Error, selected interpolation order not implemented." << std::endl;
     }
   }
   sum_array_to_root(&j_y[0], n_g, COMM, my_rank);
@@ -106,28 +111,30 @@ void SpeciesGroup::deposit_j_z(std::vector<double> &j_z, int my_rank, MPI_Comm C
     j_z[i] = 0.0;
   }
   for (int i = 0; i < n_species; i++) {
-    if (species[i].method==0) { 
+    switch (species[i].method) {
+    case 0 :
       species[i].deposit_j_z_pic_0(j_z);
-    } else if (species[i].method==1) { 
+      break;
+    case 1 :
       species[i].deposit_j_z_pic_1(j_z);
-    }
-    else if (species[i].method==2) {
+      break;
+    case 2 :
+      species[i].deposit_j_z_pic_2(j_z);
+      break;
+    case 3 :
+      species[i].deposit_j_z_pic_3(j_z);
+      break;
+    case 4 :
+      species[i].deposit_j_z_pic_4(j_z);
+      break;
+    case 5 :
       species[i].deposit_j_z_sic_0(j_z);
-    }
-    else if (species[i].method==3) {
+      break;
+    case 6 :
       species[i].deposit_j_z_sic_1(j_z);
-    }
-    else if (species[i].method==4) {
-      species[i].deposit_j_z_sic_higher_order_0(j_z);
-    }
-    else if (species[i].method==5) {
-      species[i].deposit_j_z_sic_higher_order_1(j_z);
-    }
-    else if (species[i].method==6) {
-      species[i].deposit_j_z_sic_center(j_z);
-    }
-    else if (species[i].method==7) {
-      species[i].deposit_j_z_sic_higher_order_center(j_z);
+      break;
+    default:
+    std::cout << "Error, selected interpolation order not implemented." << std::endl;
     }
   }
   sum_array_to_root(&j_z[0], n_g, COMM, my_rank);
@@ -177,33 +184,35 @@ void SpeciesGroup::deposit_rho(std::vector<double> &rho, double rho_bg, int my_r
     for (int i = 0; i < n_g; i++) {
       rho[i] = 0.0;
     }
-  }
-  
+  }  
   for (int i = 0; i < n_species; i++) {
-    if (species[i].method==0) { 
+    switch (species[i].method) {
+    case 0 :
       species[i].deposit_rho_pic_0(rho);
-    } else if (species[i].method==1) { 
+      break;
+    case 1 :
       species[i].deposit_rho_pic_1(rho);
-    }
-    else if (species[i].method==2) { 
+      break;
+    case 2 :
+      species[i].deposit_rho_pic_2(rho);
+      break;
+    case 3 :
+      species[i].deposit_rho_pic_3(rho);
+      break;
+    case 4 :
+      species[i].deposit_rho_pic_4(rho);
+      break;
+    case 5 :
       species[i].deposit_rho_sic_0(rho);
-    }
-    else if (species[i].method==3) { 
+      break;
+    case 6 :
       species[i].deposit_rho_sic_1(rho);
-    }
-    else if (species[i].method==4) { 
-      species[i].deposit_rho_sic_higher_order_0(rho);
-    }
-    else if (species[i].method==5) { 
-      species[i].deposit_rho_sic_higher_order_1(rho);
-    }
-    else if (species[i].method==6) { 
-      species[i].deposit_rho_sic_center(rho);
-    }
-    else if (species[i].method==7) { 
-      species[i].deposit_rho_sic_higher_order_center(rho);
+      break;
+    default:
+    std::cout << "Error, selected interpolation order not implemented." << std::endl;
     }
   }
+
   sum_array_to_root(&rho[0], n_g, COMM, my_rank);
   return;
 }

@@ -186,7 +186,7 @@ void ParticleSpecies::initialize_species(int species_number,
   double particle_spacing = dx / n_ppc;
   
   // Add ghost tracer particles if using line segments
-  if (method>1) {
+  if (method>4) {
     for (int i = 0; i < 2; i++) {
       charge.push_back(0.0);
       u_x.push_back(0.0);
