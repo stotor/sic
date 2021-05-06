@@ -76,7 +76,7 @@ int main(int argc, char *argv[])
   ss >> method[1];
   method[0] = method[1];
   //  method[0] = 1;
-  int interp_order = method[0] % 4;
+  int interp_order = method[0] % 5;
   
   ss.str(std::string());
   ss.clear();
@@ -106,10 +106,10 @@ int main(int argc, char *argv[])
 
   if (simulation_type==0 or simulation_type==1) {
     // Weibel and two-stream parameters
-    n_t = 500;
+    n_t = 500/5;
     n_g = 128;
-    dx = 0.1;
-    dt = 0.09;
+    dx = 0.1*5;
+    dt = 0.09*5;
     n_species = 2;
     rho_bg = 2.0;
   }

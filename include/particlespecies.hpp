@@ -71,6 +71,7 @@ public:
   void deposit_rho_pic_4(std::vector<double> &rho);  
   void deposit_rho_sic_0(std::vector<double> &rho);
   void deposit_rho_sic_1(std::vector<double> &rho);
+  void deposit_rho_sic_3(std::vector<double> &rho);  
   void deposit_rho_sic_higher_order_0(std::vector<double> &rho);
   void deposit_rho_sic_higher_order_1(std::vector<double> &rho);
   void deposit_rho_sic_center(std::vector<double> &rho);
@@ -83,6 +84,7 @@ public:
   void deposit_j_x_pic_4(std::vector<double> &j_x);
   void deposit_j_x_sic_0(std::vector<double> &j_x);
   void deposit_j_x_sic_1(std::vector<double> &j_x);
+  void deposit_j_x_sic_3(std::vector<double> &j_x);  
   void deposit_j_x_sic_higher_order_0(std::vector<double> &j_x);
   void deposit_j_x_sic_higher_order_1(std::vector<double> &j_x);
   void deposit_j_x_sic_center(std::vector<double> &j_x);
