@@ -102,14 +102,14 @@ int main(int argc, char *argv[])
   double dx, dt, rho_bg;
   bool gravity = false;
 
-  int simulation_type = 1;
+  int simulation_type = 0;
 
   if (simulation_type==0 or simulation_type==1) {
     // Weibel and two-stream parameters
-    n_t = 500/5;
+    n_t = 500;
     n_g = 128;
-    dx = 0.1*5;
-    dt = 0.09*5;
+    dx = 0.1;
+    dt = 0.09;
     n_species = 2;
     rho_bg = 2.0;
   }

@@ -60,6 +60,9 @@ void SpeciesGroup::deposit_j_x(std::vector<double> &j_x, int my_rank, MPI_Comm C
     case 6 :
       species[i].deposit_j_x_sic_1(j_x);
       break;
+    case 7 :
+      species[i].deposit_j_x_sic_2(j_x);
+      break;
     case 8 :
       species[i].deposit_j_x_sic_3(j_x);
       break;      
@@ -100,6 +103,9 @@ void SpeciesGroup::deposit_j_y(std::vector<double> &j_y, int my_rank, MPI_Comm C
     case 6 :
       species[i].deposit_j_y_sic_1(j_y);
       break;
+    case 7 :
+      species[i].deposit_j_y_sic_1(j_y);
+      break;
     case 8 :
       species[i].deposit_j_y_sic_1(j_y);
       break;
@@ -137,6 +143,9 @@ void SpeciesGroup::deposit_j_z(std::vector<double> &j_z, int my_rank, MPI_Comm C
       species[i].deposit_j_z_sic_0(j_z);
       break;
     case 6 :
+      species[i].deposit_j_z_sic_1(j_z);
+      break;
+    case 7 :
       species[i].deposit_j_z_sic_1(j_z);
       break;
     case 8 :
@@ -216,6 +225,9 @@ void SpeciesGroup::deposit_rho(std::vector<double> &rho, double rho_bg, int my_r
       break;
     case 6 :
       species[i].deposit_rho_sic_1(rho);
+      break;
+    case 7 :
+      species[i].deposit_rho_sic_2(rho);
       break;
     case 8 :
       species[i].deposit_rho_sic_3(rho);
