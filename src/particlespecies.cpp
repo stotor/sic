@@ -1522,10 +1522,9 @@ void ParticleSpecies::deposit_rho_pic_4(std::vector<double> &rho)
     x_n = x[i] / dx;
     ngp = get_nearest_gridpoint(x_n);
     delta = x_n - ngp;
-
     w1 = pow((1.0 - 2.0*delta), 4) / 384.0;
     w2 = (19.0 - 44.0*delta + 24.0*pow(delta, 2) + 16.0*pow(delta,3) - 16.0*pow(delta, 4))/96.0;
-    w3 = 0.5989583333333334 - (5.0*pow(delta, 2))/8.0 + pow(delta, 4)/4.0;
+    w3 = (115.0 / 192.0) - (5.0*pow(delta, 2))/8.0 + pow(delta, 4)/4.0;
     w4 = (19.0 + 44.0*delta + 24.0*pow(delta, 2) - 16.0*pow(delta, 3) - 16*pow(delta,4))/96.0;
     w5 = pow((1.0 + 2.0*delta), 4) / 384.0;
 
@@ -2980,6 +2979,230 @@ void deposit_charge_to_left_segment_3(std::vector<double> &j_x,
   return;
 }
 
+void deposit_rho_sic_4_segment(std::vector<double> &rho,
+			       double xl,
+			       double xr,
+			       double charge,
+			       int n_g,
+			       double dx)
+{
+  double length, xa, xb, delta, q_norm;
+  int ngp_left, ngp_right;
+
+  if(xr < xl) {
+    std::swap(xl, xr);
+  }
+
+  xl = xl / dx;
+  xr = xr / dx;
+  length = xr - xl;
+  q_norm = charge / length;
+
+  ngp_left = get_nearest_gridpoint(xl);
+  ngp_right = get_nearest_gridpoint(xr);
+
+  // If tracers are in one cell
+  if (ngp_left == ngp_right) {
+    if (length==0.0) {
+      delta = xl - ngp_left;
+
+      rho[mod((ngp_left-2),n_g)] += charge * pow((1.0 - 2.0*delta), 4) / 384.0;
+      rho[mod((ngp_left-1),n_g)] += charge * (19.0 - 44.0*delta + 24.0*pow(delta, 2) + 16.0*pow(delta,3) - 16.0*pow(delta, 4))/96.0;
+      rho[mod(ngp_left,n_g)] += charge * (115.0 / 192.0) - (5.0*pow(delta, 2))/8.0 + pow(delta, 4)/4.0;
+      rho[mod((ngp_left+1),n_g)] += charge * (19.0 + 44.0*delta + 24.0*pow(delta, 2) - 16.0*pow(delta, 3) - 16*pow(delta,4))/96.0;
+      rho[mod((ngp_left+2),n_g)] += charge * pow((1.0 + 2.0*delta), 4) / 384.0;
+	
+    } else { 
+      xa = xl - ngp_left;
+      xb = xr - ngp_left;
+
+      rho[mod((ngp_left-2),n_g)] += q_norm * (-1.0*pow((-1.0+2.0*xa),5) + pow((-1.0+2.0*xb),5)) / 3840.0;
+      rho[mod((ngp_left-1),n_g)] += q_norm * (1.0/480.0)*(xa*(-95.0+2.0*xa*(55.0+2.0*xa*(-10.0+xa*(-5.0+4.0*xa))))+xb*(95.0+2.0*xb*(-55.0+2.0*xb*(10.0+(5.0-4.0*xb)*xb))));
+      rho[mod(ngp_left,n_g)] += q_norm * (1.0/960.0)*(-575.0*xa+200.0*pow(xa,3)-48.0*pow(xa,5)+575.0*xb-200.0*pow(xb,3)+48.0*pow(xb,5));
+      rho[mod((ngp_left+1),n_g)] += q_norm * (1.0/480.0)*(xa*(-95.0+2.0*xa*(-55.0+2.0*xa*(-10.0+xa*(5.0+4.0*xa))))+xb*(95.0+2.0*xb*(55.0-2.0*xb*(-10.0+xb*(5.0+4.0*xb)))));
+      rho[mod((ngp_left+2),n_g)] += q_norm * (-1.0*pow((1.0+2.0*xa),5) + pow((1.0+2.0*xb),5)) / 3840.0;
+    }
+  }
+  else {
+    // Left end
+    xa = xl - ngp_left;
+    xb = 0.5;
+
+    rho[mod((ngp_left-2),n_g)] += q_norm * (-1.0*pow((-1.0+2.0*xa),5) + pow((-1.0+2.0*xb),5)) / 3840.0;
+    rho[mod((ngp_left-1),n_g)] += q_norm * (1.0/480.0)*(xa*(-95.0+2.0*xa*(55.0+2.0*xa*(-10.0+xa*(-5.0+4.0*xa))))+xb*(95.0+2.0*xb*(-55.0+2.0*xb*(10.0+(5.0-4.0*xb)*xb))));
+    rho[mod(ngp_left,n_g)] += q_norm * (1.0/960.0)*(-575.0*xa+200.0*pow(xa,3)-48.0*pow(xa,5)+575.0*xb-200.0*pow(xb,3)+48.0*pow(xb,5));
+    rho[mod((ngp_left+1),n_g)] += q_norm * (1.0/480.0)*(xa*(-95.0+2.0*xa*(-55.0+2.0*xa*(-10.0+xa*(5.0+4.0*xa))))+xb*(95.0+2.0*xb*(55.0-2.0*xb*(-10.0+xb*(5.0+4.0*xb)))));
+    rho[mod((ngp_left+2),n_g)] += q_norm * (-1.0*pow((1.0+2.0*xa),5) + pow((1.0+2.0*xb),5)) / 3840.0;
+    
+    // Portions fully covering a cell
+    for (int cell = (ngp_left+1); cell < ngp_right; cell++) {
+      rho[mod((cell-2),n_g)] += q_norm * (1.0 / 120.0);
+      rho[mod((cell-1),n_g)] += q_norm * (13.0 / 60.0);
+      rho[mod(cell,n_g)] += q_norm * (11.0 / 20.0);
+      rho[mod((cell+1),n_g)] += q_norm * (13.0 / 60.0);
+      rho[mod((cell+2),n_g)] += q_norm * (1.0 / 120.0);
+    }
+    
+    // Right end
+    xa = -0.5;
+    xb = xr - ngp_right;
+
+    rho[mod((ngp_right-2),n_g)] += q_norm * (-1.0*pow((-1.0+2.0*xa),5) + pow((-1.0+2.0*xb),5)) / 3840.0;
+    rho[mod((ngp_right-1),n_g)] += q_norm * (1.0/480.0)*(xa*(-95.0+2.0*xa*(55.0+2.0*xa*(-10.0+xa*(-5.0+4.0*xa))))+xb*(95.0+2.0*xb*(-55.0+2.0*xb*(10.0+(5.0-4.0*xb)*xb))));
+    rho[mod(ngp_right,n_g)] += q_norm * (1.0/960.0)*(-575.0*xa+200.0*pow(xa,3)-48.0*pow(xa,5)+575.0*xb-200.0*pow(xb,3)+48.0*pow(xb,5));
+    rho[mod((ngp_right+1),n_g)] += q_norm * (1.0/480.0)*(xa*(-95.0+2.0*xa*(-55.0+2.0*xa*(-10.0+xa*(5.0+4.0*xa))))+xb*(95.0+2.0*xb*(55.0-2.0*xb*(-10.0+xb*(5.0+4.0*xb)))));
+    rho[mod((ngp_right+2),n_g)] += q_norm * (-1.0*pow((1.0+2.0*xa),5) + pow((1.0+2.0*xb),5)) / 3840.0;
+  }
+  return;
+}
+
+void deposit_charge_to_left_segment_4(std::vector<double> &j_x,
+				      double xl,
+				      double xr,
+				      double charge,
+				      int n_g,
+				      double dx,
+				      int right_max)
+{
+  double length, xa, xb, delta, q_norm, j_run;
+  int ngp_left, ngp_right;
+
+  if(xr < xl) {
+    std::swap(xl, xr);
+  }
+
+  xl = xl / dx;
+  xr = xr / dx;
+  length = xr - xl;
+  q_norm = charge / length;
+
+  ngp_left = get_nearest_gridpoint(xl);
+  ngp_right = get_nearest_gridpoint(xr);
+
+  // If tracers are in one cell
+  if (ngp_left == ngp_right) {
+    if (length==0.0) {
+      delta = xl - ngp_left;
+
+      j_run = charge * pow((1.0 - 2.0*delta), 4) / 384.0;
+      j_x[mod((ngp_left-2),n_g)] += j_run;
+      
+      j_run += charge * (19.0 - 44.0*delta + 24.0*pow(delta, 2) + 16.0*pow(delta,3) - 16.0*pow(delta, 4))/96.0;
+      j_x[mod((ngp_left-1),n_g)] += j_run;
+      
+      j_run += charge * (115.0 / 192.0) - (5.0*pow(delta, 2))/8.0 + pow(delta, 4)/4.0;
+      j_x[mod(ngp_left,n_g)] += j_run;
+      
+      j_run += charge * (19.0 + 44.0*delta + 24.0*pow(delta, 2) - 16.0*pow(delta, 3) - 16*pow(delta,4))/96.0;
+      j_x[mod((ngp_left+1),n_g)] += j_run;
+      
+      j_run += charge * pow((1.0 + 2.0*delta), 4) / 384.0;
+      j_x[mod((ngp_left+2),n_g)] += j_run;
+      
+      for (int i = ngp_left+3; i < right_max; i++) {
+	j_x[mod(i,n_g)] += j_run;
+      }
+	
+    } else { 
+      xa = xl - ngp_left;
+      xb = xr - ngp_left;
+
+      j_run = q_norm * (-1.0*pow((-1.0+2.0*xa),5) + pow((-1.0+2.0*xb),5)) / 3840.0;
+      j_x[mod((ngp_left-2),n_g)] += j_run;
+      
+      j_run += q_norm * (1.0/480.0)*(xa*(-95.0+2.0*xa*(55.0+2.0*xa*(-10.0+xa*(-5.0+4.0*xa))))+xb*(95.0+2.0*xb*(-55.0+2.0*xb*(10.0+(5.0-4.0*xb)*xb))));
+      j_x[mod((ngp_left-1),n_g)] += j_run;
+      
+      j_run += q_norm * (1.0/960.0)*(-575.0*xa+200.0*pow(xa,3)-48.0*pow(xa,5)+575.0*xb-200.0*pow(xb,3)+48.0*pow(xb,5));
+      j_x[mod(ngp_left,n_g)] += j_run;
+      
+      j_run += q_norm * (1.0/480.0)*(xa*(-95.0+2.0*xa*(-55.0+2.0*xa*(-10.0+xa*(5.0+4.0*xa))))+xb*(95.0+2.0*xb*(55.0-2.0*xb*(-10.0+xb*(5.0+4.0*xb)))));
+      j_x[mod((ngp_left+1),n_g)] += j_run;
+      
+      j_run += q_norm * (-1.0*pow((1.0+2.0*xa),5) + pow((1.0+2.0*xb),5)) / 3840.0;
+      j_x[mod((ngp_left+2),n_g)] += j_run;
+      
+      for (int i = ngp_left+3; i < right_max; i++) {
+	j_x[mod(i,n_g)] += j_run;
+      }
+      
+    }
+  }
+  else {
+    // Left end
+    xa = xl - ngp_left;
+    xb = 0.5;
+
+    j_run = q_norm * (-1.0*pow((-1.0+2.0*xa),5) + pow((-1.0+2.0*xb),5)) / 3840.0;
+    j_x[mod((ngp_left-2),n_g)] += j_run;
+    
+    j_run += q_norm * (1.0/480.0)*(xa*(-95.0+2.0*xa*(55.0+2.0*xa*(-10.0+xa*(-5.0+4.0*xa))))+xb*(95.0+2.0*xb*(-55.0+2.0*xb*(10.0+(5.0-4.0*xb)*xb))));
+    j_x[mod((ngp_left-1),n_g)] += j_run;
+    
+    j_run += q_norm * (1.0/960.0)*(-575.0*xa+200.0*pow(xa,3)-48.0*pow(xa,5)+575.0*xb-200.0*pow(xb,3)+48.0*pow(xb,5));
+    j_x[mod(ngp_left,n_g)] += j_run;
+    
+    j_run += q_norm * (1.0/480.0)*(xa*(-95.0+2.0*xa*(-55.0+2.0*xa*(-10.0+xa*(5.0+4.0*xa))))+xb*(95.0+2.0*xb*(55.0-2.0*xb*(-10.0+xb*(5.0+4.0*xb)))));
+    j_x[mod((ngp_left+1),n_g)] += j_run;
+    
+    j_run += q_norm * (-1.0*pow((1.0+2.0*xa),5) + pow((1.0+2.0*xb),5)) / 3840.0;
+    j_x[mod((ngp_left+2),n_g)] += j_run;
+    
+    for (int i = ngp_left+3; i < right_max; i++) {
+      j_x[mod(i,n_g)] += j_run;
+    }
+    
+    // Portions fully covering a cell
+    for (int cell = (ngp_left+1); cell < ngp_right; cell++) {
+      j_run = q_norm * (1.0 / 120.0);
+      j_x[mod((cell-2),n_g)] += j_run;
+      
+      j_run += q_norm * (13.0 / 60.0);
+      j_x[mod((cell-1),n_g)] += j_run;
+      
+      j_run += q_norm * (11.0 / 20.0);
+      j_x[mod(cell,n_g)] += j_run;
+      
+      j_run += q_norm * (13.0 / 60.0);
+      j_x[mod((cell+1),n_g)] += j_run;
+      
+      j_run += q_norm * (1.0 / 120.0);
+      j_x[mod((cell+2),n_g)] += j_run;
+      
+      for (int i = cell+3; i < right_max; i++) {
+	j_x[mod(i,n_g)] += j_run;
+      }
+
+    }
+    
+    // Right end
+    xa = -0.5;
+    xb = xr - ngp_right;
+
+    j_run = q_norm * (-1.0*pow((-1.0+2.0*xa),5) + pow((-1.0+2.0*xb),5)) / 3840.0;
+    j_x[mod((ngp_right-2),n_g)] += j_run;
+
+    j_run += q_norm * (1.0/480.0)*(xa*(-95.0+2.0*xa*(55.0+2.0*xa*(-10.0+xa*(-5.0+4.0*xa))))+xb*(95.0+2.0*xb*(-55.0+2.0*xb*(10.0+(5.0-4.0*xb)*xb))));
+    j_x[mod((ngp_right-1),n_g)] += j_run;
+    
+    j_run += q_norm * (1.0/960.0)*(-575.0*xa+200.0*pow(xa,3)-48.0*pow(xa,5)+575.0*xb-200.0*pow(xb,3)+48.0*pow(xb,5));
+    j_x[mod(ngp_right,n_g)] += j_run;
+    
+    j_run += q_norm * (1.0/480.0)*(xa*(-95.0+2.0*xa*(-55.0+2.0*xa*(-10.0+xa*(5.0+4.0*xa))))+xb*(95.0+2.0*xb*(55.0-2.0*xb*(-10.0+xb*(5.0+4.0*xb)))));
+    j_x[mod((ngp_right+1),n_g)] += j_run;
+
+    j_run += q_norm * (-1.0*pow((1.0+2.0*xa),5) + pow((1.0+2.0*xb),5)) / 3840.0;
+    j_x[mod((ngp_right+2),n_g)] += j_run;
+    
+    for (int i = ngp_right+3; i < right_max; i++) {
+      j_x[mod(i,n_g)] += j_run;
+    }
+    
+  }
+  return;
+}
+
+
 void ParticleSpecies::deposit_j_x_sic_2(std::vector<double> &j_x)
 {
   double right_max;
@@ -3007,6 +3230,21 @@ void ParticleSpecies::deposit_j_x_sic_3(std::vector<double> &j_x)
     
     deposit_charge_to_left_segment_3(j_x, x_old[i], x_old[i+1], (charge[i] * (dx / dt)), n_g, dx, right_max);
     deposit_charge_to_left_segment_3(j_x, x[i], x[i+1], (-1.0) * (charge[i] * (dx / dt)), n_g, dx, right_max);
+  }
+  return;
+}
+
+void ParticleSpecies::deposit_j_x_sic_4(std::vector<double> &j_x)
+{
+  double right_max;
+  for (int i = 0; i < n_p; i++) {
+    // Index of right bounding gridpoint
+    right_max = fmax(fmax(x_old[i], x_old[i+1]),fmax(x[i],x[i+1]));
+    right_max = right_max / dx;
+    right_max = ceil(right_max) + 3;
+    
+    deposit_charge_to_left_segment_4(j_x, x_old[i], x_old[i+1], (charge[i] * (dx / dt)), n_g, dx, right_max);
+    deposit_charge_to_left_segment_4(j_x, x[i], x[i+1], (-1.0) * (charge[i] * (dx / dt)), n_g, dx, right_max);
   }
   return;
 }
@@ -3039,6 +3277,14 @@ void ParticleSpecies::deposit_rho_sic_3(std::vector<double> &rho)
 {
   for (int i = 0; i < n_p; i++) {
     deposit_rho_sic_3_segment(rho, x[i], x[i+1], charge[i], n_g, dx);    
+  }
+  return;
+}
+
+void ParticleSpecies::deposit_rho_sic_4(std::vector<double> &rho)
+{
+  for (int i = 0; i < n_p; i++) {
+    deposit_rho_sic_4_segment(rho, x[i], x[i+1], charge[i], n_g, dx);    
   }
   return;
 }

@@ -66,6 +66,9 @@ void SpeciesGroup::deposit_j_x(std::vector<double> &j_x, int my_rank, MPI_Comm C
     case 8 :
       species[i].deposit_j_x_sic_3(j_x);
       break;      
+    case 9 :
+      species[i].deposit_j_x_sic_4(j_x);
+      break;      
     default:
     std::cout << "Error, selected interpolation order not implemented." << std::endl;
     }
@@ -109,6 +112,9 @@ void SpeciesGroup::deposit_j_y(std::vector<double> &j_y, int my_rank, MPI_Comm C
     case 8 :
       species[i].deposit_j_y_sic_1(j_y);
       break;
+    case 9 :
+      species[i].deposit_j_y_sic_1(j_y);
+      break;
     default:
     std::cout << "Error, selected interpolation order not implemented." << std::endl;
     }
@@ -149,6 +155,9 @@ void SpeciesGroup::deposit_j_z(std::vector<double> &j_z, int my_rank, MPI_Comm C
       species[i].deposit_j_z_sic_1(j_z);
       break;
     case 8 :
+      species[i].deposit_j_z_sic_1(j_z);
+      break;
+    case 9 :
       species[i].deposit_j_z_sic_1(j_z);
       break;
     default:
@@ -231,6 +240,9 @@ void SpeciesGroup::deposit_rho(std::vector<double> &rho, double rho_bg, int my_r
       break;
     case 8 :
       species[i].deposit_rho_sic_3(rho);
+      break;
+    case 9 :
+      species[i].deposit_rho_sic_4(rho);
       break;
     default:
     std::cout << "Error, selected interpolation order not implemented." << std::endl;
