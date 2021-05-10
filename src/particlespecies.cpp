@@ -3288,3 +3288,349 @@ void ParticleSpecies::deposit_rho_sic_4(std::vector<double> &rho)
   }
   return;
 }
+
+// SIC 2, 3, and 4 transverse current deposit
+
+double j_t_3_w1(double xa, double xb, double va, double vb)
+{
+  return (1.0/480.0)*(xa-xb)*(vb*(-5.0+2.0*xa*(5.0+xa*(-5.0+2.0*xa))+20.0*xb+4.0*xa*(-5.0+2.0*xa)*xb+6.0*(-5.0+2.0*xa)*xb*xb+16.0*pow(xb,3))+va*(-5.0+16.0*pow(xa,3)+6.0*xa*xa*(-5.0+2.0*xb)+4.0*xa*(5.0+xb*(-5.0+2.0*xb))+2.0*xb*(5.0+xb*(-5.0+2.0*xb))));
+}
+
+double j_t_3_w1_full(double xa, double xb, double va, double vb)
+{
+  return (vb*(3.0+10.0*xa)-va*(3.0+10.0*xb))/(240.0*(xa-xb));
+}
+
+double j_t_3_w2(double xa, double xb, double va, double vb)
+{
+  return -1.0*(1.0/480.0)*(xa-xb)*(vb*(115.0+2.0*xa*(-5.0+2.0*xa)*(5.0+3.0*xa)-100.0*xb+4.0*xa*(-5.0+6.0*xa)*xb+6.0*(-5.0+6.0*xa)*xb*xb+48.0*pow(xb,3))+va*(115.0+48.0*pow(xa,3)+4.0*xa*(-5.0+2.0*xb)*(5.0+3.0*xb)+2.0*xb*(-5.0+2.0*xb)*(5.0+3.0*xb)+6.0*xa*xa*(-5.0+6.0*xb)))*(11.0*(vb+10.0*vb*xa-va*(1.0+10.0*xb)))/(240.0*(xa-xb));
+}
+
+double j_t_3_w2_full(double xa, double xb, double va, double vb)
+{
+  return (11.0*(vb+10.0*vb*xa-va*(1.0+10.0*xb)))/(240.0*(xa-xb));
+}
+
+double j_t_3_w3(double xa, double xb, double va, double vb)
+{
+  return (1.0/480.0)*(xa-xb)*(va*(-115.0+48.0*pow(xa,3)+4.0*xa*(5.0+2.0*xb)*(-5.0+3.0*xb)+2.0*xb*(5.0+2.0*xb)*(-5.0+3.0*xb)+6*xa*xa*(5.0+6.0*xb))+vb*(2.0*xa*(5.0+2.0*xa)*(-5.0+3.0*xa)+4.0*xa*(5.0+6.0*xa)*xb+6.0*(5.0+6.0*xa)*xb*xb+48.0*pow(xb,3)-5.0*(23.0+20.0*xb)));
+}
+
+double j_t_3_w3_full(double xa, double xb, double va, double vb)
+{
+  return (11.0*(va+vb*(-1.0+10.0*xa)-10.0*va*xb))/(240.0*(xa-xb));
+}
+
+double j_t_3_w4(double xa, double xb, double va, double vb)
+{
+  return -(1.0/480.0)*(xa-xb)*(vb*(5.0+2.0*xa*(5.0+xa*(5.0+2.0*xa))+20.0*xb+4.0*xa*(5.0+2.0*xa)*xb+6.0*(5.0+2.0*xa)*xb*xb+16.0*pow(xb,3))+va*(5.0+16.0*pow(xa,3)+6.0*xa*xa*(5.0+2.0*xb)+4.0*xa*(5.0+xb*(5.0+2.0*xb))+2.0*xb*(5.0+xb*(5.0+2.0*xb))));
+}
+
+
+double j_t_3_w4_full(double xa, double xb, double va, double vb)
+{
+  return (vb*(-3.0+10.0*xa)+va*(3.0-10.0*xb))/(240.0*(xa-xb));
+}
+
+
+double j_t_2_w1(double xa, double xb, double va, double vb)
+{
+  return (-1.0/48.0)*(xa-xb)*(va*(3.0+6.0*xa*xa+4.0*xa*(-2.0+xb)+2.0*(-2.0+xb)*xb)+vb*(3.0+2.0*(-2.0+xa)*xa-8.0*xb+4.0*xa*xb+6.0*xb*xb));
+}
+
+double j_t_2_w1_full(double xa, double xb, double va, double vb)
+{
+  return (vb+4.0*vb*xa-va*(1.0+4.0*xb))/(24.0*(xa-xb));
+}
+
+double j_t_2_w2(double xa, double xb, double va, double vb)
+{
+
+  return (1.0/24.0)*(xa-xb)*(-9.0*va-9.0*vb+6.0*va*xa*xa+2.0*vb*xa*xa+4.0*(va+vb)*xa*xb+2.0*(va+3.0*vb)*xb*xb);
+}
+
+double j_t_2_w2_full(double xa, double xb, double va, double vb)
+{
+  return (2.0*vb*xa-2.0*va*xb)/(3.0*xa-3.0*xb);
+}
+
+double j_t_2_w3(double xa, double xb, double va, double vb)
+{
+  return (-1.0/48.0)*(xa-xb)*(vb*(3.0+2.0*xa*(2.0+xa)+8.0*xb+4.0*xa*xb+6.0*xb*xb)+va*(3.0+6.0*xa*xa+4.0*xa*(2.0+xb)+2.0*xb*(2.0 + xb)));
+}
+
+double j_t_2_w3_full(double xa, double xb, double va, double vb)
+{
+  return (va-vb+4.0*vb*xa-4.0*va*xb)/(24.0*xa-24.0*xb);
+}
+
+double j_t_5_w1(double xa, double xb, double va, double vb)
+{
+  return (-1.0/11520.0)*(xa-xb)*(vb*(15.0+4.0*xa*(-10.0+xa*(15.0+4.0*(-3.0+xa)*xa))-80.0*xb+8.0*xa*(15.0+4.0*(-3.0+xa)*xa)*xb+12.0*(15.0+4.0*(-3.0+xa)*xa)*xb*xb+64.0*(-3.0+xa)*pow(xb,3)+80.0*pow(xb,4))+va*(15.0+80.0*pow( xa,4)+64.0*pow( xa,3)*(-3.0+xb)+12.0*xa*xa*(15.0+4.0*(-3.0+xb)*xb)+8.0*xa*(-10.0+xb*(15.0+4.0*(-3.0+xb)*xb))+4.0*xb*(-10.0+xb*(15.0+4.0*(-3.0+xb)*xb))));
+}
+
+double j_t_5_w2(double xa, double xb, double va, double vb)
+{
+
+  return (1.0/2880.0)*(xa-xb)*(-285.0*vb+va*(5.0*(-57.0+44.0*xb)+4.0*(xa*(110.0+xa*(-45.0+4.0*xa*(-6.0+5.0*xa)))+2.0*xa*(-15.0+xa*(-9.0+8.0*xa))*xb+3.0*(-5.0+4.0*(-1.0+xa)*xa)*pow(xb,2)+2.0*(-3.0+4.0*xa)*pow(xb,3)+4.0*pow(xb,4)))+4.0*vb*(4.0*pow(xa,4)+pow(xa,3)*(-6.0+8.0*xb)+3.0*xa*xa*(-5.0+4.0*(-1.0+xb)*xb)+xb*(110.0+xb*(-45.0+4.0*xb*(-6.0+5.0*xb)))+xa*(55.0+2.0*xb*(-15.0+xb*(-9.0+8.0*xb)))));
+  }
+
+double j_t_5_w3(double xa, double xb, double va, double vb)
+{
+
+  return (-1.0/1920.0)*(xa-xb)*(575.0*va+575.0*vb-300.0*va*xa*xa-100.0*vb*xa*xa+80.0*va*pow(xa,4)+16.0*vb*pow(xa,4)+8.0*xa*(-25.0*(va+vb)+4.0*(2.0*va+vb)*xa*xa)*xb+4.0*(-25.0*(va+3.0*vb)+12.0*(va+vb)*xa*xa)*xb*xb+32.0*(va+2.0*vb)*xa*pow(xb,3)+16.0*(va+5.0*vb)*pow(xb,4));
+}
+
+double j_t_5_w4(double xa, double xb, double va, double vb)
+{
+
+  return (1.0/2880.0)*(xa-xb)*(-5.0*va*(57.0+44.0*xb)-5.0*vb*(57.0+88.0*xb)+4.0*va*(xa*(-110.0+xa*(-45.0+4.0*xa*(6.0+5.0*xa)))+2.0*xa*(-15.0+xa*(9.0+8.0*xa))*xb+3.0*(-5.0+4.0*xa*(1.0+xa))*xb*xb+2.0*(3.0+4.0*xa)*pow(xb,3)+4.0*pow(xb,4))+4.0*vb*(4.0*pow(xa,4)+pow(xa,3)*(6.0+8.0*xb)+3.0*xa*xa*(-5.0+4.0*xb*(1.0+xb))+xb*xb*(-45.0+4.0*xb*(6.0+5.0*xb))+xa*(-55.0+2.0*xb*(-15.0+xb*(9.0+8.0*xb)))));
+}
+
+double j_t_5_w5(double xa, double xb, double va, double vb)
+{
+  return (-1.0/11520.0)*(xa-xb)*(vb*(15.0+4.0*xa*(10.0+xa*(15.0+4.0*xa*(3.0+xa)))+80*xb+8.0*xa*(15.0+4.0*xa*(3.0+xa))*xb+12.0*(15.0+4.0*xa*(3.0+xa))*xb*xb+64.0*(3.0+xa)*pow(xb,3)+80.0*pow(xb,4))+va*(15.0+80.0*pow(xa,4)+64.0*pow(xa,3)*(3.0+xb)+12.0*xa*xa*(15.0+4.0*xb*(3.0+xb))+8.0*xa*(10.0+xb*(15.0+4.0*xb*(3.0+xb)))+4.0*xb*(10.0+xb*(15.0+4.0*xb*(3.0+xb)))));
+}
+
+double j_t_5_w1_full(double xa, double xb, double va, double vb)
+{
+  return (vb+3.0*vb*xa-va*(1.0+3.0*xb))/(360.0*(xa-xb));
+}
+
+double j_t_5_w2_full(double xa, double xb, double va, double vb)
+{
+  return (13.0*(vb+6.0*vb*xa-va*(1.0+6.0*xb)))/(360.0*(xa-xb));
+}
+
+double j_t_5_w3_full(double xa, double xb, double va, double vb)
+{
+  return (11.0*(vb*xa-va*xb))/(20.0*(xa-xb));
+}
+
+double j_t_5_w4_full(double xa, double xb, double va, double vb)
+{
+  return (13.0*(va+vb*(-1.0+6.0*xa)-6.0*va*xb))/(360.0*(xa-xb));
+}
+
+double j_t_5_w5_full(double xa, double xb, double va, double vb)
+{
+  return (va+vb*(-1.0+3.0*xa)-3.0*va*xb)/(360.0*(xa-xb));
+}
+
+void deposit_j_t_segment_2(std::vector<double> &j_t,
+			   double xl,
+			   double xr,
+			   double vl,
+			   double vr,
+			   double charge,
+			   int n_g,
+			   double dx)
+{
+  double length, xa, xb, va, vb, delta, q_norm;
+  int ngp_left, ngp_right;
+
+  if(xr < xl) {
+    std::swap(xl, xr);
+  }
+
+  xl = xl / dx;
+  xr = xr / dx;
+  length = xr - xl;
+  q_norm = charge / length;
+
+  ngp_left = get_nearest_gridpoint(xl);
+  ngp_right = get_nearest_gridpoint(xr);
+
+  // If tracers are in one cell
+  if (ngp_left == ngp_right) {
+    if (length==0.0) {
+      delta = xl - ngp_left;
+      va = (vl + vr) / 2.0;
+      j_t[mod((ngp_left-1),n_g)] += charge * va * 0.5 * pow((0.5 - delta), 2);
+      j_t[mod(ngp_left,n_g)] += charge * va * 0.75 - delta * delta;
+      j_t[mod((ngp_left+1),n_g)] += charge * va * 0.5 * pow((0.5 + delta), 2);
+    } else { 
+      xa = xl - ngp_left;
+      xb = xr - ngp_left;
+      va = vl;
+      vb = vr;
+
+      j_t[mod((ngp_left-1),n_g)] += q_norm * j_t_2_w1(xa, xb, va, vb);
+      j_t[mod(ngp_left,n_g)] += q_norm * j_t_2_w2(xa, xb, va, vb);
+      j_t[mod((ngp_left+1),n_g)] += q_norm * j_t_2_w3(xa, xb, va, vb);
+    }
+  }
+  else {
+    // Left end
+    xa = xl - ngp_left;
+    xb = 0.5;
+    va = vl;
+    vb = interpolate_segment_velocity(vl, vr, length, (xb-xa));
+
+    j_t[mod((ngp_left-1),n_g)] += q_norm * j_t_2_w1(xa, xb, va, vb);
+    j_t[mod(ngp_left,n_g)] += q_norm * j_t_2_w2(xa, xb, va, vb);
+    j_t[mod((ngp_left+1),n_g)] += q_norm * j_t_2_w3(xa, xb, va, vb);
+    
+    // Portions fully covering a cell
+    for (int cell = (ngp_left+1); cell < ngp_right; cell++) {
+      xa = -0.5;
+      xb = 0.5;
+      va = interpolate_segment_velocity(vl, vr, length, (cell-0.5-xl));
+      vb = interpolate_segment_velocity(vl, vr, length, (cell+0.5-xl));
+
+      j_t[mod((cell-1),n_g)] += q_norm * j_t_2_w1(xa, xb, va, vb);
+      j_t[mod(cell,n_g)] += q_norm * j_t_2_w2(xa, xb, va, vb);
+      j_t[mod((cell+1),n_g)] += q_norm * j_t_2_w3(xa, xb, va, vb);
+    }
+    
+    // Right end
+    xa = -0.5;
+    xb = xr - ngp_right;    
+    va = interpolate_segment_velocity(vl, vr, length, ngp_right-0.5-xl);
+    vb = vr;
+
+    j_t[mod((ngp_right-1),n_g)] += q_norm * j_t_2_w1(xa, xb, va, vb);
+    j_t[mod(ngp_right,n_g)] += q_norm * j_t_2_w2(xa, xb, va, vb);
+    j_t[mod((ngp_right+1),n_g)] += q_norm * j_t_2_w3(xa, xb, va, vb);
+
+  }
+  return;
+}
+
+void ParticleSpecies::deposit_j_y_sic_2(std::vector<double> &j_y)
+{
+  double x_i_tavg, x_ip1_tavg, left, right, v_y_left, v_y_right;
+  for (int i = 0; i < n_p; i++) {
+    x_i_tavg = (x_old[i] + x[i]) / 2.0;
+    x_ip1_tavg = (x_old[i+1] + x[i+1]) / 2.0;
+    if (x_ip1_tavg >= x_i_tavg) {
+      left = x_i_tavg;
+      right = x_ip1_tavg;
+      v_y_left = u_y[i] / sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0) + pow(u_z[i], 2.0));
+      v_y_right = u_y[i+1] / sqrt(1.0 + pow(u_x[i+1], 2.0) + pow(u_y[i+1], 2.0) + pow(u_z[i+1], 2.0));
+    }
+    else {
+      left = x_ip1_tavg;
+      right = x_i_tavg;
+      v_y_left = u_y[i+1] / sqrt(1.0 + pow(u_x[i+1], 2.0) + pow(u_y[i+1], 2.0) + pow(u_z[i+1], 2.0));
+      v_y_right = u_y[i] / sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0) + pow(u_z[i], 2.0));
+    }
+    deposit_j_t_segment_2(j_y, left, right, v_y_left, v_y_right, charge[i], n_g, dx);
+  }
+  return;
+}
+
+void ParticleSpecies::deposit_j_z_sic_2(std::vector<double> &j_z)
+{
+  double x_i_tavg, x_ip1_tavg, left, right, v_z_left, v_z_right;
+  for (int i = 0; i < n_p; i++) {
+    x_i_tavg = (x_old[i] + x[i]) / 2.0;
+    x_ip1_tavg = (x_old[i+1] + x[i+1]) / 2.0;
+    if (x_ip1_tavg >= x_i_tavg) {
+      left = x_i_tavg;
+      right = x_ip1_tavg;
+      v_z_left = u_z[i] / sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0) + pow(u_z[i], 2.0));
+      v_z_right = u_z[i+1] / sqrt(1.0 + pow(u_x[i+1], 2.0) + pow(u_y[i+1], 2.0) + pow(u_z[i+1], 2.0));
+    }
+    else {
+      left = x_ip1_tavg;
+      right = x_i_tavg;
+      v_z_left = u_z[i+1] / sqrt(1.0 + pow(u_x[i+1], 2.0) + pow(u_y[i+1], 2.0) + pow(u_z[i+1], 2.0));
+      v_z_right = u_z[i] / sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0) + pow(u_z[i], 2.0));
+    }
+    deposit_j_t_segment_2(j_z, left, right, v_z_left, v_z_right, charge[i], n_g, dx);
+  }
+  return;
+}
+
+void ParticleSpecies::deposit_j_y_sic_3(std::vector<double> &j_y)
+{
+  double x_i_tavg, x_ip1_tavg, left, right, v_y_left, v_y_right;
+  for (int i = 0; i < n_p; i++) {
+    x_i_tavg = (x_old[i] + x[i]) / 2.0;
+    x_ip1_tavg = (x_old[i+1] + x[i+1]) / 2.0;
+    if (x_ip1_tavg >= x_i_tavg) {
+      left = x_i_tavg;
+      right = x_ip1_tavg;
+      v_y_left = u_y[i] / sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0) + pow(u_z[i], 2.0));
+      v_y_right = u_y[i+1] / sqrt(1.0 + pow(u_x[i+1], 2.0) + pow(u_y[i+1], 2.0) + pow(u_z[i+1], 2.0));
+    }
+    else {
+      left = x_ip1_tavg;
+      right = x_i_tavg;
+      v_y_left = u_y[i+1] / sqrt(1.0 + pow(u_x[i+1], 2.0) + pow(u_y[i+1], 2.0) + pow(u_z[i+1], 2.0));
+      v_y_right = u_y[i] / sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0) + pow(u_z[i], 2.0));
+    }
+    //    deposit_j_t_segment_3(j_y, left, right, v_y_left, v_y_right, charge[i], n_g, dx);
+  }
+  return;
+}
+
+void ParticleSpecies::deposit_j_z_sic_3(std::vector<double> &j_z)
+{
+  double x_i_tavg, x_ip1_tavg, left, right, v_z_left, v_z_right;
+  for (int i = 0; i < n_p; i++) {
+    x_i_tavg = (x_old[i] + x[i]) / 2.0;
+    x_ip1_tavg = (x_old[i+1] + x[i+1]) / 2.0;
+    if (x_ip1_tavg >= x_i_tavg) {
+      left = x_i_tavg;
+      right = x_ip1_tavg;
+      v_z_left = u_z[i] / sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0) + pow(u_z[i], 2.0));
+      v_z_right = u_z[i+1] / sqrt(1.0 + pow(u_x[i+1], 2.0) + pow(u_y[i+1], 2.0) + pow(u_z[i+1], 2.0));
+    }
+    else {
+      left = x_ip1_tavg;
+      right = x_i_tavg;
+      v_z_left = u_z[i+1] / sqrt(1.0 + pow(u_x[i+1], 2.0) + pow(u_y[i+1], 2.0) + pow(u_z[i+1], 2.0));
+      v_z_right = u_z[i] / sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0) + pow(u_z[i], 2.0));
+    }
+    //    deposit_j_t_segment_3(j_z, left, right, v_z_left, v_z_right, charge[i], n_g, dx);
+  }
+  return;
+}
+
+void ParticleSpecies::deposit_j_y_sic_4(std::vector<double> &j_y)
+{
+  double x_i_tavg, x_ip1_tavg, left, right, v_y_left, v_y_right;
+  for (int i = 0; i < n_p; i++) {
+    x_i_tavg = (x_old[i] + x[i]) / 2.0;
+    x_ip1_tavg = (x_old[i+1] + x[i+1]) / 2.0;
+    if (x_ip1_tavg >= x_i_tavg) {
+      left = x_i_tavg;
+      right = x_ip1_tavg;
+      v_y_left = u_y[i] / sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0) + pow(u_z[i], 2.0));
+      v_y_right = u_y[i+1] / sqrt(1.0 + pow(u_x[i+1], 2.0) + pow(u_y[i+1], 2.0) + pow(u_z[i+1], 2.0));
+    }
+    else {
+      left = x_ip1_tavg;
+      right = x_i_tavg;
+      v_y_left = u_y[i+1] / sqrt(1.0 + pow(u_x[i+1], 2.0) + pow(u_y[i+1], 2.0) + pow(u_z[i+1], 2.0));
+      v_y_right = u_y[i] / sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0) + pow(u_z[i], 2.0));
+    }
+    //    deposit_j_t_segment_4(j_y, left, right, v_y_left, v_y_right, charge[i], n_g, dx);
+  }
+  return;
+}
+
+void ParticleSpecies::deposit_j_z_sic_4(std::vector<double> &j_z)
+{
+  double x_i_tavg, x_ip1_tavg, left, right, v_z_left, v_z_right;
+  for (int i = 0; i < n_p; i++) {
+    x_i_tavg = (x_old[i] + x[i]) / 2.0;
+    x_ip1_tavg = (x_old[i+1] + x[i+1]) / 2.0;
+    if (x_ip1_tavg >= x_i_tavg) {
+      left = x_i_tavg;
+      right = x_ip1_tavg;
+      v_z_left = u_z[i] / sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0) + pow(u_z[i], 2.0));
+      v_z_right = u_z[i+1] / sqrt(1.0 + pow(u_x[i+1], 2.0) + pow(u_y[i+1], 2.0) + pow(u_z[i+1], 2.0));
+    }
+    else {
+      left = x_ip1_tavg;
+      right = x_i_tavg;
+      v_z_left = u_z[i+1] / sqrt(1.0 + pow(u_x[i+1], 2.0) + pow(u_y[i+1], 2.0) + pow(u_z[i+1], 2.0));
+      v_z_right = u_z[i] / sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0) + pow(u_z[i], 2.0));
+    }
+    //    deposit_j_t_segment_4(j_z, left, right, v_z_left, v_z_right, charge[i], n_g, dx);
+  }
+  return;
+}
