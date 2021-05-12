@@ -102,7 +102,7 @@ int main(int argc, char *argv[])
   double dx, dt, rho_bg;
   bool gravity = false;
 
-  int simulation_type = 0;
+  int simulation_type = 1;
 
   if (simulation_type==0 or simulation_type==1) {
     // Weibel and two-stream parameters
@@ -123,6 +123,15 @@ int main(int argc, char *argv[])
     n_species = 2;
     rho_bg = 0.0;
   }
+  else if (simulation_type==3) {
+    // Weibel highres
+    n_t = 2000;
+    n_g = 128;
+    dx = 0.01;
+    dt = 0.009;
+    n_species = 2;
+    rho_bg = 2.0;
+  }
   else if (simulation_type==-1) {
     // Plasma wave parameters
     n_t = 500;
@@ -135,10 +144,10 @@ int main(int argc, char *argv[])
   }
   else if (simulation_type==-2) {
     // Two-stream one mode
-    n_t = 2000*4;
-    n_g = 128*4;
-    dx = 0.01/4;
-    dt = 0.009/4;
+    n_t = 2000;
+    n_g = 128;
+    dx = 0.01;
+    dt = 0.009;
     n_species = 2;
     rho_bg = 2.0;
   }
