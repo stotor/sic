@@ -165,6 +165,7 @@ void ParticleSpecies::initialize_species(int species_number,
 {
   this->n_p = round((n_ppc * n_g) / num_procs);
   this->n_ppp = n_p;
+  this->interp_order = method % 5;
 
   long long i_start, i_end;
   i_start = n_p * my_rank;
@@ -2641,9 +2642,9 @@ void deposit_rho_sic_2_segment(std::vector<double> &rho,
       xa = xl - ngp_left;
       xb = xr - ngp_left;
 
-      rho[mod((ngp_left-1),n_g)] += q_norm * (1.0/24.0)*(xa*(-3.0+6.0*xa-4.0*xa*xa)+xb*(3.0-6.0*xb+4.0*xb*xb));
-      rho[mod(ngp_left,n_g)] += q_norm * (1.0/12.0)*(-9.0*xa+4.0*pow(xa,3)+9.0*xb-4.0*pow(xb,3));
-      rho[mod((ngp_left+1),n_g)] += q_norm * (1.0/24.0)*(-1.0*xa*(3.0+6.0*xa+4.0*xa*xa)+xb*(3.0+6.0*xb+4.0*xb*xb));
+      rho[mod((ngp_left-1),n_g)] += charge * (1.0 / 24.0) * (3.0 + 4.0 * xa * xa - 6.0 * xb + 4.0 * xb * xb + xa * (-6.0 + 4.0 *  xb));
+      rho[mod(ngp_left,n_g)] += charge * (1.0 / 12.0) * (9.0 - 4.0 * (xa * xa + xa * xb + xb * xb));
+      rho[mod((ngp_left+1),n_g)] += charge * (1.0 / 24.0) * (3.0 + 4.0 * xa * xa + 6.0 * xb + 4.0 *  xb*xb + xa * (6.0 + 4.0 * xb));
     }
   }
   else {
@@ -2719,13 +2720,13 @@ void deposit_charge_to_left_segment_2(std::vector<double> &j_x,
       xa = xl - ngp_left;
       xb = xr - ngp_left;
 
-      j_run = q_norm * (1.0/24.0)*(xa*(-3.0+6.0*xa-4.0*xa*xa)+xb*(3.0-6.0*xb+4.0*xb*xb));
+      j_run = charge * (1.0 / 24.0) * (3.0 + 4.0 * xa * xa - 6.0 * xb + 4.0 * xb * xb + xa * (-6.0 + 4.0 *  xb));      
       j_x[mod((ngp_left-1),n_g)] += j_run;
 
-      j_run += q_norm * (1.0/12.0)*(-9.0*xa+4.0*pow(xa,3)+9.0*xb-4.0*pow(xb,3));
+      j_run += charge * (1.0 / 12.0) * (9.0 - 4.0 * (xa * xa + xa * xb + xb * xb));      
       j_x[mod(ngp_left,n_g)] += j_run;
 
-      j_run +=q_norm * (1.0/24.0)*(-1.0*xa*(3.0+6.0*xa+4.0*xa*xa)+xb*(3.0+6.0*xb+4.0*xb*xb));
+      j_run += charge * (1.0 / 24.0) * (1.0 / 24.0) * (3.0 + 4.0 * xa * xa + 6.0 *  xb + 4.0 *  xb*xb + xa * (6.0 + 4.0 * xb));
       j_x[mod((ngp_left+1),n_g)] += j_run;
 
       for (int i = ngp_left+2; i < right_max; i++) {

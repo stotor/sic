@@ -9,13 +9,12 @@
 
 class ParticleSpecies {
 public:
-  ParticleSpecies(double dt, double dx, int n_g, bool center_fields, int interp_order)
+  ParticleSpecies(double dt, double dx, int n_g, bool center_fields)
   {
     this->dt = dt;
     this->dx = dx;
     this->n_g = n_g;
     this->center_fields = center_fields;
-    this->interp_order = interp_order;
     return;
   }
 

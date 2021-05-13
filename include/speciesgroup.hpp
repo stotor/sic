@@ -10,8 +10,8 @@
 
 class SpeciesGroup {
 public:
-  SpeciesGroup(int n_species, double dt, double dx, int n_g, bool center_fields, int interp_order) :
-    species(n_species, ParticleSpecies(dt, dx, n_g, center_fields, interp_order))
+  SpeciesGroup(int n_species, double dt, double dx, int n_g, bool center_fields) :
+    species(n_species, ParticleSpecies(dt, dx, n_g, center_fields))
   {
     this->n_species = n_species;
     this->dt = dt;

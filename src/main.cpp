@@ -76,7 +76,6 @@ int main(int argc, char *argv[])
   ss >> method[1];
   method[0] = method[1];
   //  method[0] = 1;
-  int interp_order = method[0] % 5;
   
   ss.str(std::string());
   ss.clear();
@@ -85,8 +84,8 @@ int main(int argc, char *argv[])
   n_ppc.push_back(-1);  
   ss << argv[2];
   ss >> n_ppc[1];
-  n_ppc[0] = n_ppc[1];
-  //n_ppc[0] = 131072;
+  //  n_ppc[0] = n_ppc[1];
+  n_ppc[0] = 131072;
 
   double refinement_length;
   if (argc == 4) {
@@ -102,7 +101,7 @@ int main(int argc, char *argv[])
   double dx, dt, rho_bg;
   bool gravity = false;
 
-  int simulation_type = 1;
+  int simulation_type = 2;
 
   if (simulation_type==0 or simulation_type==1) {
     // Weibel and two-stream parameters
@@ -115,8 +114,8 @@ int main(int argc, char *argv[])
   }
   else if (simulation_type==2) {
     // Whistler heating parameters
-    //    n_t = 5000;
-    n_t = 2500;
+    n_t = 5000;
+    //    n_t = 2500;
     n_g = 1000/2;
     dx = 0.014111*2;
     dt = 0.01411*2;
@@ -152,7 +151,7 @@ int main(int argc, char *argv[])
     rho_bg = 2.0;
   }
 
-  SpeciesGroup particles(n_species, dt, dx, n_g, center_fields, interp_order);
+  SpeciesGroup particles(n_species, dt, dx, n_g, center_fields);
   particles.initialize_species(n_ppc, my_rank, num_procs, method, simulation_type);
   
   particles.communicate_ghost_particles(MPI_COMM_WORLD);
