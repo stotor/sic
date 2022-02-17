@@ -74,8 +74,8 @@ int main(int argc, char *argv[])
   method.push_back(-1);
   ss << argv[1];
   ss >> method[1];
-  method[0] = method[1];
-  //  method[0] = 1;
+  //method[0] = method[1];
+  method[0] = 1;
   
   ss.str(std::string());
   ss.clear();

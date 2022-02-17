@@ -1,4 +1,4 @@
-CXX = mpicxx
+CXX = cc
 
 #For debugging
 #CFLAGS = -Wall -Wextra -Wconversion -g -O0

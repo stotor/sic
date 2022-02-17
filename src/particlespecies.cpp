@@ -14,7 +14,7 @@
 int get_nearest_gridpoint(double x)
 {
   int nearest_gridpoint;
-  if ((x-floor(x)) <= 0.5) {
+  if ((x-floor(x)) < 0.5) {
     nearest_gridpoint = floor(x);
   } else {
     nearest_gridpoint = ceil(x);
@@ -2608,15 +2608,17 @@ void ParticleSpecies::calculate_segment_density(MPI_Comm COMM)
 
 // NEW ROUTINES
 
-void deposit_rho_sic_2_segment(std::vector<double> &rho,
+double deposit_rho_sic_2_segment(std::vector<double> &rho,
 			       double xl,
 			       double xr,
 			       double charge,
 			       int n_g,
 			       double dx)
 {
-  double length, xa, xb, delta, q_norm;
+  double length, xa, xb, delta, q_norm, charge_run;
   int ngp_left, ngp_right;
+
+  charge_run = 0.0;
 
   if(xr < xl) {
     std::swap(xl, xr);
@@ -2636,8 +2638,12 @@ void deposit_rho_sic_2_segment(std::vector<double> &rho,
       delta = xl - ngp_left;
 
       rho[mod((ngp_left-1),n_g)] += charge * 0.5 * pow((0.5 - delta), 2);
-      rho[mod(ngp_left,n_g)] += charge * 0.75 - delta * delta;
+      rho[mod(ngp_left,n_g)] += charge * (0.75 - delta * delta);
       rho[mod((ngp_left+1),n_g)] += charge * 0.5 * pow((0.5 + delta), 2);
+      charge_run += charge * 0.5 * pow((0.5 - delta), 2);
+      charge_run += charge * (0.75 - delta * delta);
+      charge_run += charge * 0.5 * pow((0.5 + delta), 2);
+
     } else { 
       xa = xl - ngp_left;
       xb = xr - ngp_left;
@@ -2645,6 +2651,10 @@ void deposit_rho_sic_2_segment(std::vector<double> &rho,
       rho[mod((ngp_left-1),n_g)] += charge * (1.0 / 24.0) * (3.0 + 4.0 * xa * xa - 6.0 * xb + 4.0 * xb * xb + xa * (-6.0 + 4.0 *  xb));
       rho[mod(ngp_left,n_g)] += charge * (1.0 / 12.0) * (9.0 - 4.0 * (xa * xa + xa * xb + xb * xb));
       rho[mod((ngp_left+1),n_g)] += charge * (1.0 / 24.0) * (3.0 + 4.0 * xa * xa + 6.0 * xb + 4.0 *  xb*xb + xa * (6.0 + 4.0 * xb));
+      
+      charge_run += charge * (1.0 / 24.0) * (3.0 + 4.0 * xa * xa - 6.0 * xb + 4.0 * xb * xb + xa * (-6.0 + 4.0 *  xb));
+      charge_run += charge * (1.0 / 12.0) * (9.0 - 4.0 * (xa * xa + xa * xb + xb * xb));
+      charge_run += charge * (1.0 / 24.0) * (3.0 + 4.0 * xa * xa + 6.0 * xb + 4.0 *  xb*xb + xa * (6.0 + 4.0 * xb));
     }
   }
   else {
@@ -2655,12 +2665,18 @@ void deposit_rho_sic_2_segment(std::vector<double> &rho,
     rho[mod((ngp_left-1),n_g)] += q_norm * (1.0/24.0)*(xa*(-3.0+6.0*xa-4.0*xa*xa)+xb*(3.0-6.0*xb+4.0*xb*xb));
     rho[mod(ngp_left,n_g)] += q_norm * (1.0/12.0)*(-9.0*xa+4.0*pow(xa,3)+9.0*xb-4.0*pow(xb,3));
     rho[mod((ngp_left+1),n_g)] += q_norm * (1.0/24.0)*(-1.0*xa*(3.0+6.0*xa+4.0*xa*xa)+xb*(3.0+6.0*xb+4.0*xb*xb));
+    charge_run += q_norm * (1.0/24.0)*(xa*(-3.0+6.0*xa-4.0*xa*xa)+xb*(3.0-6.0*xb+4.0*xb*xb));
+    charge_run += q_norm * (1.0/12.0)*(-9.0*xa+4.0*pow(xa,3)+9.0*xb-4.0*pow(xb,3));
+    charge_run += q_norm * (1.0/24.0)*(-1.0*xa*(3.0+6.0*xa+4.0*xa*xa)+xb*(3.0+6.0*xb+4.0*xb*xb));
     
     // Portions fully covering a cell
     for (int cell = (ngp_left+1); cell < ngp_right; cell++) {
       rho[mod((cell-1),n_g)] += q_norm * (1.0 / 6.0);
       rho[mod(cell,n_g)] += q_norm * (2.0 / 3.0);
       rho[mod((cell+1),n_g)] += q_norm * (1.0 / 6.0);
+      charge_run += q_norm * (1.0 / 6.0);
+      charge_run += q_norm * (2.0 / 3.0);
+      charge_run += q_norm * (1.0 / 6.0);
     }
     
     // Right end
@@ -2670,9 +2686,19 @@ void deposit_rho_sic_2_segment(std::vector<double> &rho,
     rho[mod((ngp_right-1),n_g)] += q_norm * (1.0/24.0)*(xa*(-3.0+6.0*xa-4.0*xa*xa)+xb*(3.0-6.0*xb+4.0*xb*xb));
     rho[mod(ngp_right,n_g)] += q_norm * (1.0/12.0)*(-9.0*xa+4.0*pow(xa,3)+9.0*xb-4.0*pow(xb,3));
     rho[mod((ngp_right+1),n_g)] += q_norm * (1.0/24.0)*(-1.0*xa*(3.0+6.0*xa+4.0*xa*xa)+xb*(3.0+6.0*xb+4.0*xb*xb));
+    charge_run += q_norm * (1.0/24.0)*(xa*(-3.0+6.0*xa-4.0*xa*xa)+xb*(3.0-6.0*xb+4.0*xb*xb));
+    charge_run += q_norm * (1.0/12.0)*(-9.0*xa+4.0*pow(xa,3)+9.0*xb-4.0*pow(xb,3));
+    charge_run += q_norm * (1.0/24.0)*(-1.0*xa*(3.0+6.0*xa+4.0*xa*xa)+xb*(3.0+6.0*xb+4.0*xb*xb));
 
   }
-  return;
+  if (fabs(charge_run - charge) > 0.000001) {
+    std::cout.precision(17);
+    std::cout << xl << std::endl;
+    std::cout << xr << std::endl;
+    std::cout << ngp_left << std::endl;
+    std::cout << ngp_right << std::endl;    
+  }
+  return fabs(charge_run - charge);
 }
 
 void deposit_charge_to_left_segment_2(std::vector<double> &j_x,
@@ -2706,7 +2732,7 @@ void deposit_charge_to_left_segment_2(std::vector<double> &j_x,
       j_run = charge * 0.5 * pow((0.5 - delta), 2);
       j_x[mod((ngp_left-1),n_g)] += j_run;
 
-      j_run += charge * 0.75 - delta * delta;
+      j_run += charge * (0.75 - delta * delta);
       j_x[mod(ngp_left,n_g)] += j_run;
 
       j_run += charge * 0.5 * pow((0.5 + delta), 2);
@@ -2726,7 +2752,7 @@ void deposit_charge_to_left_segment_2(std::vector<double> &j_x,
       j_run += charge * (1.0 / 12.0) * (9.0 - 4.0 * (xa * xa + xa * xb + xb * xb));      
       j_x[mod(ngp_left,n_g)] += j_run;
 
-      j_run += charge * (1.0 / 24.0) * (1.0 / 24.0) * (3.0 + 4.0 * xa * xa + 6.0 *  xb + 4.0 *  xb*xb + xa * (6.0 + 4.0 * xb));
+      j_run += charge * (1.0 / 24.0) * (3.0 + 4.0 * xa * xa + 6.0 *  xb + 4.0 *  xb*xb + xa * (6.0 + 4.0 * xb));
       j_x[mod((ngp_left+1),n_g)] += j_run;
 
       for (int i = ngp_left+2; i < right_max; i++) {
@@ -3281,9 +3307,18 @@ void ParticleSpecies::deposit_rho_sic_1(std::vector<double> &rho)
 
 void ParticleSpecies::deposit_rho_sic_2(std::vector<double> &rho)
 {
+  double deviation, deviation_max, deviation_max_global;
+  int my_rank;
+  deviation_max = 0.0;
   for (int i = 0; i < n_p; i++) {
-    deposit_rho_sic_2_segment(rho, x[i], x[i+1], charge[i], n_g, dx);    
+    deviation = deposit_rho_sic_2_segment(rho, x[i], x[i+1], charge[i], n_g, dx);
+    deviation_max = fmax(deviation, deviation_max);
   }
+  MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
+  MPI_Reduce(&deviation_max, &deviation_max_global, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+  // if (my_rank==0) {
+  //   std::cout << deviation_max_global << std::endl;
+  // }
   return;
 }
 
