@@ -74,8 +74,8 @@ int main(int argc, char *argv[])
   method.push_back(-1);
   ss << argv[1];
   ss >> method[1];
-  //method[0] = method[1];
-  method[0] = 1;
+  method[0] = method[1];
+  //method[0] = 1;
   
   ss.str(std::string());
   ss.clear();
@@ -84,8 +84,8 @@ int main(int argc, char *argv[])
   n_ppc.push_back(-1);  
   ss << argv[2];
   ss >> n_ppc[1];
-  //  n_ppc[0] = n_ppc[1];
-  n_ppc[0] = 131072;
+  n_ppc[0] = n_ppc[1];
+  //n_ppc[0] = 1024;
 
   double refinement_length;
   if (argc == 4) {
@@ -101,7 +101,7 @@ int main(int argc, char *argv[])
   double dx, dt, rho_bg;
   bool gravity = false;
 
-  int simulation_type = 2;
+  int simulation_type = 1;
 
   if (simulation_type==0 or simulation_type==1) {
     // Weibel and two-stream parameters
@@ -113,12 +113,11 @@ int main(int argc, char *argv[])
     rho_bg = 2.0;
   }
   else if (simulation_type==2) {
-    // Whistler heating parameters
+    // Whistler heating parameters from paper
     n_t = 5000;
-    //    n_t = 2500;
-    n_g = 1000/2;
-    dx = 0.014111*2;
-    dt = 0.01411*2;
+    n_g = 500;
+    dx = 0.028222;
+    dt = 0.02822;
     n_species = 2;
     rho_bg = 0.0;
   }

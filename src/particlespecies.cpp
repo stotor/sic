@@ -82,9 +82,9 @@ double interpolate_field_3(std::vector<double> &field,
 
   w1 = -1.0 * pow((-0.5 + delta), 3) / 6.0;
   w2 = (4.0 - 6.0 * pow((0.5 + delta), 2) + 3.0 * pow((0.5 + delta), 3)) / 6.0;
-  w3 = (23.0 + 30.0*delta - 12.0*pow(delta, 2) - 24.0*pow(delta,3)) / 48.0;
+  w3 = (4.0 - 6.0 * pow((0.5 - delta), 2) + 3.0 * pow((0.5 - delta), 3)) / 6.0;
   w4 = pow((0.5 + delta), 3) / 6.0;
-  
+
   interpolated_field = w1 * field[mod((i_lower-1),n_g)]
     + w2 * field[mod(i_lower,n_g)]
     + w3 * field[mod((i_lower+1),n_g)]
@@ -1516,7 +1516,7 @@ void ParticleSpecies::deposit_rho_pic_3(std::vector<double> &rho)
 
     w1 = -1.0 * pow((-0.5 + delta), 3) / 6.0;
     w2 = (4.0 - 6.0 * pow((0.5 + delta), 2) + 3.0 * pow((0.5 + delta), 3)) / 6.0;
-    w3 = (23.0 + 30.0*delta - 12.0*pow(delta, 2) - 24.0*pow(delta,3)) / 48.0;
+    w3 = (4.0 - 6.0 * pow((0.5 - delta), 2) + 3.0 * pow((0.5 - delta), 3)) / 6.0;
     w4 = pow((0.5 + delta), 3) / 6.0;
 
     rho[mod((i_lower-1),n_g)] += charge[i] * w1;
