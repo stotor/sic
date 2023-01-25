@@ -33,7 +33,7 @@ public:
 
   std::vector<double> x, u_x, u_y, u_z, x_old, lagrangian_id,
     energy_history, momentum_x_history, momentum_y_history, momentum_z_history,
-    n_p_history, density, density_old, density_tavg;
+    n_p_history;
 
   double rqm; // Reciprocal charge to mass ratio
   std::vector<double> charge; // Particle charge divided by grid spacing
@@ -73,10 +73,6 @@ public:
   void deposit_rho_sic_2(std::vector<double> &rho);
   void deposit_rho_sic_3(std::vector<double> &rho);
   void deposit_rho_sic_4(std::vector<double> &rho);
-  void deposit_rho_sic_higher_order_0(std::vector<double> &rho);
-  void deposit_rho_sic_higher_order_1(std::vector<double> &rho);
-  void deposit_rho_sic_center(std::vector<double> &rho);
-  void deposit_rho_sic_higher_order_center(std::vector<double> &rho);
   
   void deposit_j_x_pic_0(std::vector<double> &j_x);
   void deposit_j_x_pic_1(std::vector<double> &j_x);
@@ -88,10 +84,6 @@ public:
   void deposit_j_x_sic_2(std::vector<double> &j_x);
   void deposit_j_x_sic_3(std::vector<double> &j_x);
   void deposit_j_x_sic_4(std::vector<double> &j_x);
-  void deposit_j_x_sic_higher_order_0(std::vector<double> &j_x);
-  void deposit_j_x_sic_higher_order_1(std::vector<double> &j_x);
-  void deposit_j_x_sic_center(std::vector<double> &j_x);
-  void deposit_j_x_sic_higher_order_center(std::vector<double> &j_x);
 
   void deposit_j_y_pic_0(std::vector<double> &j_y);
   void deposit_j_y_pic_1(std::vector<double> &j_y);
@@ -103,10 +95,6 @@ public:
   void deposit_j_y_sic_2(std::vector<double> &j_y);
   void deposit_j_y_sic_3(std::vector<double> &j_y);
   void deposit_j_y_sic_4(std::vector<double> &j_y);
-  void deposit_j_y_sic_higher_order_0(std::vector<double> &j_y);
-  void deposit_j_y_sic_higher_order_1(std::vector<double> &j_y);
-  void deposit_j_y_sic_center(std::vector<double> &j_y);
-  void deposit_j_y_sic_higher_order_center(std::vector<double> &j_y);
 
   void deposit_j_z_pic_0(std::vector<double> &j_z);
   void deposit_j_z_pic_1(std::vector<double> &j_z);
@@ -118,15 +106,10 @@ public:
   void deposit_j_z_sic_2(std::vector<double> &j_z);
   void deposit_j_z_sic_3(std::vector<double> &j_z);
   void deposit_j_z_sic_4(std::vector<double> &j_z);
-  void deposit_j_z_sic_higher_order_0(std::vector<double> &j_z);
-  void deposit_j_z_sic_higher_order_1(std::vector<double> &j_z);
-  void deposit_j_z_sic_center(std::vector<double> &j_z);
-  void deposit_j_z_sic_higher_order_center(std::vector<double> &j_z);
 
   void write_phase(int species_number, int t, int my_rank);
   void write_particle_diagnostics(int n_t, int my_rank, MPI_Comm COMM);
   void communicate_ghost_particles(MPI_Comm COMM);
-  void calculate_segment_density(MPI_Comm COMM);
 };
 
 #endif /* particlespecies_hpp */

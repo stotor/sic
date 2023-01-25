@@ -154,7 +154,6 @@ int main(int argc, char *argv[])
   particles.initialize_species(n_ppc, my_rank, num_procs, method, simulation_type);
   
   particles.communicate_ghost_particles(MPI_COMM_WORLD);
-  particles.calculate_segment_density(MPI_COMM_WORLD);  
 
   Field e_x(n_g, "e_x", my_rank);
   Field e_y(n_g, "e_y", my_rank);
@@ -215,7 +214,6 @@ int main(int argc, char *argv[])
     particles.advance_x();
 
     particles.communicate_ghost_particles(MPI_COMM_WORLD);
-    particles.calculate_segment_density(MPI_COMM_WORLD);
     if (refinement_length) {
       particles.refine_segments(refinement_length);
     }

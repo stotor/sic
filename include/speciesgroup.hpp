@@ -55,7 +55,6 @@ public:
 			  std::vector<int> method,
 			  int simulation_type);
   void communicate_ghost_particles(MPI_Comm COMM);
-  void calculate_segment_density(MPI_Comm COMM);  
 };
 
 #endif /* speciesgroup_hpp */

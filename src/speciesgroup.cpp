@@ -69,12 +69,6 @@ void SpeciesGroup::deposit_j_x(std::vector<double> &j_x, int my_rank, MPI_Comm C
     case 9 :
       species[i].deposit_j_x_sic_4(j_x);
       break;      
-    case 10 :
-      species[i].deposit_j_x_sic_higher_order_0(j_x);
-      break;
-    case 11 :
-      species[i].deposit_j_x_sic_higher_order_1(j_x);
-      break;
     default:
     std::cout << "Error, selected interpolation order not implemented." << std::endl;
     }
@@ -120,12 +114,6 @@ void SpeciesGroup::deposit_j_y(std::vector<double> &j_y, int my_rank, MPI_Comm C
       break;
     case 9 :
       species[i].deposit_j_y_sic_4(j_y);
-    case 10 :
-      species[i].deposit_j_y_sic_higher_order_0(j_y);
-      break;
-    case 11 :
-      species[i].deposit_j_y_sic_higher_order_1(j_y);
-      break;
     default:
     std::cout << "Error, selected interpolation order not implemented." << std::endl;
     }
@@ -170,12 +158,6 @@ void SpeciesGroup::deposit_j_z(std::vector<double> &j_z, int my_rank, MPI_Comm C
       break;
     case 9 :
       species[i].deposit_j_z_sic_4(j_z);
-      break;
-    case 10 :
-      species[i].deposit_j_z_sic_higher_order_0(j_z);
-      break;
-    case 11 :
-      species[i].deposit_j_z_sic_higher_order_1(j_z);
       break;
     default:
     std::cout << "Error, selected interpolation order not implemented." << std::endl;
@@ -261,12 +243,6 @@ void SpeciesGroup::deposit_rho(std::vector<double> &rho, double rho_bg, int my_r
     case 9 :
       species[i].deposit_rho_sic_4(rho);
       break;
-    case 10 :
-      species[i].deposit_rho_sic_higher_order_0(rho);
-      break;
-    case 11 :
-      species[i].deposit_rho_sic_higher_order_1(rho);
-      break;
     default:
     std::cout << "Error, selected interpolation order not implemented." << std::endl;
     }
@@ -283,7 +259,6 @@ void SpeciesGroup::write_phase(int t, int my_rank)
   }
   return;
 }
-
 
 void SpeciesGroup::advance_x()
 {
@@ -306,16 +281,6 @@ void SpeciesGroup::communicate_ghost_particles(MPI_Comm COMM)
   for (int i = 0; i < n_species; i++) {
     if (species[i].method > 4) {
       species[i].communicate_ghost_particles(COMM);
-    }
-  }
-  return;
-}
-
-void SpeciesGroup::calculate_segment_density(MPI_Comm COMM)
-{
-  for (int i = 0; i < n_species; i++) {
-    if (species[i].method > 4) {
-      species[i].calculate_segment_density(COMM);
     }
   }
   return;
