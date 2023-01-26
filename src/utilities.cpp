@@ -15,6 +15,7 @@ void data_to_file(std::vector<double> data, std::string filename)
   return;
 }
 
+
 double sum_of_squares(std::vector<double> &array, int n_values)
 {
   double sum = 0.0;
@@ -24,8 +25,17 @@ double sum_of_squares(std::vector<double> &array, int n_values)
   return sum;
 }
 
-void save_old_values(std::vector<double> &array, std::vector<double> &array_old,
-		     int n_values)
+void save_old_values_int(std::vector<int> &array, std::vector<int> &array_old,
+			 int n_values)
+{
+  for (int i = 0; i < n_values; i++) {
+    array_old[i] = array[i];
+  }
+  return;
+}
+
+void save_old_values_double(std::vector<double> &array, std::vector<double> &array_old,
+			    int n_values)
 {
   for (int i = 0; i < n_values; i++) {
     array_old[i] = array[i];

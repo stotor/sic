@@ -31,6 +31,7 @@ public:
   int method, interp_order;
   bool center_fields;
 
+  std::vector<int> ix, ix_old;
   std::vector<double> x, u_x, u_y, u_z, x_old, lagrangian_id,
     energy_history, momentum_x_history, momentum_y_history, momentum_z_history,
     n_p_history;
@@ -90,22 +91,14 @@ public:
   void deposit_j_y_pic_2(std::vector<double> &j_y);
   void deposit_j_y_pic_3(std::vector<double> &j_y);
   void deposit_j_y_pic_4(std::vector<double> &j_y);
-  void deposit_j_y_sic_0(std::vector<double> &j_y);
-  void deposit_j_y_sic_1(std::vector<double> &j_y);
-  void deposit_j_y_sic_2(std::vector<double> &j_y);
-  void deposit_j_y_sic_3(std::vector<double> &j_y);
-  void deposit_j_y_sic_4(std::vector<double> &j_y);
+  void deposit_j_y_sic(std::vector<double> &j_y);
 
   void deposit_j_z_pic_0(std::vector<double> &j_z);
   void deposit_j_z_pic_1(std::vector<double> &j_z);
   void deposit_j_z_pic_2(std::vector<double> &j_z);
   void deposit_j_z_pic_3(std::vector<double> &j_z);
   void deposit_j_z_pic_4(std::vector<double> &j_z);
-  void deposit_j_z_sic_0(std::vector<double> &j_z);
-  void deposit_j_z_sic_1(std::vector<double> &j_z);
-  void deposit_j_z_sic_2(std::vector<double> &j_z);
-  void deposit_j_z_sic_3(std::vector<double> &j_z);
-  void deposit_j_z_sic_4(std::vector<double> &j_z);
+  void deposit_j_z_sic(std::vector<double> &j_z);
 
   void write_phase(int species_number, int t, int my_rank);
   void write_particle_diagnostics(int n_t, int my_rank, MPI_Comm COMM);

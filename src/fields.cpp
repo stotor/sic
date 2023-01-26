@@ -159,11 +159,11 @@ void advance_e_x(std::vector<double> &e_x, std::vector<double> &j_x, double dt,
 {
   if (gravity) {
     for (int i = 0; i < n_g; i++) {
-      e_x[i] = e_x[i] + dt * j_x[i];
+      e_x[i] = e_x[i] + dx * j_x[i];
     }
   } else {
     for (int i = 0; i < n_g; i++) {
-      e_x[i] = e_x[i] - dt * j_x[i];
+      e_x[i] = e_x[i] - dx * j_x[i];
     }
   }
   return;
