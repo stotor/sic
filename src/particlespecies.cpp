@@ -1,3 +1,8 @@
+// Check right maxs in old code
+// Big to do is fully understanding right max
+// If too high, probably doesn't make a difference just extra expense
+
+//delete the unused ngp function
 #include <vector>
 #include <cmath>
 #include <string>
@@ -1069,18 +1074,18 @@ void arrange_segment_velocity(int &ix_a, double &x_a,
   return;
 }
 
-void deposit_rho_sic_0_segment(std::vector<double> &rho,
-			       int ix_a,
-			       int ix_b,
-			       double x_a,
-			       double x_b,
-			       double charge,
-			       int n_g)
+void deposit_rho_segment_0(std::vector<double> &rho,
+			   int ix_l,
+			   int ix_r,
+			   double x_l,
+			   double x_r,
+			   double length,
+			   double charge,
+			   int n_g)
 {
-  double length, charge_fraction, x_l, x_r;
-  int bound_left, bound_right, ix_l, ix_r;
+  double charge_fraction;
+  int bound_left, bound_right;
 
-  arrange_segment(ix_a, x_a, ix_b, x_b, ix_l, x_l, ix_r, x_r, length);
   bound_left = ix_l;
   bound_right = ix_r + 1;
 
@@ -1124,18 +1129,52 @@ void deposit_rho_sic_0_segment(std::vector<double> &rho,
   return;
 }
 
-void deposit_rho_sic_1_segment(std::vector<double> &rho,
-			       int ix_a,
-			       int ix_b,
-			       double x_a,
-			       double x_b,
-			       double charge,
-			       int n_g)
+void deposit_charge_to_left_segment_0(std::vector<double> &j_x, // NEED TO CHECK <= stuff here
+				      int ix_l, // Special case for zero length segment?
+				      int ix_r,
+				      double x_l, 
+				      double x_r,
+				      double length,
+				      double charge,
+				      int n_g,
+				      int right_max)  
 {
-  double length, midpoint, charge_fraction, weight, x_l, x_r;
-  int bound_left, bound_right, ix_l, ix_r;
+  double cell_boundary, weight;
+  int bound_left, bound_right;
 
-  arrange_segment(ix_a, x_a, ix_b, x_b, ix_l, x_l, ix_r, x_r, length);
+  bound_left = ix_l;
+
+  // Loop over cell boundaries that could be affected
+  // Calculate charge initially to the left of the current cell's right boundary
+  for (int cell = bound_left; cell < right_max; cell++) {
+    cell_boundary = cell + 0.5;
+    if ((ix_r+x_r) <= cell_boundary) {
+      weight = 1.0;
+    } 
+    else if ((ix_l+x_l) >= cell_boundary) {
+      weight = 0.0;
+    }
+    else {
+      weight = (cell_boundary - ix_l) / length - x_l / length;
+    }
+    j_x[mod(cell,n_g)] += charge * weight;
+  }
+  return;
+}
+
+
+void deposit_rho_segment_1(std::vector<double> &rho,
+			   int ix_l,
+			   int ix_r,
+			   double x_l,
+			   double x_r,
+			   double length,
+			   double charge,
+			   int n_g)
+{
+  double midpoint, charge_fraction, weight;
+  int bound_left, bound_right;
+
   bound_left = ix_l;
   bound_right = ix_r + 1;  
 
@@ -1174,19 +1213,19 @@ void deposit_rho_sic_1_segment(std::vector<double> &rho,
   return;
 }
 
-void deposit_charge_to_left_segment_linear(std::vector<double> &j_x,
-					   int ix_a, 
-					   int ix_b,
-					   double x_a, 
-					   double x_b,
-					   double charge,
-					   int n_g,
-					   int right_max)
+void deposit_charge_to_left_segment_1(std::vector<double> &j_x,
+				      int ix_l, 
+				      int ix_r,
+				      double x_l, 
+				      double x_r,
+				      double length,
+				      double charge,
+				      int n_g,
+				      int right_max)
 {
-  double length, midpoint, charge_fraction, weight, x_l, x_r;
-  int bound_left, bound_right, ix_l, ix_r;
+  double midpoint, charge_fraction, weight;
+  int bound_left, bound_right;
 
-  arrange_segment(ix_a, x_a, ix_b, x_b, ix_l, x_l, ix_r, x_r, length);
   bound_left = ix_l;
   bound_right = ix_r + 1;    
 
@@ -1233,6 +1272,584 @@ void deposit_charge_to_left_segment_linear(std::vector<double> &j_x,
   return;
 }
 
+void deposit_rho_segment_2(std::vector<double> &rho,
+			   int ixl,
+			   int ixr,
+			   double xl,
+			   double xr,
+			   double length,
+			   double charge,
+			   int n_g)
+{
+  double xa, xb, delta, q_norm, delta_left, delta_right;
+  int ngp_left, ngp_right, shift;
+
+  q_norm = charge / length;
+
+  find_ngp(ixl, xl, ngp_left, delta_left);
+  find_ngp(ixr, xr, ngp_right, delta_right);  
+
+  // If tracers are in one cell
+  if (ngp_left == ngp_right) {
+    if (length==0.0) {
+      delta = delta_left;
+
+      rho[mod((ngp_left-1),n_g)] += charge * 0.5 * pow((0.5 - delta), 2);
+      rho[mod(ngp_left,n_g)] += charge * (0.75 - delta * delta);
+      rho[mod((ngp_left+1),n_g)] += charge * 0.5 * pow((0.5 + delta), 2);
+
+    } else { 
+      xa = delta_left;
+      xb = delta_right;
+
+      rho[mod((ngp_left-1),n_g)] += charge * (1.0 / 24.0) * (3.0 + 4.0 * xa * xa - 6.0 * xb + 4.0 * xb * xb + xa * (-6.0 + 4.0 *  xb));
+      rho[mod(ngp_left,n_g)] += charge * (1.0 / 12.0) * (9.0 - 4.0 * (xa * xa + xa * xb + xb * xb));
+      rho[mod((ngp_left+1),n_g)] += charge * (1.0 / 24.0) * (3.0 + 4.0 * xa * xa + 6.0 * xb + 4.0 *  xb*xb + xa * (6.0 + 4.0 * xb));
+    }
+  }
+  else {
+    // Left end
+    xa = delta_left;
+    xb = 0.5;
+
+    rho[mod((ngp_left-1),n_g)] += q_norm * (1.0/24.0)*(xa*(-3.0+6.0*xa-4.0*xa*xa)+xb*(3.0-6.0*xb+4.0*xb*xb));
+    rho[mod(ngp_left,n_g)] += q_norm * (1.0/12.0)*(-9.0*xa+4.0*pow(xa,3)+9.0*xb-4.0*pow(xb,3));
+    rho[mod((ngp_left+1),n_g)] += q_norm * (1.0/24.0)*(-1.0*xa*(3.0+6.0*xa+4.0*xa*xa)+xb*(3.0+6.0*xb+4.0*xb*xb));
+    
+    // Portions fully covering a cell
+    for (int cell = (ngp_left+1); cell < ngp_right; cell++) {
+      rho[mod((cell-1),n_g)] += q_norm * (1.0 / 6.0);
+      rho[mod(cell,n_g)] += q_norm * (2.0 / 3.0);
+      rho[mod((cell+1),n_g)] += q_norm * (1.0 / 6.0);
+    }
+    
+    // Right end
+    xa = -0.5;
+    xb = delta_right;
+
+    rho[mod((ngp_right-1),n_g)] += q_norm * (1.0/24.0)*(xa*(-3.0+6.0*xa-4.0*xa*xa)+xb*(3.0-6.0*xb+4.0*xb*xb));
+    rho[mod(ngp_right,n_g)] += q_norm * (1.0/12.0)*(-9.0*xa+4.0*pow(xa,3)+9.0*xb-4.0*pow(xb,3));
+    rho[mod((ngp_right+1),n_g)] += q_norm * (1.0/24.0)*(-1.0*xa*(3.0+6.0*xa+4.0*xa*xa)+xb*(3.0+6.0*xb+4.0*xb*xb));
+
+  }
+  return;
+}
+
+void deposit_charge_to_left_segment_2(std::vector<double> &j_x,
+				      int ixl,
+				      int ixr,
+				      double xl,
+				      double xr,
+				      double length,
+				      double charge,
+				      int n_g,
+				      int right_max)
+{
+  double xa, xb, delta, q_norm, j_run, delta_left, delta_right;
+  int ngp_left, ngp_right;
+
+  q_norm = charge / length;
+
+  find_ngp(ixl, xl, ngp_left, delta_left);
+  find_ngp(ixr, xr, ngp_right, delta_right);
+
+  // If tracers are in one cell
+  if (ngp_left == ngp_right) {
+    if (length==0.0) {
+      delta = delta_left;
+
+      j_run = charge * 0.5 * pow((0.5 - delta), 2);
+      j_x[mod((ngp_left-1),n_g)] += j_run;
+
+      j_run += charge * (0.75 - delta * delta);
+      j_x[mod(ngp_left,n_g)] += j_run;
+
+      j_run += charge * 0.5 * pow((0.5 + delta), 2);
+      j_x[mod((ngp_left+1),n_g)] += j_run;
+
+      for (int i = ngp_left+2; i < right_max; i++) {
+	j_x[mod(i,n_g)] += j_run;
+      }
+      
+    } else { 
+      xa = delta_left;
+      xb = delta_right;
+
+      j_run = charge * (1.0 / 24.0) * (3.0 + 4.0 * xa * xa - 6.0 * xb + 4.0 * xb * xb + xa * (-6.0 + 4.0 *  xb));      
+      j_x[mod((ngp_left-1),n_g)] += j_run;
+
+      j_run += charge * (1.0 / 12.0) * (9.0 - 4.0 * (xa * xa + xa * xb + xb * xb));      
+      j_x[mod(ngp_left,n_g)] += j_run;
+
+      j_run += charge * (1.0 / 24.0) * (3.0 + 4.0 * xa * xa + 6.0 *  xb + 4.0 *  xb*xb + xa * (6.0 + 4.0 * xb));
+      j_x[mod((ngp_left+1),n_g)] += j_run;
+
+      for (int i = ngp_left+2; i < right_max; i++) {
+	j_x[mod(i,n_g)] += j_run;
+      }
+
+    }
+  }
+  else {
+    // Left end
+    xa = delta_left;
+    xb = 0.5;
+    j_run = q_norm * (1.0/24.0)*(xa*(-3.0+6.0*xa-4.0*xa*xa)+xb*(3.0-6.0*xb+4.0*xb*xb));
+    j_x[mod((ngp_left-1),n_g)] += j_run;
+
+    j_run += q_norm * (1.0/12.0)*(-9.0*xa+4.0*pow(xa,3)+9.0*xb-4.0*pow(xb,3));
+    j_x[mod(ngp_left,n_g)] += j_run;
+
+    j_run += q_norm * (1.0/24.0)*(-1.0*xa*(3.0+6.0*xa+4.0*xa*xa)+xb*(3.0+6.0*xb+4.0*xb*xb));
+    j_x[mod((ngp_left+1),n_g)] += j_run;
+
+    for (int i = ngp_left+2; i < right_max; i++) {
+      j_x[mod(i,n_g)] += j_run;
+    }
+
+    // Portions fully covering a cell
+    for (int cell = (ngp_left+1); cell < ngp_right; cell++) {
+      j_run = q_norm * (1.0 / 6.0);
+      j_x[mod((cell-1),n_g)] += j_run;
+
+      j_run += q_norm * (2.0 / 3.0);
+      j_x[mod(cell,n_g)] += j_run;
+
+      j_run += q_norm * (1.0 / 6.0);
+      j_x[mod((cell+1),n_g)] += j_run;
+
+      for (int i = cell+2; i < right_max; i++) {
+	j_x[mod(i,n_g)] += j_run;
+      }
+
+    }
+    
+    // Right end
+    xa = -0.5;
+    xb = delta_right;
+    j_run = q_norm * (1.0/24.0)*(xa*(-3.0+6.0*xa-4.0*xa*xa)+xb*(3.0-6.0*xb+4.0*xb*xb));
+    j_x[mod((ngp_right-1),n_g)] += j_run;
+
+    j_run += q_norm * (1.0/12.0)*(-9.0*xa+4.0*pow(xa,3)+9.0*xb-4.0*pow(xb,3));
+    j_x[mod(ngp_right,n_g)] += j_run;
+    
+    j_run += q_norm * (1.0/24.0)*(-1.0*xa*(3.0+6.0*xa+4.0*xa*xa)+xb*(3.0+6.0*xb+4.0*xb*xb));
+    j_x[mod((ngp_right+1),n_g)] += j_run;
+
+    for (int i = ngp_right+2; i < right_max; i++) {
+      j_x[mod(i,n_g)] += j_run;
+    }
+
+  }
+  return;
+}
+
+void deposit_rho_segment_3(std::vector<double> &rho,
+			   int ixl,
+			   int ixr,
+			   double xl,
+			   double xr,
+			   double length,
+			   double charge,
+			   int n_g)
+{
+  double xa, xb, delta, q_norm;
+  int bound_left, bound_right;
+
+  q_norm = charge / length;
+
+  bound_left = ixl;
+  bound_right = ixr + 1;
+
+  // If tracers are between two gridpoints
+  if (bound_right == (bound_left + 1)) {
+    if (length==0.0) {
+      delta = xl - 0.5;
+      rho[mod((bound_left-1),n_g)] += charge * (-1.0 * pow((-0.5 + delta), 3) / 6.0);
+      rho[mod(bound_left,n_g)] += charge * (4.0 - 6.0 * pow((0.5 + delta), 2) + 3.0 * pow((0.5 + delta), 3)) / 6.0;
+      rho[mod((bound_left+1),n_g)] += charge * (23.0 + 30.0*delta - 12.0*pow(delta, 2) - 24.0*pow(delta,3)) / 48.0;
+      rho[mod((bound_left+2),n_g)] += charge * pow((0.5 + delta), 3) / 6.0;
+    } else { 
+      xa = xl - 0.5;
+      xb = xr - 0.5;
+
+      rho[mod((bound_left-1),n_g)] += q_norm * (1.0 / 24.0) * (pow((-0.5 + xa), 4) - pow((-0.5 + xb), 4));
+      rho[mod(bound_left,n_g)] += q_norm * (1.0/48.0)*(xa*(-23.0 + xa*(15.0 + 4.0*xa - 6.0*xa*xa)) +  xb*(23.0 + xb*(-15.0 - 4.0*xb + 6.0*xb*xb)));
+      rho[mod((bound_left+1),n_g)] += q_norm *(1.0/48.0)*(xa*(-23.0+xa*(-15.0+4.0*xa+6.0*xa*xa)) +xb*(23.0+xb*(15.0-2.0*xb*(2.0+3*xb))));
+      rho[mod((bound_left+2),n_g)] += q_norm * (1.0 / 24.0) * (-1.0 * pow((0.5 + xa), 4) + pow((0.5 + xb), 4));
+    }
+  }
+  else {
+    // Left end
+    xa = xl - 0.5;
+    xb = 0.5;
+
+    rho[mod((bound_left-1),n_g)] += q_norm * (1.0 / 24.0) * (pow((-0.5 + xa), 4) - pow((-0.5 + xb), 4));
+    rho[mod(bound_left,n_g)] += q_norm * (1.0/48.0)*(xa*(-23.0 + xa*(15.0 + 4.0*xa - 6.0*xa*xa)) +  xb*(23.0 + xb*(-15.0 - 4.0*xb + 6.0*xb*xb)));
+    rho[mod((bound_left+1),n_g)] += q_norm *(1.0/48.0)*(xa*(-23.0+xa*(-15.0+4.0*xa+6.0*xa*xa)) +xb*(23.0+xb*(15.0-2.0*xb*(2.0+3*xb))));
+    rho[mod((bound_left+2),n_g)] += q_norm * (1.0 / 24.0) * (-1.0 * pow((0.5 + xa), 4) + pow((0.5 + xb), 4));
+    
+    // Portions connecting two gridpoints
+    for (int cell = (bound_left+1); cell < (bound_right-1); cell++) {
+
+      rho[mod((cell-1),n_g)] += q_norm * (1.0 / 24.0);
+      rho[mod(cell,n_g)] += q_norm * (11.0 / 24.0);
+      rho[mod((cell+1),n_g)] += q_norm * (11.0 / 24.0);
+      rho[mod((cell+2),n_g)] += q_norm * (1.0 / 24.0);
+    }
+    
+    // Right end
+    xa = -0.5;
+    xb = xr - 0.5;
+
+    rho[mod((bound_right-2),n_g)] += q_norm * (1.0 / 24.0) * (pow((-0.5 + xa), 4) - pow((-0.5 + xb), 4));
+    rho[mod((bound_right-1),n_g)] += q_norm * (1.0/48.0)*(xa*(-23.0 + xa*(15.0 + 4.0*xa - 6.0*xa*xa)) +  xb*(23.0 + xb*(-15.0 - 4.0*xb + 6.0*xb*xb)));
+    rho[mod(bound_right,n_g)] += q_norm *(1.0/48.0)*(xa*(-23.0+xa*(-15.0+4.0*xa+6.0*xa*xa)) +xb*(23.0+xb*(15.0-2.0*xb*(2.0+3*xb))));
+    rho[mod((bound_right+1),n_g)] += q_norm * (1.0 / 24.0) * (-1.0 * pow((0.5 + xa), 4) + pow((0.5 + xb), 4));
+
+  }
+  return;
+}
+
+void deposit_charge_to_left_segment_3(std::vector<double> &j_x,
+				      int ixl,
+				      int ixr,
+				      double xl,
+				      double xr,
+				      double length,
+				      double charge,
+				      int n_g,
+				      int right_max)
+{
+  double xa, xb, delta, q_norm, j_run;
+  int bound_left, bound_right;
+
+  q_norm = charge / length;
+
+  bound_left = ixl;
+  bound_right = ixr + 1;
+
+  // If tracers are between two gridpoints
+  if (bound_right == (bound_left + 1)) {
+    if (length==0.0) {
+      delta = xl - 0.5;
+      
+      j_run = charge * (-1.0 * pow((-0.5 + delta), 3) / 6.0);
+      j_x[mod((bound_left-1),n_g)] += j_run;
+      
+      j_run += charge * (4.0 - 6.0 * pow((0.5 + delta), 2) + 3.0 * pow((0.5 + delta), 3)) / 6.0;
+      j_x[mod(bound_left,n_g)] += j_run;
+	
+      j_run += charge * (23.0 + 30.0*delta - 12.0*pow(delta, 2) - 24.0*pow(delta,3)) / 48.0;
+      j_x[mod((bound_left+1),n_g)] += j_run;
+	
+      j_run += charge * pow((0.5 + delta), 3) / 6.0;
+      j_x[mod((bound_left+2),n_g)] += j_run;
+
+      for (int i = bound_left+3; i < right_max; i++) {
+	j_x[mod(i,n_g)] += j_run;
+      }
+	
+    } else { 
+      xa = xl - 0.5;
+      xb = xr - 0.5;
+
+      j_run = q_norm * (1.0 / 24.0) * (pow((-0.5 + xa), 4) - pow((-0.5 + xb), 4));
+      j_x[mod((bound_left-1),n_g)] += j_run;
+	
+      j_run += q_norm * (1.0/48.0)*(xa*(-23.0 + xa*(15.0 + 4.0*xa - 6.0*xa*xa)) + xb*(23.0 + xb*(-15.0 - 4.0*xb + 6.0*xb*xb)));
+      j_x[mod(bound_left,n_g)] += j_run;
+	
+      j_run += q_norm *(1.0/48.0)*(xa*(-23.0+xa*(-15.0+4.0*xa+6.0*xa*xa)) +xb*(23.0+xb*(15.0-2.0*xb*(2.0+3*xb))));
+      j_x[mod((bound_left+1),n_g)] += j_run;
+      
+      j_run += q_norm * (1.0 / 24.0) * (-1.0 * pow((0.5 + xa), 4) + pow((0.5 + xb), 4));
+      j_x[mod((bound_left+2),n_g)] += j_run;
+      for (int i = bound_left+3; i < right_max; i++) {
+	j_x[mod(i,n_g)] += j_run;
+      }
+
+    }
+  }
+  else {
+    // Left end
+    xa = xl - 0.5;
+    xb = 0.5;
+    
+    j_run = q_norm * (1.0 / 24.0) * (pow((-0.5 + xa), 4) - pow((-0.5 + xb), 4));
+    j_x[mod((bound_left-1),n_g)] += j_run;
+
+    j_run += q_norm * (1.0/48.0)*(xa*(-23.0 + xa*(15.0 + 4.0*xa - 6.0*xa*xa)) + xb*(23.0 + xb*(-15.0 - 4.0*xb + 6.0*xb*xb)));
+    j_x[mod(bound_left,n_g)] += j_run;
+
+    j_run += q_norm * (1.0/48.0)*(xa*(-23.0+xa*(-15.0+4.0*xa+6.0*xa*xa))+xb*(23.0+xb*(15.0-2.0*xb*(2.0+3*xb))));
+    j_x[mod((bound_left+1),n_g)] += j_run;
+    
+    j_run += q_norm * (1.0 / 24.0) * (-1.0 * pow((0.5 + xa), 4) + pow((0.5 + xb), 4));
+    j_x[mod((bound_left+2),n_g)] += j_run;
+
+    for (int i = bound_left+3; i < right_max; i++) {
+      j_x[mod(i,n_g)] += j_run;
+    }
+    
+    // Portions connecting two gridpoints
+    for (int cell = (bound_left+1); cell < (bound_right-1); cell++) {
+      
+      j_run = q_norm * (1.0 / 24.0);
+      j_x[mod((cell-1),n_g)] += j_run;
+	
+      j_run += q_norm * (11.0 / 24.0);
+      j_x[mod(cell,n_g)] += j_run;
+	
+      j_run += q_norm * (11.0 / 24.0);
+      j_x[mod((cell+1),n_g)] += j_run;
+	
+      j_run += q_norm * (1.0 / 24.0);
+      j_x[mod((cell+2),n_g)] += j_run;
+
+      for (int i = cell+3; i < right_max; i++) {
+	j_x[mod(i,n_g)] += j_run;
+      }
+
+    }
+    
+    // Right end
+    xa = -0.5;
+    xb = xr - 0.5;
+    
+    j_run = q_norm * (1.0 / 24.0) * (pow((-0.5 + xa), 4) - pow((-0.5 + xb), 4));
+    j_x[mod((bound_right-2),n_g)] += j_run;
+
+    j_run += q_norm * (1.0/48.0)*(xa*(-23.0 + xa*(15.0 + 4.0*xa - 6.0*xa*xa)) +  xb*(23.0 + xb*(-15.0 - 4.0*xb + 6.0*xb*xb)));
+    j_x[mod((bound_right-1),n_g)] += j_run;
+    
+    j_run += q_norm *(1.0/48.0)*(xa*(-23.0+xa*(-15.0+4.0*xa+6.0*xa*xa)) +xb*(23.0+xb*(15.0-2.0*xb*(2.0+3*xb))));
+    j_x[mod(bound_right,n_g)] += j_run;
+      
+    j_run += q_norm * (1.0 / 24.0) * (-1.0 * pow((0.5 + xa), 4) + pow((0.5 + xb), 4));
+    j_x[mod((bound_right+1),n_g)] += j_run;
+
+    for (int i = bound_right+2; i < right_max; i++) {
+      j_x[mod(i,n_g)] += j_run;
+    }
+    
+  }
+  return;
+}
+
+void deposit_rho_segment_4(std::vector<double> &rho,
+			   int ixl,
+			   int ixr,
+			   double xl,
+			   double xr,
+			   double length,
+			   double charge,
+			   int n_g)
+{
+  double xa, xb, delta, q_norm, delta_left, delta_right;
+  int ngp_left, ngp_right;
+
+  q_norm = charge / length;
+
+  find_ngp(ixl, xl, ngp_left, delta_left);
+  find_ngp(ixr, xr, ngp_right, delta_right);
+
+  // If tracers are in one cell
+  if (ngp_left == ngp_right) {
+    if (length==0.0) {
+      delta = delta_left;
+
+      rho[mod((ngp_left-2),n_g)] += charge * pow((1.0 - 2.0*delta), 4) / 384.0;
+      rho[mod((ngp_left-1),n_g)] += charge * (19.0 - 44.0*delta + 24.0*pow(delta, 2) + 16.0*pow(delta,3) - 16.0*pow(delta, 4))/96.0;
+      rho[mod(ngp_left,n_g)] += charge * (115.0 / 192.0) - (5.0*pow(delta, 2))/8.0 + pow(delta, 4)/4.0;
+      rho[mod((ngp_left+1),n_g)] += charge * (19.0 + 44.0*delta + 24.0*pow(delta, 2) - 16.0*pow(delta, 3) - 16*pow(delta,4))/96.0;
+      rho[mod((ngp_left+2),n_g)] += charge * pow((1.0 + 2.0*delta), 4) / 384.0;
+	
+    } else { 
+      xa = delta_left;
+      xb = delta_right;
+
+      rho[mod((ngp_left-2),n_g)] += q_norm * (-1.0*pow((-1.0+2.0*xa),5) + pow((-1.0+2.0*xb),5)) / 3840.0;
+      rho[mod((ngp_left-1),n_g)] += q_norm * (1.0/480.0)*(xa*(-95.0+2.0*xa*(55.0+2.0*xa*(-10.0+xa*(-5.0+4.0*xa))))+xb*(95.0+2.0*xb*(-55.0+2.0*xb*(10.0+(5.0-4.0*xb)*xb))));
+      rho[mod(ngp_left,n_g)] += q_norm * (1.0/960.0)*(-575.0*xa+200.0*pow(xa,3)-48.0*pow(xa,5)+575.0*xb-200.0*pow(xb,3)+48.0*pow(xb,5));
+      rho[mod((ngp_left+1),n_g)] += q_norm * (1.0/480.0)*(xa*(-95.0+2.0*xa*(-55.0+2.0*xa*(-10.0+xa*(5.0+4.0*xa))))+xb*(95.0+2.0*xb*(55.0-2.0*xb*(-10.0+xb*(5.0+4.0*xb)))));
+      rho[mod((ngp_left+2),n_g)] += q_norm * (-1.0*pow((1.0+2.0*xa),5) + pow((1.0+2.0*xb),5)) / 3840.0;
+    }
+  }
+  else {
+    // Left end
+    xa = delta_left;
+    xb = 0.5;
+
+    rho[mod((ngp_left-2),n_g)] += q_norm * (-1.0*pow((-1.0+2.0*xa),5) + pow((-1.0+2.0*xb),5)) / 3840.0;
+    rho[mod((ngp_left-1),n_g)] += q_norm * (1.0/480.0)*(xa*(-95.0+2.0*xa*(55.0+2.0*xa*(-10.0+xa*(-5.0+4.0*xa))))+xb*(95.0+2.0*xb*(-55.0+2.0*xb*(10.0+(5.0-4.0*xb)*xb))));
+    rho[mod(ngp_left,n_g)] += q_norm * (1.0/960.0)*(-575.0*xa+200.0*pow(xa,3)-48.0*pow(xa,5)+575.0*xb-200.0*pow(xb,3)+48.0*pow(xb,5));
+    rho[mod((ngp_left+1),n_g)] += q_norm * (1.0/480.0)*(xa*(-95.0+2.0*xa*(-55.0+2.0*xa*(-10.0+xa*(5.0+4.0*xa))))+xb*(95.0+2.0*xb*(55.0-2.0*xb*(-10.0+xb*(5.0+4.0*xb)))));
+    rho[mod((ngp_left+2),n_g)] += q_norm * (-1.0*pow((1.0+2.0*xa),5) + pow((1.0+2.0*xb),5)) / 3840.0;
+    
+    // Portions fully covering a cell
+    for (int cell = (ngp_left+1); cell < ngp_right; cell++) {
+      rho[mod((cell-2),n_g)] += q_norm * (1.0 / 120.0);
+      rho[mod((cell-1),n_g)] += q_norm * (13.0 / 60.0);
+      rho[mod(cell,n_g)] += q_norm * (11.0 / 20.0);
+      rho[mod((cell+1),n_g)] += q_norm * (13.0 / 60.0);
+      rho[mod((cell+2),n_g)] += q_norm * (1.0 / 120.0);
+    }
+    
+    // Right end
+    xa = -0.5;
+    xb = delta_right;
+
+    rho[mod((ngp_right-2),n_g)] += q_norm * (-1.0*pow((-1.0+2.0*xa),5) + pow((-1.0+2.0*xb),5)) / 3840.0;
+    rho[mod((ngp_right-1),n_g)] += q_norm * (1.0/480.0)*(xa*(-95.0+2.0*xa*(55.0+2.0*xa*(-10.0+xa*(-5.0+4.0*xa))))+xb*(95.0+2.0*xb*(-55.0+2.0*xb*(10.0+(5.0-4.0*xb)*xb))));
+    rho[mod(ngp_right,n_g)] += q_norm * (1.0/960.0)*(-575.0*xa+200.0*pow(xa,3)-48.0*pow(xa,5)+575.0*xb-200.0*pow(xb,3)+48.0*pow(xb,5));
+    rho[mod((ngp_right+1),n_g)] += q_norm * (1.0/480.0)*(xa*(-95.0+2.0*xa*(-55.0+2.0*xa*(-10.0+xa*(5.0+4.0*xa))))+xb*(95.0+2.0*xb*(55.0-2.0*xb*(-10.0+xb*(5.0+4.0*xb)))));
+    rho[mod((ngp_right+2),n_g)] += q_norm * (-1.0*pow((1.0+2.0*xa),5) + pow((1.0+2.0*xb),5)) / 3840.0;
+  }
+  return;
+}
+
+void deposit_charge_to_left_segment_4(std::vector<double> &j_x,
+				      int ixl,
+				      int ixr,
+				      double xl,
+				      double xr,
+				      double length,
+				      double charge,
+				      int n_g,
+				      int right_max)
+{
+  double xa, xb, delta, q_norm, j_run, delta_left, delta_right;
+  int ngp_left, ngp_right;
+
+  q_norm = charge / length;
+
+  find_ngp(ixl, xl, ngp_left, delta_left);
+  find_ngp(ixr, xr, ngp_right, delta_right);  
+
+  // If tracers are in one cell
+  if (ngp_left == ngp_right) {
+    if (length==0.0) {
+      delta = delta_left;
+
+      j_run = charge * pow((1.0 - 2.0*delta), 4) / 384.0;
+      j_x[mod((ngp_left-2),n_g)] += j_run;
+      
+      j_run += charge * (19.0 - 44.0*delta + 24.0*pow(delta, 2) + 16.0*pow(delta,3) - 16.0*pow(delta, 4))/96.0;
+      j_x[mod((ngp_left-1),n_g)] += j_run;
+      
+      j_run += charge * (115.0 / 192.0) - (5.0*pow(delta, 2))/8.0 + pow(delta, 4)/4.0;
+      j_x[mod(ngp_left,n_g)] += j_run;
+      
+      j_run += charge * (19.0 + 44.0*delta + 24.0*pow(delta, 2) - 16.0*pow(delta, 3) - 16*pow(delta,4))/96.0;
+      j_x[mod((ngp_left+1),n_g)] += j_run;
+      
+      j_run += charge * pow((1.0 + 2.0*delta), 4) / 384.0;
+      j_x[mod((ngp_left+2),n_g)] += j_run;
+      
+      for (int i = ngp_left+3; i < right_max; i++) {
+	j_x[mod(i,n_g)] += j_run;
+      }
+	
+    } else { 
+      xa = delta_left;
+      xb = delta_right;
+
+      j_run = q_norm * (-1.0*pow((-1.0+2.0*xa),5) + pow((-1.0+2.0*xb),5)) / 3840.0;
+      j_x[mod((ngp_left-2),n_g)] += j_run;
+      
+      j_run += q_norm * (1.0/480.0)*(xa*(-95.0+2.0*xa*(55.0+2.0*xa*(-10.0+xa*(-5.0+4.0*xa))))+xb*(95.0+2.0*xb*(-55.0+2.0*xb*(10.0+(5.0-4.0*xb)*xb))));
+      j_x[mod((ngp_left-1),n_g)] += j_run;
+      
+      j_run += q_norm * (1.0/960.0)*(-575.0*xa+200.0*pow(xa,3)-48.0*pow(xa,5)+575.0*xb-200.0*pow(xb,3)+48.0*pow(xb,5));
+      j_x[mod(ngp_left,n_g)] += j_run;
+      
+      j_run += q_norm * (1.0/480.0)*(xa*(-95.0+2.0*xa*(-55.0+2.0*xa*(-10.0+xa*(5.0+4.0*xa))))+xb*(95.0+2.0*xb*(55.0-2.0*xb*(-10.0+xb*(5.0+4.0*xb)))));
+      j_x[mod((ngp_left+1),n_g)] += j_run;
+      
+      j_run += q_norm * (-1.0*pow((1.0+2.0*xa),5) + pow((1.0+2.0*xb),5)) / 3840.0;
+      j_x[mod((ngp_left+2),n_g)] += j_run;
+      
+      for (int i = ngp_left+3; i < right_max; i++) {
+	j_x[mod(i,n_g)] += j_run;
+      }
+      
+    }
+  }
+  else {
+    // Left end
+    xa = delta_left;
+    xb = 0.5;
+
+    j_run = q_norm * (-1.0*pow((-1.0+2.0*xa),5) + pow((-1.0+2.0*xb),5)) / 3840.0;
+    j_x[mod((ngp_left-2),n_g)] += j_run;
+    
+    j_run += q_norm * (1.0/480.0)*(xa*(-95.0+2.0*xa*(55.0+2.0*xa*(-10.0+xa*(-5.0+4.0*xa))))+xb*(95.0+2.0*xb*(-55.0+2.0*xb*(10.0+(5.0-4.0*xb)*xb))));
+    j_x[mod((ngp_left-1),n_g)] += j_run;
+    
+    j_run += q_norm * (1.0/960.0)*(-575.0*xa+200.0*pow(xa,3)-48.0*pow(xa,5)+575.0*xb-200.0*pow(xb,3)+48.0*pow(xb,5));
+    j_x[mod(ngp_left,n_g)] += j_run;
+    
+    j_run += q_norm * (1.0/480.0)*(xa*(-95.0+2.0*xa*(-55.0+2.0*xa*(-10.0+xa*(5.0+4.0*xa))))+xb*(95.0+2.0*xb*(55.0-2.0*xb*(-10.0+xb*(5.0+4.0*xb)))));
+    j_x[mod((ngp_left+1),n_g)] += j_run;
+    
+    j_run += q_norm * (-1.0*pow((1.0+2.0*xa),5) + pow((1.0+2.0*xb),5)) / 3840.0;
+    j_x[mod((ngp_left+2),n_g)] += j_run;
+    
+    for (int i = ngp_left+3; i < right_max; i++) {
+      j_x[mod(i,n_g)] += j_run;
+    }
+    
+    // Portions fully covering a cell
+    for (int cell = (ngp_left+1); cell < ngp_right; cell++) {
+      j_run = q_norm * (1.0 / 120.0);
+      j_x[mod((cell-2),n_g)] += j_run;
+      
+      j_run += q_norm * (13.0 / 60.0);
+      j_x[mod((cell-1),n_g)] += j_run;
+      
+      j_run += q_norm * (11.0 / 20.0);
+      j_x[mod(cell,n_g)] += j_run;
+      
+      j_run += q_norm * (13.0 / 60.0);
+      j_x[mod((cell+1),n_g)] += j_run;
+      
+      j_run += q_norm * (1.0 / 120.0);
+      j_x[mod((cell+2),n_g)] += j_run;
+      
+      for (int i = cell+3; i < right_max; i++) {
+	j_x[mod(i,n_g)] += j_run;
+      }
+
+    }
+    
+    // Right end
+    xa = -0.5;
+    xb = delta_right;
+
+    j_run = q_norm * (-1.0*pow((-1.0+2.0*xa),5) + pow((-1.0+2.0*xb),5)) / 3840.0;
+    j_x[mod((ngp_right-2),n_g)] += j_run;
+
+    j_run += q_norm * (1.0/480.0)*(xa*(-95.0+2.0*xa*(55.0+2.0*xa*(-10.0+xa*(-5.0+4.0*xa))))+xb*(95.0+2.0*xb*(-55.0+2.0*xb*(10.0+(5.0-4.0*xb)*xb))));
+    j_x[mod((ngp_right-1),n_g)] += j_run;
+    
+    j_run += q_norm * (1.0/960.0)*(-575.0*xa+200.0*pow(xa,3)-48.0*pow(xa,5)+575.0*xb-200.0*pow(xb,3)+48.0*pow(xb,5));
+    j_x[mod(ngp_right,n_g)] += j_run;
+    
+    j_run += q_norm * (1.0/480.0)*(xa*(-95.0+2.0*xa*(-55.0+2.0*xa*(-10.0+xa*(5.0+4.0*xa))))+xb*(95.0+2.0*xb*(55.0-2.0*xb*(-10.0+xb*(5.0+4.0*xb)))));
+    j_x[mod((ngp_right+1),n_g)] += j_run;
+
+    j_run += q_norm * (-1.0*pow((1.0+2.0*xa),5) + pow((1.0+2.0*xb),5)) / 3840.0;
+    j_x[mod((ngp_right+2),n_g)] += j_run;
+    
+    for (int i = ngp_right+3; i < right_max; i++) {
+      j_x[mod(i,n_g)] += j_run;
+    }
+    
+  }
+  return;
+}
+
 int find_max(int ix_a, int ix_b, int ix_c, int ix_d)
 {
   int max;
@@ -1249,62 +1866,88 @@ int find_max(int ix_a, int ix_b, int ix_c, int ix_d)
   return max;
 }
 
-void ParticleSpecies::deposit_j_x_sic_1(std::vector<double> &j_x)
+void ParticleSpecies::deposit_j_x_sic(std::vector<double> &j_x)
 {
-  double right_max;
+  int ix_l, ix_r, ix_l_old, ix_r_old, right_max;
+  double x_l, x_r, x_l_old, x_r_old, length, length_old, q;
+
   for (int i = 0; i < n_p; i++) {
-    // Index of right bounding gridpoint
+    q = charge[i];
+    arrange_segment(ix_old[i], x_old[i],
+		    ix_old[i+1], x_old[i+1],
+		    ix_l_old, x_l_old,
+		    ix_r_old, x_r_old,
+		    length_old);
+    arrange_segment(ix[i], x[i],
+		    ix[i+1], x[i+1],
+		    ix_l, x_l,
+		    ix_r, x_r,
+		    length);
+    // Index of right bounding gridpoint (not really(?), more precisely define this)
+    // SOME RIGHT MAXES WERE NGP!!!! NEED TO UNDERSTAND EVERYTHING CAREFULLY    
     right_max = find_max(ix[i], ix_old[i], ix[i+1], ix_old[i+1]);
-    right_max = right_max + 1;
-    
-    deposit_charge_to_left_segment_linear(j_x, ix_old[i], ix_old[i+1], x_old[i], x_old[i+1], charge[i], n_g, right_max);
-    deposit_charge_to_left_segment_linear(j_x, ix[i], ix[i+1], x[i], x[i+1], (-1.0) * charge[i], n_g, right_max);
+    switch (method) {
+    case 5 :
+      right_max = right_max + 1;
+      deposit_charge_to_left_segment_0(j_x, ix_l_old, ix_r_old, x_l_old, x_r_old, length_old, q, n_g, right_max);
+      deposit_charge_to_left_segment_0(j_x, ix_l, ix_r, x_l, x_r, length, (-1.0)*q, n_g, right_max);
+      break;
+    case 6 :
+      right_max = right_max + 1;
+      deposit_charge_to_left_segment_1(j_x, ix_l_old, ix_r_old, x_l_old, x_r_old, length_old, q, n_g, right_max);
+      deposit_charge_to_left_segment_1(j_x, ix_l, ix_r, x_l, x_r, length, (-1.0)*q, n_g, right_max);
+      break;
+    case 7 :      
+      //      right_max = find_max(ix[i], ix_old[i], ix[i+1], ix_old[i+1]);
+      // right_max = fmax(fmax(x_old[i], x_old[i+1]),fmax(x[i],x[i+1]));
+      // right_max = get_nearest_gridpoint(right_max) + 2;
+      right_max = right_max + 3; // 3 works, 2 doesn't.  But should check NGP above ^
+      
+      deposit_charge_to_left_segment_2(j_x, ix_l_old, ix_r_old, x_l_old, x_r_old, length_old, q, n_g, right_max);
+      deposit_charge_to_left_segment_2(j_x, ix_l, ix_r, x_l, x_r, length, (-1.0)*q, n_g, right_max);
+      break;
+    case 8 :      
+      right_max = right_max + 3;
+      deposit_charge_to_left_segment_3(j_x, ix_l_old, ix_r_old, x_l_old, x_r_old, length_old, q, n_g, right_max);
+      deposit_charge_to_left_segment_3(j_x, ix_l, ix_r, x_l, x_r, length, (-1.0)*q, n_g, right_max);
+      break;
+    case 9 :      
+      right_max = right_max + 4;
+      deposit_charge_to_left_segment_4(j_x, ix_l_old, ix_r_old, x_l_old, x_r_old, length_old, q, n_g, right_max);
+      deposit_charge_to_left_segment_4(j_x, ix_l, ix_r, x_l, x_r, length, (-1.0)*q, n_g, right_max);
+      break;
+    default:
+      std::cout << "Error, selected interpolation order not implemented." << std::endl;
+    }
   }
   return;
 }
 
-void deposit_charge_to_left_segment_0(std::vector<double> &j_x, // NEED TO CHECK <= stuff here
-				      int ix_a, // Special case for zero length segment?
-				      int ix_b,
-				      double x_a, 
-				      double x_b,
-				      double charge,
-				      int n_g,
-				      int right_max)  
+void ParticleSpecies::deposit_rho_sic(std::vector<double> &rho)
 {
-  double x_l, x_r, length, cell_boundary, weight;
-  int bound_left, bound_right, ix_l, ix_r;
-
-  arrange_segment(ix_a, x_a, ix_b, x_b, ix_l, x_l, ix_r, x_r, length);
-  bound_left = ix_l;
-
-  // Loop over cell boundaries that could be affected
-  // Calculate charge initially to the left of the current cell's right boundary
-  for (int cell = bound_left; cell < right_max; cell++) {
-    cell_boundary = cell + 0.5;
-    if ((ix_r+x_r) <= cell_boundary) {
-      weight = 1.0;
-    } 
-    else if ((ix_l+x_l) >= cell_boundary) {
-      weight = 0.0;
-    }
-    else {
-      weight = (cell_boundary - ix_l) / length - x_l / length;
-    }
-    j_x[mod(cell,n_g)] += charge * weight;
-  }
-  return;
-}
-
-void ParticleSpecies::deposit_j_x_sic_0(std::vector<double> &j_x)
-{
-  double right_max;
+  int ix_l, ix_r;
+  double x_l, x_r, length;
   for (int i = 0; i < n_p; i++) {
-    // Index of right bounding gridpoint
-    right_max = find_max(ix[i], ix_old[i], ix[i+1], ix_old[i+1]) + 1;
-    
-    deposit_charge_to_left_segment_0(j_x, ix_old[i], ix_old[i+1], x_old[i], x_old[i+1], charge[i], n_g, right_max);
-    deposit_charge_to_left_segment_0(j_x, ix[i], ix[i+1], x[i], x[i+1], (-1.0) * charge[i], n_g, right_max);
+    arrange_segment(ix[i], x[i], ix[i+1], x[i+1], ix_l, x_l, ix_r, x_r, length);
+    switch (method) {
+    case 5 :
+      deposit_rho_segment_0(rho, ix_l, ix_r, x_l, x_r, length, charge[i], n_g);
+      break;
+    case 6 :
+      deposit_rho_segment_1(rho, ix_l, ix_r, x_l, x_r, length, charge[i], n_g);
+      break;
+    case 7 :
+      deposit_rho_segment_2(rho, ix_l, ix_r, x_l, x_r, length, charge[i], n_g);
+      break;
+    case 8 :
+      deposit_rho_segment_3(rho, ix_l, ix_r, x_l, x_r, length, charge[i], n_g);
+      break;
+    case 9 :
+      deposit_rho_segment_4(rho, ix_l, ix_r, x_l, x_r, length, charge[i], n_g);
+      break;
+    default:
+      std::cout << "Error, selected interpolation order not implemented." << std::endl;
+    }
   }
   return;
 }
@@ -1448,675 +2091,6 @@ void deposit_j_t_segment_1(std::vector<double> &j_t,
   }
   return;
 }
-
-/////////////// MIGRATION LINE ////////////////
-
-void deposit_rho_sic_2_segment(std::vector<double> &rho,
-			       int ix_a,
-			       int ix_b,			       
-			       double xl,
-			       double xr,
-			       double charge,
-			       int n_g)
-{
-  double length, xa, xb, delta, q_norm, delta_left, delta_right;
-  int ngp_left, ngp_right;
-
-  // modified this into on accident when doing j_t so be careful
-  q_norm = charge / length;
-
-  // find_ngp(ixl, xl, ngp_left, delta_left);   // fix ix_a above
-  // find_ngp(ixr, xr, ngp_right, delta_right);  
-
-  // If tracers are in one cell
-  if (ngp_left == ngp_right) {
-    if (length==0.0) {
-      delta = xl - ngp_left;
-
-      rho[mod((ngp_left-1),n_g)] += charge * 0.5 * pow((0.5 - delta), 2);
-      rho[mod(ngp_left,n_g)] += charge * (0.75 - delta * delta);
-      rho[mod((ngp_left+1),n_g)] += charge * 0.5 * pow((0.5 + delta), 2);
-
-    } else { 
-      xa = xl - ngp_left;
-      xb = xr - ngp_left;
-
-      rho[mod((ngp_left-1),n_g)] += charge * (1.0 / 24.0) * (3.0 + 4.0 * xa * xa - 6.0 * xb + 4.0 * xb * xb + xa * (-6.0 + 4.0 *  xb));
-      rho[mod(ngp_left,n_g)] += charge * (1.0 / 12.0) * (9.0 - 4.0 * (xa * xa + xa * xb + xb * xb));
-      rho[mod((ngp_left+1),n_g)] += charge * (1.0 / 24.0) * (3.0 + 4.0 * xa * xa + 6.0 * xb + 4.0 *  xb*xb + xa * (6.0 + 4.0 * xb));
-    }
-  }
-  else {
-    // Left end
-    xa = xl - ngp_left;
-    xb = 0.5;
-
-    rho[mod((ngp_left-1),n_g)] += q_norm * (1.0/24.0)*(xa*(-3.0+6.0*xa-4.0*xa*xa)+xb*(3.0-6.0*xb+4.0*xb*xb));
-    rho[mod(ngp_left,n_g)] += q_norm * (1.0/12.0)*(-9.0*xa+4.0*pow(xa,3)+9.0*xb-4.0*pow(xb,3));
-    rho[mod((ngp_left+1),n_g)] += q_norm * (1.0/24.0)*(-1.0*xa*(3.0+6.0*xa+4.0*xa*xa)+xb*(3.0+6.0*xb+4.0*xb*xb));
-    
-    // Portions fully covering a cell
-    for (int cell = (ngp_left+1); cell < ngp_right; cell++) {
-      rho[mod((cell-1),n_g)] += q_norm * (1.0 / 6.0);
-      rho[mod(cell,n_g)] += q_norm * (2.0 / 3.0);
-      rho[mod((cell+1),n_g)] += q_norm * (1.0 / 6.0);
-    }
-    
-    // Right end
-    xa = -0.5;
-    xb = xr - ngp_right;
-
-    rho[mod((ngp_right-1),n_g)] += q_norm * (1.0/24.0)*(xa*(-3.0+6.0*xa-4.0*xa*xa)+xb*(3.0-6.0*xb+4.0*xb*xb));
-    rho[mod(ngp_right,n_g)] += q_norm * (1.0/12.0)*(-9.0*xa+4.0*pow(xa,3)+9.0*xb-4.0*pow(xb,3));
-    rho[mod((ngp_right+1),n_g)] += q_norm * (1.0/24.0)*(-1.0*xa*(3.0+6.0*xa+4.0*xa*xa)+xb*(3.0+6.0*xb+4.0*xb*xb));
-
-  }
-  return;
-}
-
-void deposit_charge_to_left_segment_2(std::vector<double> &j_x,
-				      double xl,
-				      double xr,
-				      double charge,
-				      int n_g,
-				      int right_max)
-{
-  double length, xa, xb, delta, q_norm, j_run;
-  int ngp_left, ngp_right;
-
-  if(xr < xl) {
-    std::swap(xl, xr);
-  }
-
-  length = xr - xl;
-  q_norm = charge / length;
-
-  ngp_left = get_nearest_gridpoint(xl);
-  ngp_right = get_nearest_gridpoint(xr);
-
-  // If tracers are in one cell
-  if (ngp_left == ngp_right) {
-    if (length==0.0) {
-      delta = xl - ngp_left;
-
-      j_run = charge * 0.5 * pow((0.5 - delta), 2);
-      j_x[mod((ngp_left-1),n_g)] += j_run;
-
-      j_run += charge * (0.75 - delta * delta);
-      j_x[mod(ngp_left,n_g)] += j_run;
-
-      j_run += charge * 0.5 * pow((0.5 + delta), 2);
-      j_x[mod((ngp_left+1),n_g)] += j_run;
-
-      for (int i = ngp_left+2; i < right_max; i++) {
-	j_x[mod(i,n_g)] += j_run;
-      }
-      
-    } else { 
-      xa = xl - ngp_left;
-      xb = xr - ngp_left;
-
-      j_run = charge * (1.0 / 24.0) * (3.0 + 4.0 * xa * xa - 6.0 * xb + 4.0 * xb * xb + xa * (-6.0 + 4.0 *  xb));      
-      j_x[mod((ngp_left-1),n_g)] += j_run;
-
-      j_run += charge * (1.0 / 12.0) * (9.0 - 4.0 * (xa * xa + xa * xb + xb * xb));      
-      j_x[mod(ngp_left,n_g)] += j_run;
-
-      j_run += charge * (1.0 / 24.0) * (3.0 + 4.0 * xa * xa + 6.0 *  xb + 4.0 *  xb*xb + xa * (6.0 + 4.0 * xb));
-      j_x[mod((ngp_left+1),n_g)] += j_run;
-
-      for (int i = ngp_left+2; i < right_max; i++) {
-	j_x[mod(i,n_g)] += j_run;
-      }
-
-    }
-  }
-  else {
-    // Left end
-    xa = xl - ngp_left;
-    xb = 0.5;
-    j_run = q_norm * (1.0/24.0)*(xa*(-3.0+6.0*xa-4.0*xa*xa)+xb*(3.0-6.0*xb+4.0*xb*xb));
-    j_x[mod((ngp_left-1),n_g)] += j_run;
-
-    j_run += q_norm * (1.0/12.0)*(-9.0*xa+4.0*pow(xa,3)+9.0*xb-4.0*pow(xb,3));
-    j_x[mod(ngp_left,n_g)] += j_run;
-
-    j_run += q_norm * (1.0/24.0)*(-1.0*xa*(3.0+6.0*xa+4.0*xa*xa)+xb*(3.0+6.0*xb+4.0*xb*xb));
-    j_x[mod((ngp_left+1),n_g)] += j_run;
-
-    for (int i = ngp_left+2; i < right_max; i++) {
-      j_x[mod(i,n_g)] += j_run;
-    }
-
-    // Portions fully covering a cell
-    for (int cell = (ngp_left+1); cell < ngp_right; cell++) {
-      j_run = q_norm * (1.0 / 6.0);
-      j_x[mod((cell-1),n_g)] += j_run;
-
-      j_run += q_norm * (2.0 / 3.0);
-      j_x[mod(cell,n_g)] += j_run;
-
-      j_run += q_norm * (1.0 / 6.0);
-      j_x[mod((cell+1),n_g)] += j_run;
-
-      for (int i = cell+2; i < right_max; i++) {
-	j_x[mod(i,n_g)] += j_run;
-      }
-
-    }
-    
-    // Right end
-    xa = -0.5;
-    xb = xr - ngp_right;
-    j_run = q_norm * (1.0/24.0)*(xa*(-3.0+6.0*xa-4.0*xa*xa)+xb*(3.0-6.0*xb+4.0*xb*xb));
-    j_x[mod((ngp_right-1),n_g)] += j_run;
-
-    j_run += q_norm * (1.0/12.0)*(-9.0*xa+4.0*pow(xa,3)+9.0*xb-4.0*pow(xb,3));
-    j_x[mod(ngp_right,n_g)] += j_run;
-    
-    j_run += q_norm * (1.0/24.0)*(-1.0*xa*(3.0+6.0*xa+4.0*xa*xa)+xb*(3.0+6.0*xb+4.0*xb*xb));
-    j_x[mod((ngp_right+1),n_g)] += j_run;
-
-    for (int i = ngp_right+2; i < right_max; i++) {
-      j_x[mod(i,n_g)] += j_run;
-    }
-
-  }
-  return;
-}
-
-
-void deposit_rho_sic_3_segment(std::vector<double> &rho,
-			       int ix_a,
-			       int ix_b,			       
-			       double xl,
-			       double xr,
-			       double charge,
-			       int n_g)
-{
-  double length, xa, xb, delta, q_norm;
-  int bound_left, bound_right;
-
-  if(xr < xl) {
-    std::swap(xl, xr);
-  }
-
-  length = xr - xl;
-  q_norm = charge / length;
-
-  bound_left = floor(xl);
-  bound_right = ceil(xr);
-
-  // If tracers are between two gridpoints
-  if (bound_right == (bound_left + 1)) {
-    if (length==0.0) {
-      delta = xl - (bound_left + 0.5);
-      rho[mod((bound_left-1),n_g)] += charge * (-1.0 * pow((-0.5 + delta), 3) / 6.0);
-      rho[mod(bound_left,n_g)] += charge * (4.0 - 6.0 * pow((0.5 + delta), 2) + 3.0 * pow((0.5 + delta), 3)) / 6.0;
-      rho[mod((bound_left+1),n_g)] += charge * (23.0 + 30.0*delta - 12.0*pow(delta, 2) - 24.0*pow(delta,3)) / 48.0;
-      rho[mod((bound_left+2),n_g)] += charge * pow((0.5 + delta), 3) / 6.0;
-    } else { 
-      xa = xl - (bound_left + 0.5);
-      xb = xr - (bound_left + 0.5);
-
-      rho[mod((bound_left-1),n_g)] += q_norm * (1.0 / 24.0) * (pow((-0.5 + xa), 4) - pow((-0.5 + xb), 4));
-      rho[mod(bound_left,n_g)] += q_norm * (1.0/48.0)*(xa*(-23.0 + xa*(15.0 + 4.0*xa - 6.0*xa*xa)) +  xb*(23.0 + xb*(-15.0 - 4.0*xb + 6.0*xb*xb)));
-      rho[mod((bound_left+1),n_g)] += q_norm *(1.0/48.0)*(xa*(-23.0+xa*(-15.0+4.0*xa+6.0*xa*xa)) +xb*(23.0+xb*(15.0-2.0*xb*(2.0+3*xb))));
-      rho[mod((bound_left+2),n_g)] += q_norm * (1.0 / 24.0) * (-1.0 * pow((0.5 + xa), 4) + pow((0.5 + xb), 4));
-    }
-  }
-  else {
-    // Left end
-    xa = xl - (bound_left + 0.5);
-    xb = 0.5;
-
-    rho[mod((bound_left-1),n_g)] += q_norm * (1.0 / 24.0) * (pow((-0.5 + xa), 4) - pow((-0.5 + xb), 4));
-    rho[mod(bound_left,n_g)] += q_norm * (1.0/48.0)*(xa*(-23.0 + xa*(15.0 + 4.0*xa - 6.0*xa*xa)) +  xb*(23.0 + xb*(-15.0 - 4.0*xb + 6.0*xb*xb)));
-    rho[mod((bound_left+1),n_g)] += q_norm *(1.0/48.0)*(xa*(-23.0+xa*(-15.0+4.0*xa+6.0*xa*xa)) +xb*(23.0+xb*(15.0-2.0*xb*(2.0+3*xb))));
-    rho[mod((bound_left+2),n_g)] += q_norm * (1.0 / 24.0) * (-1.0 * pow((0.5 + xa), 4) + pow((0.5 + xb), 4));
-    
-    // Portions connecting two gridpoints
-    for (int cell = (bound_left+1); cell < (bound_right-1); cell++) {
-
-      rho[mod((cell-1),n_g)] += q_norm * (1.0 / 24.0);
-      rho[mod(cell,n_g)] += q_norm * (11.0 / 24.0);
-      rho[mod((cell+1),n_g)] += q_norm * (11.0 / 24.0);
-      rho[mod((cell+2),n_g)] += q_norm * (1.0 / 24.0);
-    }
-    
-    // Right end
-    xa = -0.5;
-    xb = xr - (bound_right - 0.5);
-
-    rho[mod((bound_right-2),n_g)] += q_norm * (1.0 / 24.0) * (pow((-0.5 + xa), 4) - pow((-0.5 + xb), 4));
-    rho[mod((bound_right-1),n_g)] += q_norm * (1.0/48.0)*(xa*(-23.0 + xa*(15.0 + 4.0*xa - 6.0*xa*xa)) +  xb*(23.0 + xb*(-15.0 - 4.0*xb + 6.0*xb*xb)));
-    rho[mod(bound_right,n_g)] += q_norm *(1.0/48.0)*(xa*(-23.0+xa*(-15.0+4.0*xa+6.0*xa*xa)) +xb*(23.0+xb*(15.0-2.0*xb*(2.0+3*xb))));
-    rho[mod((bound_right+1),n_g)] += q_norm * (1.0 / 24.0) * (-1.0 * pow((0.5 + xa), 4) + pow((0.5 + xb), 4));
-
-  }
-  return;
-}
-
-void deposit_charge_to_left_segment_3(std::vector<double> &j_x,
-				      double xl,
-				      double xr,
-				      double charge,
-				      int n_g,
-				      int right_max)
-{
-  double length, xa, xb, delta, q_norm, j_run;
-  int bound_left, bound_right;
-
-  if(xr < xl) {
-    std::swap(xl, xr);
-  }
-
-  length = xr - xl;
-  q_norm = charge / length;
-
-  bound_left = floor(xl);
-  bound_right = ceil(xr);
-
-  // If tracers are between two gridpoints
-  if (bound_right == (bound_left + 1)) {
-    if (length==0.0) {
-      delta = xl - (bound_left + 0.5);
-      
-      j_run = charge * (-1.0 * pow((-0.5 + delta), 3) / 6.0);
-      j_x[mod((bound_left-1),n_g)] += j_run;
-      
-      j_run += charge * (4.0 - 6.0 * pow((0.5 + delta), 2) + 3.0 * pow((0.5 + delta), 3)) / 6.0;
-      j_x[mod(bound_left,n_g)] += j_run;
-	
-      j_run += charge * (23.0 + 30.0*delta - 12.0*pow(delta, 2) - 24.0*pow(delta,3)) / 48.0;
-      j_x[mod((bound_left+1),n_g)] += j_run;
-	
-      j_run += charge * pow((0.5 + delta), 3) / 6.0;
-      j_x[mod((bound_left+2),n_g)] += j_run;
-
-      for (int i = bound_left+3; i < right_max; i++) {
-	j_x[mod(i,n_g)] += j_run;
-      }
-	
-    } else { 
-      xa = xl - (bound_left + 0.5);
-      xb = xr - (bound_left + 0.5);
-
-      j_run = q_norm * (1.0 / 24.0) * (pow((-0.5 + xa), 4) - pow((-0.5 + xb), 4));
-      j_x[mod((bound_left-1),n_g)] += j_run;
-	
-      j_run += q_norm * (1.0/48.0)*(xa*(-23.0 + xa*(15.0 + 4.0*xa - 6.0*xa*xa)) + xb*(23.0 + xb*(-15.0 - 4.0*xb + 6.0*xb*xb)));
-      j_x[mod(bound_left,n_g)] += j_run;
-	
-      j_run += q_norm *(1.0/48.0)*(xa*(-23.0+xa*(-15.0+4.0*xa+6.0*xa*xa)) +xb*(23.0+xb*(15.0-2.0*xb*(2.0+3*xb))));
-      j_x[mod((bound_left+1),n_g)] += j_run;
-      
-      j_run += q_norm * (1.0 / 24.0) * (-1.0 * pow((0.5 + xa), 4) + pow((0.5 + xb), 4));
-      j_x[mod((bound_left+2),n_g)] += j_run;
-      for (int i = bound_left+3; i < right_max; i++) {
-	j_x[mod(i,n_g)] += j_run;
-      }
-
-    }
-  }
-  else {
-    // Left end
-    xa = xl - (bound_left + 0.5);
-    xb = 0.5;
-    
-    j_run = q_norm * (1.0 / 24.0) * (pow((-0.5 + xa), 4) - pow((-0.5 + xb), 4));
-    j_x[mod((bound_left-1),n_g)] += j_run;
-
-    j_run += q_norm * (1.0/48.0)*(xa*(-23.0 + xa*(15.0 + 4.0*xa - 6.0*xa*xa)) + xb*(23.0 + xb*(-15.0 - 4.0*xb + 6.0*xb*xb)));
-    j_x[mod(bound_left,n_g)] += j_run;
-
-    j_run += q_norm * (1.0/48.0)*(xa*(-23.0+xa*(-15.0+4.0*xa+6.0*xa*xa))+xb*(23.0+xb*(15.0-2.0*xb*(2.0+3*xb))));
-    j_x[mod((bound_left+1),n_g)] += j_run;
-    
-    j_run += q_norm * (1.0 / 24.0) * (-1.0 * pow((0.5 + xa), 4) + pow((0.5 + xb), 4));
-    j_x[mod((bound_left+2),n_g)] += j_run;
-
-    for (int i = bound_left+3; i < right_max; i++) {
-      j_x[mod(i,n_g)] += j_run;
-    }
-    
-    // Portions connecting two gridpoints
-    for (int cell = (bound_left+1); cell < (bound_right-1); cell++) {
-      
-      j_run = q_norm * (1.0 / 24.0);
-      j_x[mod((cell-1),n_g)] += j_run;
-	
-      j_run += q_norm * (11.0 / 24.0);
-      j_x[mod(cell,n_g)] += j_run;
-	
-      j_run += q_norm * (11.0 / 24.0);
-      j_x[mod((cell+1),n_g)] += j_run;
-	
-      j_run += q_norm * (1.0 / 24.0);
-      j_x[mod((cell+2),n_g)] += j_run;
-
-      for (int i = cell+3; i < right_max; i++) {
-	j_x[mod(i,n_g)] += j_run;
-      }
-
-    }
-    
-    // Right end
-    xa = -0.5;
-    xb = xr - (bound_right - 0.5);
-    
-    j_run = q_norm * (1.0 / 24.0) * (pow((-0.5 + xa), 4) - pow((-0.5 + xb), 4));
-    j_x[mod((bound_right-2),n_g)] += j_run;
-
-    j_run += q_norm * (1.0/48.0)*(xa*(-23.0 + xa*(15.0 + 4.0*xa - 6.0*xa*xa)) +  xb*(23.0 + xb*(-15.0 - 4.0*xb + 6.0*xb*xb)));
-    j_x[mod((bound_right-1),n_g)] += j_run;
-    
-    j_run += q_norm *(1.0/48.0)*(xa*(-23.0+xa*(-15.0+4.0*xa+6.0*xa*xa)) +xb*(23.0+xb*(15.0-2.0*xb*(2.0+3*xb))));
-    j_x[mod(bound_right,n_g)] += j_run;
-      
-    j_run += q_norm * (1.0 / 24.0) * (-1.0 * pow((0.5 + xa), 4) + pow((0.5 + xb), 4));
-    j_x[mod((bound_right+1),n_g)] += j_run;
-
-    for (int i = bound_right+2; i < right_max; i++) {
-      j_x[mod(i,n_g)] += j_run;
-    }
-    
-  }
-  return;
-}
-
-void deposit_rho_sic_4_segment(std::vector<double> &rho,
-			       int ix_a,
-			       int ix_b,			       
-			       double xl,
-			       double xr,
-			       double charge,
-			       int n_g)
-{
-  double length, xa, xb, delta, q_norm;
-  int ngp_left, ngp_right;
-
-  if(xr < xl) {
-    std::swap(xl, xr);
-  }
-
-  length = xr - xl;
-  q_norm = charge / length;
-
-  ngp_left = get_nearest_gridpoint(xl);
-  ngp_right = get_nearest_gridpoint(xr);
-
-  // If tracers are in one cell
-  if (ngp_left == ngp_right) {
-    if (length==0.0) {
-      delta = xl - ngp_left;
-
-      rho[mod((ngp_left-2),n_g)] += charge * pow((1.0 - 2.0*delta), 4) / 384.0;
-      rho[mod((ngp_left-1),n_g)] += charge * (19.0 - 44.0*delta + 24.0*pow(delta, 2) + 16.0*pow(delta,3) - 16.0*pow(delta, 4))/96.0;
-      rho[mod(ngp_left,n_g)] += charge * (115.0 / 192.0) - (5.0*pow(delta, 2))/8.0 + pow(delta, 4)/4.0;
-      rho[mod((ngp_left+1),n_g)] += charge * (19.0 + 44.0*delta + 24.0*pow(delta, 2) - 16.0*pow(delta, 3) - 16*pow(delta,4))/96.0;
-      rho[mod((ngp_left+2),n_g)] += charge * pow((1.0 + 2.0*delta), 4) / 384.0;
-	
-    } else { 
-      xa = xl - ngp_left;
-      xb = xr - ngp_left;
-
-      rho[mod((ngp_left-2),n_g)] += q_norm * (-1.0*pow((-1.0+2.0*xa),5) + pow((-1.0+2.0*xb),5)) / 3840.0;
-      rho[mod((ngp_left-1),n_g)] += q_norm * (1.0/480.0)*(xa*(-95.0+2.0*xa*(55.0+2.0*xa*(-10.0+xa*(-5.0+4.0*xa))))+xb*(95.0+2.0*xb*(-55.0+2.0*xb*(10.0+(5.0-4.0*xb)*xb))));
-      rho[mod(ngp_left,n_g)] += q_norm * (1.0/960.0)*(-575.0*xa+200.0*pow(xa,3)-48.0*pow(xa,5)+575.0*xb-200.0*pow(xb,3)+48.0*pow(xb,5));
-      rho[mod((ngp_left+1),n_g)] += q_norm * (1.0/480.0)*(xa*(-95.0+2.0*xa*(-55.0+2.0*xa*(-10.0+xa*(5.0+4.0*xa))))+xb*(95.0+2.0*xb*(55.0-2.0*xb*(-10.0+xb*(5.0+4.0*xb)))));
-      rho[mod((ngp_left+2),n_g)] += q_norm * (-1.0*pow((1.0+2.0*xa),5) + pow((1.0+2.0*xb),5)) / 3840.0;
-    }
-  }
-  else {
-    // Left end
-    xa = xl - ngp_left;
-    xb = 0.5;
-
-    rho[mod((ngp_left-2),n_g)] += q_norm * (-1.0*pow((-1.0+2.0*xa),5) + pow((-1.0+2.0*xb),5)) / 3840.0;
-    rho[mod((ngp_left-1),n_g)] += q_norm * (1.0/480.0)*(xa*(-95.0+2.0*xa*(55.0+2.0*xa*(-10.0+xa*(-5.0+4.0*xa))))+xb*(95.0+2.0*xb*(-55.0+2.0*xb*(10.0+(5.0-4.0*xb)*xb))));
-    rho[mod(ngp_left,n_g)] += q_norm * (1.0/960.0)*(-575.0*xa+200.0*pow(xa,3)-48.0*pow(xa,5)+575.0*xb-200.0*pow(xb,3)+48.0*pow(xb,5));
-    rho[mod((ngp_left+1),n_g)] += q_norm * (1.0/480.0)*(xa*(-95.0+2.0*xa*(-55.0+2.0*xa*(-10.0+xa*(5.0+4.0*xa))))+xb*(95.0+2.0*xb*(55.0-2.0*xb*(-10.0+xb*(5.0+4.0*xb)))));
-    rho[mod((ngp_left+2),n_g)] += q_norm * (-1.0*pow((1.0+2.0*xa),5) + pow((1.0+2.0*xb),5)) / 3840.0;
-    
-    // Portions fully covering a cell
-    for (int cell = (ngp_left+1); cell < ngp_right; cell++) {
-      rho[mod((cell-2),n_g)] += q_norm * (1.0 / 120.0);
-      rho[mod((cell-1),n_g)] += q_norm * (13.0 / 60.0);
-      rho[mod(cell,n_g)] += q_norm * (11.0 / 20.0);
-      rho[mod((cell+1),n_g)] += q_norm * (13.0 / 60.0);
-      rho[mod((cell+2),n_g)] += q_norm * (1.0 / 120.0);
-    }
-    
-    // Right end
-    xa = -0.5;
-    xb = xr - ngp_right;
-
-    rho[mod((ngp_right-2),n_g)] += q_norm * (-1.0*pow((-1.0+2.0*xa),5) + pow((-1.0+2.0*xb),5)) / 3840.0;
-    rho[mod((ngp_right-1),n_g)] += q_norm * (1.0/480.0)*(xa*(-95.0+2.0*xa*(55.0+2.0*xa*(-10.0+xa*(-5.0+4.0*xa))))+xb*(95.0+2.0*xb*(-55.0+2.0*xb*(10.0+(5.0-4.0*xb)*xb))));
-    rho[mod(ngp_right,n_g)] += q_norm * (1.0/960.0)*(-575.0*xa+200.0*pow(xa,3)-48.0*pow(xa,5)+575.0*xb-200.0*pow(xb,3)+48.0*pow(xb,5));
-    rho[mod((ngp_right+1),n_g)] += q_norm * (1.0/480.0)*(xa*(-95.0+2.0*xa*(-55.0+2.0*xa*(-10.0+xa*(5.0+4.0*xa))))+xb*(95.0+2.0*xb*(55.0-2.0*xb*(-10.0+xb*(5.0+4.0*xb)))));
-    rho[mod((ngp_right+2),n_g)] += q_norm * (-1.0*pow((1.0+2.0*xa),5) + pow((1.0+2.0*xb),5)) / 3840.0;
-  }
-  return;
-}
-
-void deposit_charge_to_left_segment_4(std::vector<double> &j_x,
-				      double xl,
-				      double xr,
-				      double charge,
-				      int n_g,
-				      int right_max)
-{
-  double length, xa, xb, delta, q_norm, j_run;
-  int ngp_left, ngp_right;
-
-  if(xr < xl) {
-    std::swap(xl, xr);
-  }
-
-  length = xr - xl;
-  q_norm = charge / length;
-
-  ngp_left = get_nearest_gridpoint(xl);
-  ngp_right = get_nearest_gridpoint(xr);
-
-  // If tracers are in one cell
-  if (ngp_left == ngp_right) {
-    if (length==0.0) {
-      delta = xl - ngp_left;
-
-      j_run = charge * pow((1.0 - 2.0*delta), 4) / 384.0;
-      j_x[mod((ngp_left-2),n_g)] += j_run;
-      
-      j_run += charge * (19.0 - 44.0*delta + 24.0*pow(delta, 2) + 16.0*pow(delta,3) - 16.0*pow(delta, 4))/96.0;
-      j_x[mod((ngp_left-1),n_g)] += j_run;
-      
-      j_run += charge * (115.0 / 192.0) - (5.0*pow(delta, 2))/8.0 + pow(delta, 4)/4.0;
-      j_x[mod(ngp_left,n_g)] += j_run;
-      
-      j_run += charge * (19.0 + 44.0*delta + 24.0*pow(delta, 2) - 16.0*pow(delta, 3) - 16*pow(delta,4))/96.0;
-      j_x[mod((ngp_left+1),n_g)] += j_run;
-      
-      j_run += charge * pow((1.0 + 2.0*delta), 4) / 384.0;
-      j_x[mod((ngp_left+2),n_g)] += j_run;
-      
-      for (int i = ngp_left+3; i < right_max; i++) {
-	j_x[mod(i,n_g)] += j_run;
-      }
-	
-    } else { 
-      xa = xl - ngp_left;
-      xb = xr - ngp_left;
-
-      j_run = q_norm * (-1.0*pow((-1.0+2.0*xa),5) + pow((-1.0+2.0*xb),5)) / 3840.0;
-      j_x[mod((ngp_left-2),n_g)] += j_run;
-      
-      j_run += q_norm * (1.0/480.0)*(xa*(-95.0+2.0*xa*(55.0+2.0*xa*(-10.0+xa*(-5.0+4.0*xa))))+xb*(95.0+2.0*xb*(-55.0+2.0*xb*(10.0+(5.0-4.0*xb)*xb))));
-      j_x[mod((ngp_left-1),n_g)] += j_run;
-      
-      j_run += q_norm * (1.0/960.0)*(-575.0*xa+200.0*pow(xa,3)-48.0*pow(xa,5)+575.0*xb-200.0*pow(xb,3)+48.0*pow(xb,5));
-      j_x[mod(ngp_left,n_g)] += j_run;
-      
-      j_run += q_norm * (1.0/480.0)*(xa*(-95.0+2.0*xa*(-55.0+2.0*xa*(-10.0+xa*(5.0+4.0*xa))))+xb*(95.0+2.0*xb*(55.0-2.0*xb*(-10.0+xb*(5.0+4.0*xb)))));
-      j_x[mod((ngp_left+1),n_g)] += j_run;
-      
-      j_run += q_norm * (-1.0*pow((1.0+2.0*xa),5) + pow((1.0+2.0*xb),5)) / 3840.0;
-      j_x[mod((ngp_left+2),n_g)] += j_run;
-      
-      for (int i = ngp_left+3; i < right_max; i++) {
-	j_x[mod(i,n_g)] += j_run;
-      }
-      
-    }
-  }
-  else {
-    // Left end
-    xa = xl - ngp_left;
-    xb = 0.5;
-
-    j_run = q_norm * (-1.0*pow((-1.0+2.0*xa),5) + pow((-1.0+2.0*xb),5)) / 3840.0;
-    j_x[mod((ngp_left-2),n_g)] += j_run;
-    
-    j_run += q_norm * (1.0/480.0)*(xa*(-95.0+2.0*xa*(55.0+2.0*xa*(-10.0+xa*(-5.0+4.0*xa))))+xb*(95.0+2.0*xb*(-55.0+2.0*xb*(10.0+(5.0-4.0*xb)*xb))));
-    j_x[mod((ngp_left-1),n_g)] += j_run;
-    
-    j_run += q_norm * (1.0/960.0)*(-575.0*xa+200.0*pow(xa,3)-48.0*pow(xa,5)+575.0*xb-200.0*pow(xb,3)+48.0*pow(xb,5));
-    j_x[mod(ngp_left,n_g)] += j_run;
-    
-    j_run += q_norm * (1.0/480.0)*(xa*(-95.0+2.0*xa*(-55.0+2.0*xa*(-10.0+xa*(5.0+4.0*xa))))+xb*(95.0+2.0*xb*(55.0-2.0*xb*(-10.0+xb*(5.0+4.0*xb)))));
-    j_x[mod((ngp_left+1),n_g)] += j_run;
-    
-    j_run += q_norm * (-1.0*pow((1.0+2.0*xa),5) + pow((1.0+2.0*xb),5)) / 3840.0;
-    j_x[mod((ngp_left+2),n_g)] += j_run;
-    
-    for (int i = ngp_left+3; i < right_max; i++) {
-      j_x[mod(i,n_g)] += j_run;
-    }
-    
-    // Portions fully covering a cell
-    for (int cell = (ngp_left+1); cell < ngp_right; cell++) {
-      j_run = q_norm * (1.0 / 120.0);
-      j_x[mod((cell-2),n_g)] += j_run;
-      
-      j_run += q_norm * (13.0 / 60.0);
-      j_x[mod((cell-1),n_g)] += j_run;
-      
-      j_run += q_norm * (11.0 / 20.0);
-      j_x[mod(cell,n_g)] += j_run;
-      
-      j_run += q_norm * (13.0 / 60.0);
-      j_x[mod((cell+1),n_g)] += j_run;
-      
-      j_run += q_norm * (1.0 / 120.0);
-      j_x[mod((cell+2),n_g)] += j_run;
-      
-      for (int i = cell+3; i < right_max; i++) {
-	j_x[mod(i,n_g)] += j_run;
-      }
-
-    }
-    
-    // Right end
-    xa = -0.5;
-    xb = xr - ngp_right;
-
-    j_run = q_norm * (-1.0*pow((-1.0+2.0*xa),5) + pow((-1.0+2.0*xb),5)) / 3840.0;
-    j_x[mod((ngp_right-2),n_g)] += j_run;
-
-    j_run += q_norm * (1.0/480.0)*(xa*(-95.0+2.0*xa*(55.0+2.0*xa*(-10.0+xa*(-5.0+4.0*xa))))+xb*(95.0+2.0*xb*(-55.0+2.0*xb*(10.0+(5.0-4.0*xb)*xb))));
-    j_x[mod((ngp_right-1),n_g)] += j_run;
-    
-    j_run += q_norm * (1.0/960.0)*(-575.0*xa+200.0*pow(xa,3)-48.0*pow(xa,5)+575.0*xb-200.0*pow(xb,3)+48.0*pow(xb,5));
-    j_x[mod(ngp_right,n_g)] += j_run;
-    
-    j_run += q_norm * (1.0/480.0)*(xa*(-95.0+2.0*xa*(-55.0+2.0*xa*(-10.0+xa*(5.0+4.0*xa))))+xb*(95.0+2.0*xb*(55.0-2.0*xb*(-10.0+xb*(5.0+4.0*xb)))));
-    j_x[mod((ngp_right+1),n_g)] += j_run;
-
-    j_run += q_norm * (-1.0*pow((1.0+2.0*xa),5) + pow((1.0+2.0*xb),5)) / 3840.0;
-    j_x[mod((ngp_right+2),n_g)] += j_run;
-    
-    for (int i = ngp_right+3; i < right_max; i++) {
-      j_x[mod(i,n_g)] += j_run;
-    }
-    
-  }
-  return;
-}
-
-
-void ParticleSpecies::deposit_j_x_sic_2(std::vector<double> &j_x)
-{
-  double right_max;
-  for (int i = 0; i < n_p; i++) {
-    // Index of right bounding gridpoint
-    right_max = find_max(ix[i], ix_old[i], ix[i+1], ix_old[i+1]);
-    
-    right_max = fmax(fmax(x_old[i], x_old[i+1]),fmax(x[i],x[i+1]));
-    right_max = get_nearest_gridpoint(right_max) + 2;
-    
-    deposit_charge_to_left_segment_2(j_x, x_old[i], x_old[i+1], charge[i], n_g, right_max);
-    deposit_charge_to_left_segment_2(j_x, x[i], x[i+1], (-1.0) * charge[i], n_g, right_max);
-  }
-  return;
-}
-
-
-void ParticleSpecies::deposit_j_x_sic_3(std::vector<double> &j_x)
-{
-  double right_max;
-  for (int i = 0; i < n_p; i++) {
-    // Index of right bounding gridpoint
-    right_max = fmax(fmax(x_old[i], x_old[i+1]),fmax(x[i],x[i+1]));
-    right_max = ceil(right_max) + 2;
-    
-    deposit_charge_to_left_segment_3(j_x, x_old[i], x_old[i+1], charge[i], n_g, right_max);
-    deposit_charge_to_left_segment_3(j_x, x[i], x[i+1], (-1.0) * charge[i], n_g, right_max);
-  }
-  return;
-}
-
-void ParticleSpecies::deposit_j_x_sic_4(std::vector<double> &j_x)
-{
-  double right_max;
-  for (int i = 0; i < n_p; i++) {
-    // Index of right bounding gridpoint
-    right_max = fmax(fmax(x_old[i], x_old[i+1]),fmax(x[i],x[i+1]));
-    right_max = ceil(right_max) + 3;
-    
-    deposit_charge_to_left_segment_4(j_x, x_old[i], x_old[i+1], charge[i], n_g, right_max);
-    deposit_charge_to_left_segment_4(j_x, x[i], x[i+1], (-1.0) * charge[i], n_g, right_max);
-  }
-  return;
-}
-
-void ParticleSpecies::deposit_rho_sic(std::vector<double> &rho)
-{
-  for (int i = 0; i < n_p; i++) {  
-    switch (method) {
-    case 5 :
-      deposit_rho_sic_0_segment(rho, ix[i], ix[i+1], x[i], x[i+1], charge[i], n_g);
-      break;
-    case 6 :
-      deposit_rho_sic_1_segment(rho, ix[i], ix[i+1], x[i], x[i+1], charge[i], n_g);
-      break;
-    case 7 :
-      deposit_rho_sic_2_segment(rho, ix[i], ix[i+1], x[i], x[i+1], charge[i], n_g);
-      break;
-    case 8 :
-      deposit_rho_sic_3_segment(rho, ix[i], ix[i+1], x[i], x[i+1], charge[i], n_g);
-      break;
-    case 9 :
-      deposit_rho_sic_4_segment(rho, ix[i], ix[i+1], x[i], x[i+1], charge[i], n_g);
-      break;
-    default:
-      std::cout << "Error, selected interpolation order not implemented." << std::endl;
-    }
-  }
-  return;
-}
-
-// SIC 2, 3, and 4 transverse current deposit
 
 double j_t_3_w1(double xa, double xb, double va, double vb)
 {
@@ -2266,14 +2240,14 @@ void deposit_j_t_segment_2(std::vector<double> &j_t,
   // If tracers are in one cell
   if (ngp_left == ngp_right) {
     if (length==0.0) {
-      delta = xl - ngp_left;
+      delta = delta_left;
       va = (vl + vr) / 2.0;
       j_t[mod((ngp_left-1),n_g)] += charge * va * 0.5 * pow((0.5 - delta), 2);
       j_t[mod(ngp_left,n_g)] += charge * va * 0.75 - delta * delta;
       j_t[mod((ngp_left+1),n_g)] += charge * va * 0.5 * pow((0.5 + delta), 2);
     } else { 
-      xa = xl - ngp_left;
-      xb = xr - ngp_left;
+      xa = delta_left;
+      xb = delta_right;
       va = vl;
       vb = vr;
 
@@ -2284,7 +2258,7 @@ void deposit_j_t_segment_2(std::vector<double> &j_t,
   }
   else {
     // Left end
-    xa = xl - ngp_left;
+    xa = delta_left;
     xb = 0.5;
     va = vl;
     vb = interpolate_segment_velocity(vl, vr, length, (xb-xa));
@@ -2297,8 +2271,8 @@ void deposit_j_t_segment_2(std::vector<double> &j_t,
     for (int cell = (ngp_left+1); cell < ngp_right; cell++) {
       xa = -0.5;
       xb = 0.5;
-      va = interpolate_segment_velocity(vl, vr, length, (cell-0.5-xl));
-      vb = interpolate_segment_velocity(vl, vr, length, (cell+0.5-xl));
+      va = interpolate_segment_velocity(vl, vr, length, ((cell-ngp_left)-(0.5+delta_left)));
+      vb = interpolate_segment_velocity(vl, vr, length, ((cell-ngp_left)+(0.5-delta_left)));
 
       j_t[mod((cell-1),n_g)] += q_norm * j_t_2_w1(xa, xb, va, vb);
       j_t[mod(cell,n_g)] += q_norm * j_t_2_w2(xa, xb, va, vb);
@@ -2307,8 +2281,8 @@ void deposit_j_t_segment_2(std::vector<double> &j_t,
     
     // Right end
     xa = -0.5;
-    xb = xr - ngp_right;    
-    va = interpolate_segment_velocity(vl, vr, length, ngp_right-0.5-xl);
+    xb = delta_right;
+    va = interpolate_segment_velocity(vl, vr, length, (ngp_right-ngp_left)-(0.5+delta_left));
     vb = vr;
 
     j_t[mod((ngp_right-1),n_g)] += q_norm * j_t_2_w1(xa, xb, va, vb);
@@ -2341,15 +2315,15 @@ void deposit_j_t_segment_3(std::vector<double> &j_t,
   // If tracers are between two gridpoints
   if (bound_right == (bound_left + 1)) {
     if (length==0.0) {
-      delta = xl - (bound_left + 0.5); 
+      delta = xl - 0.5; 
       va = (vl + vr) / 2.0;     
       j_t[mod((bound_left-1),n_g)] += charge * va * (-1.0 * pow((-0.5 + delta), 3) / 6.0);
       j_t[mod(bound_left,n_g)] += charge * va * (4.0 - 6.0 * pow((0.5 + delta), 2) + 3.0 * pow((0.5 + delta), 3)) / 6.0;
       j_t[mod((bound_left+1),n_g)] += charge * va * (23.0 + 30.0*delta - 12.0*pow(delta, 2) - 24.0*pow(delta,3)) / 48.0;
       j_t[mod((bound_left+2),n_g)] += charge * va * pow((0.5 + delta), 3) / 6.0;
     } else { 
-      xa = xl - (bound_left + 0.5);
-      xb = xr - (bound_left + 0.5);
+      xa = xl - 0.5;
+      xb = xr - 0.5;
       va = vl;
       vb = vr;      
 
@@ -2361,7 +2335,7 @@ void deposit_j_t_segment_3(std::vector<double> &j_t,
   }
   else {
     // Left end
-    xa = xl - (bound_left + 0.5);
+    xa = xl - 0.5;
     xb = 0.5;
     va = vl;
     vb = interpolate_segment_velocity(vl, vr, length, (xb-xa));
@@ -2375,8 +2349,8 @@ void deposit_j_t_segment_3(std::vector<double> &j_t,
     for (int cell = (bound_left+1); cell < (bound_right-1); cell++) {
       xa = -0.5;
       xb = 0.5;
-      va = interpolate_segment_velocity(vl, vr, length, (cell-xl));
-      vb = interpolate_segment_velocity(vl, vr, length, (cell+1.0-xl));
+      va = interpolate_segment_velocity(vl, vr, length, (cell-bound_left)-xl);
+      vb = interpolate_segment_velocity(vl, vr, length, (cell-bound_left)+(1.0-xl));
 
       j_t[mod((cell-1),n_g)] += q_norm * j_t_3_w1(xa, xb, va, vb);
       j_t[mod(cell,n_g)] += q_norm * j_t_3_w2(xa, xb, va, vb);
@@ -2386,8 +2360,8 @@ void deposit_j_t_segment_3(std::vector<double> &j_t,
     
     // Right end
     xa = -0.5;
-    xb = xr - (bound_right - 0.5);
-    va = interpolate_segment_velocity(vl, vr, length, bound_right-1.0-xl);
+    xb = xr - 0.5;
+    va = interpolate_segment_velocity(vl, vr, length, (bound_right-bound_left-1)-xl);
     vb = vr;
     
     j_t[mod((bound_right-2),n_g)] += q_norm * j_t_3_w1(xa, xb, va, vb);
@@ -2398,7 +2372,6 @@ void deposit_j_t_segment_3(std::vector<double> &j_t,
   }
   return;
 }
-
 
 void deposit_j_t_segment_4(std::vector<double> &j_t,
 			   int ixl,
@@ -2422,7 +2395,7 @@ void deposit_j_t_segment_4(std::vector<double> &j_t,
   // If tracers are in one cell
   if (ngp_left == ngp_right) {
     if (length==0.0) {
-      delta = xl - ngp_left;
+      delta = delta_left;
       va = (vl + vr) / 2.0;
       j_t[mod((ngp_left-2),n_g)] += charge * va * pow((1.0 - 2.0*delta), 4) / 384.0;
       j_t[mod((ngp_left-1),n_g)] += charge * va * (19.0 - 44.0*delta + 24.0*pow(delta, 2) + 16.0*pow(delta,3) - 16.0*pow(delta, 4))/96.0;
@@ -2431,8 +2404,8 @@ void deposit_j_t_segment_4(std::vector<double> &j_t,
       j_t[mod((ngp_left+2),n_g)] += charge * va * pow((1.0 + 2.0*delta), 4) / 384.0;
 	
     } else { 
-      xa = xl - ngp_left;
-      xb = xr - ngp_left;
+      xa = delta_left;
+      xb = delta_right;
       va = vl;
       vb = vr;      
 
@@ -2445,7 +2418,7 @@ void deposit_j_t_segment_4(std::vector<double> &j_t,
   }
   else {
     // Left end
-    xa = xl - ngp_left;
+    xa = delta_left;
     xb = 0.5;
     va = vl;
     vb = interpolate_segment_velocity(vl, vr, length, (xb-xa));    
@@ -2460,8 +2433,8 @@ void deposit_j_t_segment_4(std::vector<double> &j_t,
     for (int cell = (ngp_left+1); cell < ngp_right; cell++) {
       xa = -0.5;
       xb = 0.5;
-      va = interpolate_segment_velocity(vl, vr, length, (cell-0.5-xl));
-      vb = interpolate_segment_velocity(vl, vr, length, (cell+0.5-xl));
+      va = interpolate_segment_velocity(vl, vr, length, (cell-ngp_left)-(0.5+xl));
+      vb = interpolate_segment_velocity(vl, vr, length, (cell-ngp_left)+(0.5-xl));
 
       j_t[mod((cell-2),n_g)] += q_norm * j_t_4_w1(xa, xb, va, vb);
       j_t[mod((cell-1),n_g)] += q_norm * j_t_4_w2(xa, xb, va, vb);
@@ -2472,8 +2445,8 @@ void deposit_j_t_segment_4(std::vector<double> &j_t,
     
     // Right end
     xa = -0.5;
-    xb = xr - ngp_right;
-    va = interpolate_segment_velocity(vl, vr, length, ngp_right-0.5-xl);
+    xb = delta_right;
+    va = interpolate_segment_velocity(vl, vr, length, (ngp_right-ngp_left)-(0.5+xl));
     vb = vr;    
 
     j_t[mod((ngp_right-2),n_g)] += q_norm * j_t_4_w1(xa, xb, va, vb);
@@ -2566,20 +2539,30 @@ void ParticleSpecies::deposit_j_z_sic(std::vector<double> &j_z)
   return;
 }
 
-
 void ParticleSpecies::write_phase(int species_number, int t, int my_rank)
 {
+  std::string ix_filename;  
   std::string x_filename;
   std::string u_x_filename;
   
   std::stringstream ss;
+  ss << "ix_";
+  ss << species_number;
+  ss << "_";
+  ss << t;
+  ss << "_";
+  ss << my_rank;
+  ix_filename = ss.str();
+
+  ss.str(std::string());
+  ss.clear();
   ss << "x_";
   ss << species_number;
   ss << "_";
   ss << t;
   ss << "_";
   ss << my_rank;
-  x_filename = ss.str();
+  x_filename = ss.str();  
 
   ss.str(std::string());
   ss.clear();
@@ -2590,7 +2573,8 @@ void ParticleSpecies::write_phase(int species_number, int t, int my_rank)
   ss << "_";
   ss << my_rank;
   u_x_filename = ss.str();
-
+  
+  data_to_file_int(ix, ix_filename);
   data_to_file(x, x_filename);
   data_to_file(u_x, u_x_filename);
   return;
@@ -2611,7 +2595,6 @@ void ParticleSpecies::write_particle_diagnostics(int n_t, int my_rank, MPI_Comm 
     data_to_file(momentum_z_history, (species_name+"_p_z"));
     data_to_file(n_p_history, (species_name+"_n_p"));
   }
-
   return; 
 }
 
@@ -2649,6 +2632,8 @@ double lagrange_3(double *x, double *y, double x_sample)
   }
   return y_interpolated;
 }
+
+/////////////// MIGRATION LINE ////////////////
 
 void ParticleSpecies::split_segment_lagrange_3(int i)
 {

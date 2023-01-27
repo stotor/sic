@@ -10,6 +10,8 @@
 
 void data_to_file(std::vector<double> data, std::string filename);
 
+void data_to_file_int(std::vector<int> data, std::string filename);
+
 void save_old_values_int(std::vector<int> &array, std::vector<int> &array_old,
 			 int n_values);
 

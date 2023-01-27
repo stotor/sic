@@ -76,11 +76,7 @@ public:
   void deposit_j_x_pic_2(std::vector<double> &j_x);
   void deposit_j_x_pic_3(std::vector<double> &j_x);
   void deposit_j_x_pic_4(std::vector<double> &j_x);
-  void deposit_j_x_sic_0(std::vector<double> &j_x);
-  void deposit_j_x_sic_1(std::vector<double> &j_x);
-  void deposit_j_x_sic_2(std::vector<double> &j_x);
-  void deposit_j_x_sic_3(std::vector<double> &j_x);
-  void deposit_j_x_sic_4(std::vector<double> &j_x);
+  void deposit_j_x_sic(std::vector<double> &j_x);
 
   void deposit_j_y_pic_0(std::vector<double> &j_y);
   void deposit_j_y_pic_1(std::vector<double> &j_y);

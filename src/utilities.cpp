@@ -15,6 +15,16 @@ void data_to_file(std::vector<double> data, std::string filename)
   return;
 }
 
+void data_to_file_int(std::vector<int> data, std::string filename)
+{
+  int n_values = data.size();
+  std::ofstream output_file(filename.c_str(), std::ios::binary);
+  for (int i = 0; i < n_values; i++) {
+    output_file.write((char *) &data[i], sizeof(int));
+  }
+  output_file.close();
+  return;
+}
 
 double sum_of_squares(std::vector<double> &array, int n_values)
 {
