@@ -69,11 +69,7 @@ public:
   void deposit_rho_pic_2(std::vector<double> &rho);
   void deposit_rho_pic_3(std::vector<double> &rho);
   void deposit_rho_pic_4(std::vector<double> &rho);
-  void deposit_rho_sic_0(std::vector<double> &rho);
-  void deposit_rho_sic_1(std::vector<double> &rho);
-  void deposit_rho_sic_2(std::vector<double> &rho);
-  void deposit_rho_sic_3(std::vector<double> &rho);
-  void deposit_rho_sic_4(std::vector<double> &rho);
+  void deposit_rho_sic(std::vector<double> &rho);
   
   void deposit_j_x_pic_0(std::vector<double> &j_x);
   void deposit_j_x_pic_1(std::vector<double> &j_x);

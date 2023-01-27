@@ -1019,58 +1019,91 @@ void ParticleSpecies::deposit_j_z_pic_4(std::vector<double> &j_z)
   return;
 }
 
-/////////////// MIGRATION LINE ////////////////
-////////////////SIC BELOW
+void arrange_segment(int &ix_a, double &x_a,
+		     int &ix_b, double &x_b,
+		     int &ix_l, double &x_l,
+		     int &ix_r, double &x_r,
+		     double &length)
+{
+  length = a_minus_b(ix_a, x_a, ix_b, x_b);
+  if (length<=0.0) {
+    length = length * (-1.0);
+    ix_l = ix_a;
+    x_l = x_a;
+    ix_r = ix_b;
+    x_r = x_b;
+  } else {
+    ix_l = ix_b;
+    x_l = x_b;
+    ix_r = ix_a;
+    x_r = x_a;
+  }
+  return;
+}
 
-
-// void arrange_segment_even(ix_a, x_a, ix_b, x_b, ngp_l, delta_l, ngp_r, delta_r,
-// 			  bound_left, bound_right, )
-// {
-//   length = a_minus_b(ix_a, dx_a, ix_b, dx_b);			 
-//   if ((ix_a-ix_b)+(x_a-x_b)<=0.0) {
-    
-
-//   }
-
-//   return;
-// }
+void arrange_segment_velocity(int &ix_a, double &x_a,
+			      int &ix_b, double &x_b,
+			      double &v_a, double &v_b,
+			      int &ix_l, double &x_l,
+			      int &ix_r, double &x_r,
+			      double &length,
+			      double &v_l, double &v_r)
+{
+  length = a_minus_b(ix_a, x_a, ix_b, x_b);
+  if (length<=0.0) {
+    length = length * (-1.0);
+    ix_l = ix_a;
+    x_l = x_a;
+    ix_r = ix_b;
+    x_r = x_b;
+    v_l = v_a;
+    v_r = v_b;
+  } else {
+    ix_l = ix_b;
+    x_l = x_b;
+    ix_r = ix_a;
+    x_r = x_a;
+    v_l = v_b;
+    v_r = v_a;
+  }
+  return;
+}
 
 void deposit_rho_sic_0_segment(std::vector<double> &rho,
-			       // int ix_a,
-			       // int ix_b,
+			       int ix_a,
+			       int ix_b,
 			       double x_a,
 			       double x_b,
 			       double charge,
 			       int n_g)
 {
-  double left, right, length, charge_fraction;
-  int bound_left, bound_right;
-  left = fmin(x_a, x_b);
-  right = fmax(x_a, x_b);
-  length = right - left;
-  bound_left = floor(left);
-  bound_right = ceil(right);
+  double length, charge_fraction, x_l, x_r;
+  int bound_left, bound_right, ix_l, ix_r;
+
+  arrange_segment(ix_a, x_a, ix_b, x_b, ix_l, x_l, ix_r, x_r, length);
+  bound_left = ix_l;
+  bound_right = ix_r + 1;
 
   // If tracers are between two gridpoints
   if (bound_right == (bound_left + 1)) {
-    if ((left == bound_left + 0.5) && (right == bound_left + 0.5)) {
+    if ((x_l == 0.5) && (x_r == 0.5)) {
       rho[mod((bound_right),n_g)] += charge;
-    } else if (left >= (bound_left + 0.5)) {
+    } else if (x_l >= 0.5) {
       rho[mod((bound_right),n_g)] += charge;
-    } else if (right <= (bound_left + 0.5)) {
+    } else if (x_r <= 0.5) {
       rho[mod((bound_left),n_g)] += charge;
     } else {
-      rho[mod((bound_left),n_g)] += (bound_left + 0.5 - left) / length * charge;
-      rho[mod((bound_right),n_g)] += (right - (bound_left + 0.5)) / length * charge;
+      rho[mod((bound_left),n_g)] += (0.5 - x_l) / length * charge;
+      rho[mod((bound_right),n_g)] += (x_r - 0.5) / length * charge;
     }
   }
   else {
     // Left end
-    if (left < bound_left + 0.5) {
-      rho[mod(bound_left,n_g)] += charge * (bound_left + 0.5 - left) / length;
+    if (x_l < 0.5) {
+      rho[mod(bound_left,n_g)] += charge * (0.5 - x_l) / length;
       rho[mod((bound_left+1),n_g)] += charge * (0.5) / length;
     } else { 
-      rho[mod(bound_left+1,n_g)] += charge * (bound_left + 1.0 - left) / length;
+      rho[mod(bound_left+1,n_g)] += charge * (1.0 - x_l) / length;
     }
 
     // Pieces connecting two gridpoints
@@ -1081,48 +1114,49 @@ void deposit_rho_sic_0_segment(std::vector<double> &rho,
     }
     
     // Right end
-    if (right > bound_right - 0.5) {
+    if (x_r > 0.5) {
       rho[mod(bound_right-1,n_g)] += charge * (0.5) / length;
-      rho[mod(bound_right,n_g)] += charge * (right - (bound_right-0.5)) / length;
+      rho[mod(bound_right,n_g)] += charge * (x_r - 0.5) / length;
     } else { 
-      rho[mod(bound_right-1,n_g)] += charge * (right - (bound_right-1.0)) / length;
+      rho[mod(bound_right-1,n_g)] += charge * x_r / length;
     }
   }
   return;
 }
 
 void deposit_rho_sic_1_segment(std::vector<double> &rho,
-			       double x_tracer_a, 
-			       double x_tracer_b,
+			       int ix_a,
+			       int ix_b,
+			       double x_a,
+			       double x_b,
 			       double charge,
 			       int n_g)
 {
-  double left, right, length, midpoint, charge_fraction, weight;
-  int bound_left, bound_right;
-  left = fmin(x_tracer_a, x_tracer_b);
-  right = fmax(x_tracer_a, x_tracer_b);
-  length = right - left;
-  bound_left = floor(left);
-  bound_right = ceil(right);
+  double length, midpoint, charge_fraction, weight, x_l, x_r;
+  int bound_left, bound_right, ix_l, ix_r;
+
+  arrange_segment(ix_a, x_a, ix_b, x_b, ix_l, x_l, ix_r, x_r, length);
+  bound_left = ix_l;
+  bound_right = ix_r + 1;  
 
   // If tracers are between two gridpoints
   if (bound_right == (bound_left + 1)) {
-    midpoint = (left + right) / 2.0;
+    midpoint = (x_l + x_r) / 2.0;
     charge_fraction = 1.0;
-    weight = bound_right - midpoint;
+    weight = 1.0 - midpoint;
     rho[mod(bound_left,n_g)] += charge * charge_fraction * weight;
     rho[mod((bound_left+1),n_g)] += charge * charge_fraction * (1.0 - weight);
   }
   else {
     // Left end
-    midpoint = (left + bound_left + 1) / 2.0;
-    charge_fraction = (bound_left + 1 - left) / length;
-    weight = (bound_left + 1 - midpoint);
+    midpoint = (x_l + 1.0) / 2.0;
+    charge_fraction = (1.0 - x_l) / length;
+    weight = (1.0 - midpoint);
     rho[mod(bound_left,n_g)] += charge * charge_fraction * weight;
     rho[mod((bound_left+1),n_g)] += charge * charge_fraction * (1.0 - weight);
 
     // Pieces connecting two gridpoints
-    charge_fraction = (1.0) / length;
+    charge_fraction = 1.0 / length;
 
     weight = 0.5;
     for (int cell = (bound_left+1); cell < (bound_right-1); cell++) {
@@ -1131,9 +1165,9 @@ void deposit_rho_sic_1_segment(std::vector<double> &rho,
     }
     
     // Right end
-    midpoint = (right + bound_right - 1) / 2.0;
-    charge_fraction = (right - (bound_right - 1)) / length;
-    weight = bound_right - midpoint;
+    midpoint = x_r / 2.0;
+    charge_fraction = x_r / length;
+    weight = 1.0 - midpoint;
     rho[mod((bound_right-1),n_g)] += charge * charge_fraction * weight;
     rho[mod(bound_right,n_g)] += charge * charge_fraction * (1.0-weight);
   }
@@ -1141,25 +1175,26 @@ void deposit_rho_sic_1_segment(std::vector<double> &rho,
 }
 
 void deposit_charge_to_left_segment_linear(std::vector<double> &j_x,
-					   double x_tracer_a, 
-					   double x_tracer_b,
+					   int ix_a, 
+					   int ix_b,
+					   double x_a, 
+					   double x_b,
 					   double charge,
 					   int n_g,
 					   int right_max)
 {
-  double left, right, length, midpoint, charge_fraction, weight;
-  int bound_left, bound_right;
-  left = fmin(x_tracer_a, x_tracer_b);
-  right = fmax(x_tracer_a, x_tracer_b);
-  length = right - left;
-  bound_left = floor(left);
-  bound_right = ceil(right);
+  double length, midpoint, charge_fraction, weight, x_l, x_r;
+  int bound_left, bound_right, ix_l, ix_r;
+
+  arrange_segment(ix_a, x_a, ix_b, x_b, ix_l, x_l, ix_r, x_r, length);
+  bound_left = ix_l;
+  bound_right = ix_r + 1;    
 
   // If tracers are between two gridpoints
   if (bound_right == (bound_left + 1)) {
-    midpoint = (left + right) / 2.0;
+    midpoint = (x_l + x_r) / 2.0;
     charge_fraction = 1.0;
-    weight = bound_right - midpoint;
+    weight = 1.0 - midpoint;
     j_x[mod(bound_left,n_g)] += charge * charge_fraction * weight;
     for (int cell = (bound_left+1); cell < right_max; cell++) {
       j_x[mod(cell,n_g)] += charge * charge_fraction;
@@ -1167,16 +1202,16 @@ void deposit_charge_to_left_segment_linear(std::vector<double> &j_x,
   }
   else {
     // Left end
-    midpoint = (left + bound_left + 1) / 2.0;
-    charge_fraction = (bound_left + 1 - left) / length;
-    weight = (bound_left + 1 - midpoint);
+    midpoint = (x_l+1.0) / 2.0;
+    charge_fraction = (1.0 - x_l) / length;
+    weight = (1.0 - midpoint);
     j_x[mod(bound_left,n_g)] += charge * charge_fraction * weight;
     for (int cell = (bound_left+1); cell < right_max; cell++) {
       j_x[mod(cell,n_g)] += charge * charge_fraction;
     }
 
     // Pieces connecting two gridpoints
-    charge_fraction = (1.0) / length;
+    charge_fraction = 1.0 / length;
 
     weight = 0.5;
     for (int cell = (bound_left+1); cell < (bound_right-1); cell++) {
@@ -1187,9 +1222,9 @@ void deposit_charge_to_left_segment_linear(std::vector<double> &j_x,
     }
     
     // Right end
-    midpoint = (right + bound_right - 1) / 2.0;
-    charge_fraction = (right - (bound_right - 1)) / length;
-    weight = bound_right - midpoint;
+    midpoint = x_r / 2.0;
+    charge_fraction = x_r / length;
+    weight = 1.0 - midpoint;
     j_x[mod((bound_right-1),n_g)] += charge * charge_fraction * weight;
     for (int cell = (bound_right); cell < right_max; cell++) {
       j_x[mod(cell,n_g)] += charge * charge_fraction;
@@ -1198,63 +1233,78 @@ void deposit_charge_to_left_segment_linear(std::vector<double> &j_x,
   return;
 }
 
+int find_max(int ix_a, int ix_b, int ix_c, int ix_d)
+{
+  int max;
+  max = ix_a;
+  if (ix_b > max) {
+    max = ix_b;
+  }
+  if (ix_c > max) {
+    max = ix_c;
+  }
+  if (ix_d > max) {
+    max = ix_d;
+  }
+  return max;
+}
 
 void ParticleSpecies::deposit_j_x_sic_1(std::vector<double> &j_x)
 {
   double right_max;
   for (int i = 0; i < n_p; i++) {
     // Index of right bounding gridpoint
-    right_max = fmax(fmax(x_old[i], x_old[i+1]),fmax(x[i],x[i+1]));
-    right_max = ceil(right_max);
+    right_max = find_max(ix[i], ix_old[i], ix[i+1], ix_old[i+1]);
+    right_max = right_max + 1;
     
-    deposit_charge_to_left_segment_linear(j_x, x_old[i], x_old[i+1], charge[i], n_g, right_max);
-    deposit_charge_to_left_segment_linear(j_x, x[i], x[i+1], (-1.0) * charge[i], n_g, right_max);
+    deposit_charge_to_left_segment_linear(j_x, ix_old[i], ix_old[i+1], x_old[i], x_old[i+1], charge[i], n_g, right_max);
+    deposit_charge_to_left_segment_linear(j_x, ix[i], ix[i+1], x[i], x[i+1], (-1.0) * charge[i], n_g, right_max);
+  }
+  return;
+}
+
+void deposit_charge_to_left_segment_0(std::vector<double> &j_x, // NEED TO CHECK <= stuff here
+				      int ix_a, // Special case for zero length segment?
+				      int ix_b,
+				      double x_a, 
+				      double x_b,
+				      double charge,
+				      int n_g,
+				      int right_max)  
+{
+  double x_l, x_r, length, cell_boundary, weight;
+  int bound_left, bound_right, ix_l, ix_r;
+
+  arrange_segment(ix_a, x_a, ix_b, x_b, ix_l, x_l, ix_r, x_r, length);
+  bound_left = ix_l;
+
+  // Loop over cell boundaries that could be affected
+  // Calculate charge initially to the left of the current cell's right boundary
+  for (int cell = bound_left; cell < right_max; cell++) {
+    cell_boundary = cell + 0.5;
+    if ((ix_r+x_r) <= cell_boundary) {
+      weight = 1.0;
+    } 
+    else if ((ix_l+x_l) >= cell_boundary) {
+      weight = 0.0;
+    }
+    else {
+      weight = (cell_boundary - ix_l) / length - x_l / length;
+    }
+    j_x[mod(cell,n_g)] += charge * weight;
   }
   return;
 }
 
 void ParticleSpecies::deposit_j_x_sic_0(std::vector<double> &j_x)
 {
-  double left_initial, right_initial, left_final, right_final, length_initial, length_final,
-    charge_initial, charge_final, cell_boundary;
-  int bound_left, bound_right;
+  double right_max;
   for (int i = 0; i < n_p; i++) {
-    // Initial line segment
-    left_initial = fmin(x_old[i], x_old[i+1]);
-    right_initial = fmax(x_old[i], x_old[i+1]);
-    length_initial = right_initial - left_initial;
-    // Final line segment
-    left_final = fmin(x[i], x[i+1]);
-    right_final = fmax(x[i], x[i+1]);
-    length_final = right_final - left_final;
-    // Bounding box
-    bound_left = floor(fmin(left_initial,left_final));
-    bound_right = ceil(fmax(right_initial,right_final));
-    // Loop over cell boundaries that could be affected
-    for (int cell = bound_left; cell < bound_right; cell++) {
-      // Calculate charge initially to the left of the current cell's right boundary
-      cell_boundary = cell + 0.5;
-      if (right_initial <= cell_boundary) {
-	charge_initial = 1.0;
-      } 
-      else if (left_initial >= cell_boundary) {
-	charge_initial = 0.0;
-      }
-      else {
-	charge_initial = (cell_boundary - left_initial) / length_initial;
-      }
-      // Calculate charge finally to the left of the current cell's right boundary
-      if (right_final <= cell_boundary) {
-	charge_final = 1.0;
-      } 
-      else if (left_final >= cell_boundary) {
-	charge_final = 0.0;
-      }
-      else {
-	charge_final = (cell_boundary - left_final) / length_final;
-      }
-      j_x[mod(cell,n_g)] += charge[i] * (charge_initial - charge_final);
-    }
+    // Index of right bounding gridpoint
+    right_max = find_max(ix[i], ix_old[i], ix[i+1], ix_old[i+1]) + 1;
+    
+    deposit_charge_to_left_segment_0(j_x, ix_old[i], ix_old[i+1], x_old[i], x_old[i+1], charge[i], n_g, right_max);
+    deposit_charge_to_left_segment_0(j_x, ix[i], ix[i+1], x[i], x[i+1], (-1.0) * charge[i], n_g, right_max);
   }
   return;
 }
@@ -1265,52 +1315,69 @@ double interpolate_segment_velocity(double v_left, double v_right,
   return v_left + (distance_from_left / length) * (v_right - v_left);
 }
 
-void deposit_j_t_segment_0(std::vector<double> &j_t, double left, 
-			   double right, double v_t_left, 
-			   double v_t_right, 
-			   double charge, int n_g)
+void deposit_j_t_segment_0(std::vector<double> &j_t,
+			   int ixl,
+			   int ixr,
+			   double xl, 
+			   double xr,
+			   double vl,
+			   double vr,
+			   double length,			     
+			   double charge,
+			   int n_g)
 {
-  double length, charge_fraction, avg_velocity, midpoint, distance_from_left;
+  double charge_fraction, avg_velocity, midpoint, distance_from_left;
   int bound_left, bound_right;
-  length = right - left;
 
   // Shift tracer positions so that 0 is the left bounary of cell zero
-  left = left + 0.5;
-  right = right + 0.5;
+  xl = xl + 0.5;
+  if (xl >= 1.0) {
+    ixl = ixl + 1;
+    xl = xl - 1.0;
+  }
+  
+  xr = xr + 0.5;
+  if (xr >= 1.0) {
+    ixr = ixr + 1;
+    xr = xr - 1.0;
+  }
 
-  bound_left = floor(left);
-  bound_right = ceil(right);
+  bound_left = ixl;
+  bound_right = ixr + 1;
 
   if (bound_right == (bound_left + 1)) {
     // If tracers are between two gridpoints
     charge_fraction = 1.0;
-    avg_velocity = (v_t_left + v_t_right) / 2.0;
+    avg_velocity = (vl + vr) / 2.0;
     j_t[mod(bound_left,n_g)] += charge * charge_fraction * avg_velocity;
   }
   else {
     // Left end
-    charge_fraction = (bound_left + 1.0 - left) / length;
-    midpoint = (bound_left + 1.0 + left) / 2.0;
-    distance_from_left = left - midpoint;
-    avg_velocity = interpolate_segment_velocity(v_t_left, v_t_right, length, distance_from_left);
+    charge_fraction = (1.0 - xl) / length;
+    midpoint = (1.0 + xl) / 2.0;
+    distance_from_left = midpoint - xl;
+    avg_velocity = interpolate_segment_velocity(vl, vr, length, distance_from_left);
     j_t[mod(bound_left,n_g)] += charge * charge_fraction * avg_velocity;
     // Pieces connecting two gridpoints
-    charge_fraction = (1.0) / length;
+    charge_fraction = 1.0 / length;
     for (int cell = (bound_left+1); cell < (bound_right-1); cell++) {
-      distance_from_left = cell + 0.5 - left;
-      avg_velocity = interpolate_segment_velocity(v_t_left, v_t_right, length, distance_from_left);
+      distance_from_left = (cell-ixl) + 0.5 - xl;
+      avg_velocity = interpolate_segment_velocity(vl, vr, length, distance_from_left);
       j_t[mod(cell,n_g)] += charge * charge_fraction * avg_velocity;
     }
     // Right end
-    charge_fraction = (right - (bound_right - 1)) / length;
-    midpoint = (right + bound_right) / 2.0;
-    distance_from_left = midpoint - left;
-    avg_velocity = interpolate_segment_velocity(v_t_left, v_t_right, length, distance_from_left);
+    charge_fraction = xr / length;
+    midpoint = xr / 2.0;
+    distance_from_left = (midpoint - xl) + (ixr - ixl);
+    avg_velocity = interpolate_segment_velocity(vl, vr, length, distance_from_left);
     j_t[mod((bound_right-1),n_g)] += charge * charge_fraction * avg_velocity;
   }
   return;
 }
 
+// Precision of this and the following function should be improved by using relative
+// values for xa and xb rather than the larger absolute values
+// (MAYBE?) check this all carefully
 double j_t_segment_linear_left_gridpoint(double charge, double xl, 
 					 double length, double vl, double vr, 
 					 double xa, double xb)
@@ -1331,21 +1398,28 @@ double j_t_segment_linear_right_gridpoint(double charge, double xl,
   return j_t;
 }
 
-void deposit_j_t_segment_1(std::vector<double> &j_t, double xl, double xr, 
-				double vl, double vr, double charge, int n_g)
+void deposit_j_t_segment_1(std::vector<double> &j_t,
+			   int ixl,
+			   int ixr,
+			   double xl, 
+			   double xr,
+			   double vl,
+			   double vr,
+			   double length,			     
+			   double charge,
+			   int n_g)
 {
-  double length, xa, xb;
+  double xa, xb;
   int bound_left, bound_right;
-  length = xr - xl;
 
-  bound_left = floor(xl);
-  bound_right = ceil(xr);
+  bound_left = ixl;
+  bound_right = ixr + 1;
 
   // If tracers are between two gridpoints
   if (bound_right == (bound_left + 1)) {
     if (length==0.0) {
-      j_t[mod(bound_left,n_g)] += charge * ((vl+vr)/2.0) * (ceil(xr)-xl);
-      j_t[mod((bound_left+1),n_g)] += charge * ((vl+vr)/2.0) * (xl-floor(xl));
+      j_t[mod(bound_left,n_g)] += charge * ((vl+vr)/2.0) * (1.0-xl);
+      j_t[mod((bound_left+1),n_g)] += charge * ((vl+vr)/2.0) * xl;
     } else { 
       xa = xl;
       xb = xr;
@@ -1356,233 +1430,43 @@ void deposit_j_t_segment_1(std::vector<double> &j_t, double xl, double xr,
   else {
     // Left end
     xa = xl;
-    xb = double(bound_left+1);
+    xb = 1.0;
     j_t[mod(bound_left,n_g)] += j_t_segment_linear_left_gridpoint(charge, xl, length, vl, vr, xa, xb);
     j_t[mod((bound_left+1),n_g)] += j_t_segment_linear_right_gridpoint(charge, xl, length, vl, vr, xa, xb);
     // Portions connecting two gridpoints
     for (int cell = (bound_left+1); cell < (bound_right-1); cell++) {
-      xa = double(cell);
-      xb = double(cell+1);
+      xa = double(cell - ixl);
+      xb = double(cell + 1 - ixl);
       j_t[mod(cell,n_g)] += j_t_segment_linear_left_gridpoint(charge, xl, length, vl, vr, xa, xb);
       j_t[mod((cell+1),n_g)] += j_t_segment_linear_right_gridpoint(charge, xl, length, vl, vr, xa, xb);
     }
     // Right end
-    xa = double(bound_right-1);
-    xb = xr;
+    xa = double(ixr - ixl);
+    xb = xr + double(ixr - ixl);
     j_t[mod((bound_right-1),n_g)] += j_t_segment_linear_left_gridpoint(charge, xl, length, vl, vr, xa, xb);
     j_t[mod(bound_right,n_g)] += j_t_segment_linear_right_gridpoint(charge, xl, length, vl, vr, xa, xb);
   }
   return;
 }
 
-
-
-
-void ParticleSpecies::write_phase(int species_number, int t, int my_rank)
-{
-  std::string x_filename;
-  std::string u_x_filename;
-  
-  std::stringstream ss;
-  ss << "x_";
-  ss << species_number;
-  ss << "_";
-  ss << t;
-  ss << "_";
-  ss << my_rank;
-  x_filename = ss.str();
-
-  ss.str(std::string());
-  ss.clear();
-  ss << "u_x_";
-  ss << species_number;
-  ss << "_";
-  ss << t;
-  ss << "_";
-  ss << my_rank;
-  u_x_filename = ss.str();
-
-  data_to_file(x, x_filename);
-  data_to_file(u_x, u_x_filename);
-  return;
-}
-
-void ParticleSpecies::write_particle_diagnostics(int n_t, int my_rank, MPI_Comm COMM)
-{
-  sum_array_to_root(&energy_history[0], n_t, COMM, my_rank);
-  sum_array_to_root(&momentum_x_history[0], n_t, COMM, my_rank);
-  sum_array_to_root(&momentum_y_history[0], n_t, COMM, my_rank);
-  sum_array_to_root(&momentum_z_history[0], n_t, COMM, my_rank);  
-  sum_array_to_root(&n_p_history[0], n_t, COMM, my_rank);
-
-  if (my_rank==0) {
-    data_to_file(energy_history, (species_name+"_ene"));
-    data_to_file(momentum_x_history, (species_name+"_p_x"));
-    data_to_file(momentum_y_history, (species_name+"_p_y"));
-    data_to_file(momentum_z_history, (species_name+"_p_z"));
-    data_to_file(n_p_history, (species_name+"_n_p"));
-  }
-
-  return; 
-}
-
-void ParticleSpecies::advance_x()
-{
-  double gamma;
-  for (int i = 0; i < n_p; i++) {
-    gamma = sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0) + pow(u_z[i], 2.0));
-    x[i] = x[i] + (dt/dx) * u_x[i] / gamma;
-    if (x[i] >= 1.0) {
-      ix[i] = ix[i] + 1;
-      x[i] = x[i] - 1.0;
-    } else if (x[i] < 0.0) {
-      ix[i] = ix[i] - 1;
-      x[i] =  x[i] + 1.0;
-    }
-  } 
-  return;
-}
-
-double lagrange_3(double *x, double *y, double x_sample)
-{
-  double y_interpolated = 0.0;
-  double p_i;
-  for (int i = 0; i < 3; i++) {
-    p_i = 1.0;
-    for (int j = 0; j < 3; j++) {
-      if (j==i) {
-	continue;
-      } else {
-	p_i *= (x_sample - x[j]) / (x[i] - x[j]);
-      }
-    }
-    y_interpolated += y[i] * p_i;
-  }
-  return y_interpolated;
-}
-
-void ParticleSpecies::split_segment_lagrange_3(int i)
-{
-  double new_id = (lagrangian_id[i+1]+lagrangian_id[i])/2.0;
-  x.insert(x.begin()+i+1, lagrange_3(&lagrangian_id[i], &x[i], new_id));
-  // Linear interpolation on x_old to be consistent with Gauss's law
-  x_old.insert(x_old.begin()+i+1, (x_old[i+1] + x_old[i])/2.0);
-  u_x.insert(u_x.begin()+i+1, lagrange_3(&lagrangian_id[i], &u_x[i], new_id));
-  u_y.insert(u_y.begin()+i+1, lagrange_3(&lagrangian_id[i], &u_y[i], new_id));
-  u_z.insert(u_z.begin()+i+1, lagrange_3(&lagrangian_id[i], &u_z[i], new_id));
-  lagrangian_id.insert(lagrangian_id.begin()+i+1, new_id);
-  charge[i] *= 0.5;
-  charge.insert(charge.begin()+i+1, charge[i]);
-
-  n_p += 1;
-  return;
-}
-
-void ParticleSpecies::split_segment_linear(int i)
-{
-  double new_id = (lagrangian_id[i+1]+lagrangian_id[i])/2.0;
-  x.insert(x.begin()+i+1, (x[i+1] + x[i])/2.0);
-  x_old.insert(x_old.begin()+i+1, (x_old[i+1] + x_old[i])/2.0);
-  u_x.insert(u_x.begin()+i+1, (u_x[i+1] + u_x[i])/2.0);
-  u_y.insert(u_y.begin()+i+1, (u_y[i+1] + u_y[i])/2.0);
-  u_z.insert(u_z.begin()+i+1, (u_z[i+1] + u_z[i])/2.0);  
-  lagrangian_id.insert(lagrangian_id.begin()+i+1, new_id);
-  charge[i] *= 0.5;
-  charge.insert(charge.begin()+i+1, charge[i]);
-  
-  n_p += 1;
-  return;
-}
-
-void ParticleSpecies::refine_segments(double refinement_length)
-{
-  double length;
-  int i = 0;
-  double max = 0.0;
-  
-  while (i < n_p) {
-    length = fabs(x[i+1] - x[i]);
-    if (length > max) {
-      max = length;
-    }
-    if (length > refinement_length) {
-      split_segment_lagrange_3(i);
-      //split_segment_linear(i);
-    } else {
-      i+=1;
-    }
-  }
-  std::cout << max << std::endl;
-  return;
-}
-
-void ParticleSpecies::communicate_ghost_particles(MPI_Comm COMM)
-{
-  MPI_Status status;
-  int num_procs, my_rank, dest, source;
-  int tag = 0;
-  
-  MPI_Comm_size(COMM, &num_procs);
-  MPI_Comm_rank(COMM, &my_rank);
-  dest = mod(my_rank-1, num_procs);
-  source = mod(my_rank+1, num_procs);
-  
-  MPI_Sendrecv(&x[0], 2, MPI_DOUBLE, dest, tag,
-	       &x[n_p], 2, MPI_DOUBLE,
-	       source, tag, COMM, &status);
-  MPI_Sendrecv(&x_old[0], 2, MPI_DOUBLE, dest, tag,
-	       &x_old[n_p], 2, MPI_DOUBLE,
-	       source, tag, COMM, &status);
-  MPI_Sendrecv(&charge[0], 2, MPI_DOUBLE, dest, tag,
-	       &charge[n_p], 2, MPI_DOUBLE,
-	       source, tag, COMM, &status);
-  MPI_Sendrecv(&u_x[0], 2, MPI_DOUBLE, dest, tag,
-	       &u_x[n_p], 2, MPI_DOUBLE,
-	       source, tag, COMM, &status);
-  MPI_Sendrecv(&u_y[0], 2, MPI_DOUBLE, dest, tag,
-	       &u_y[n_p], 2, MPI_DOUBLE,
-	       source, tag, COMM, &status);
-  MPI_Sendrecv(&u_z[0], 2, MPI_DOUBLE, dest, tag,
-	       &u_z[n_p], 2, MPI_DOUBLE,
-	       source, tag, COMM, &status);
-  MPI_Sendrecv(&lagrangian_id[0], 2, MPI_DOUBLE, dest, tag,
-	       &lagrangian_id[n_p], 2, MPI_DOUBLE,
-	       source, tag, COMM, &status);
-  
-  lagrangian_id[n_p] += n_ppp;
-  
-  if (my_rank==(num_procs-1)) {
-    x[n_p] += n_g;
-    x[n_p+1] += n_g;
-    x_old[n_p] += n_g;
-    x_old[n_p+1] += n_g;
-  }
-  
-  return;
-}
-
-// NEW ROUTINES
+/////////////// MIGRATION LINE ////////////////
 
 void deposit_rho_sic_2_segment(std::vector<double> &rho,
+			       int ix_a,
+			       int ix_b,			       
 			       double xl,
 			       double xr,
 			       double charge,
 			       int n_g)
 {
-  double length, xa, xb, delta, q_norm, charge_run;
+  double length, xa, xb, delta, q_norm, delta_left, delta_right;
   int ngp_left, ngp_right;
 
-  charge_run = 0.0;
-
-  if(xr < xl) {
-    std::swap(xl, xr);
-  }
-
-  length = xr - xl;
+  // modified this into on accident when doing j_t so be careful
   q_norm = charge / length;
 
-  ngp_left = get_nearest_gridpoint(xl);
-  ngp_right = get_nearest_gridpoint(xr);
+  // find_ngp(ixl, xl, ngp_left, delta_left);   // fix ix_a above
+  // find_ngp(ixr, xr, ngp_right, delta_right);  
 
   // If tracers are in one cell
   if (ngp_left == ngp_right) {
@@ -1592,9 +1476,6 @@ void deposit_rho_sic_2_segment(std::vector<double> &rho,
       rho[mod((ngp_left-1),n_g)] += charge * 0.5 * pow((0.5 - delta), 2);
       rho[mod(ngp_left,n_g)] += charge * (0.75 - delta * delta);
       rho[mod((ngp_left+1),n_g)] += charge * 0.5 * pow((0.5 + delta), 2);
-      charge_run += charge * 0.5 * pow((0.5 - delta), 2);
-      charge_run += charge * (0.75 - delta * delta);
-      charge_run += charge * 0.5 * pow((0.5 + delta), 2);
 
     } else { 
       xa = xl - ngp_left;
@@ -1603,10 +1484,6 @@ void deposit_rho_sic_2_segment(std::vector<double> &rho,
       rho[mod((ngp_left-1),n_g)] += charge * (1.0 / 24.0) * (3.0 + 4.0 * xa * xa - 6.0 * xb + 4.0 * xb * xb + xa * (-6.0 + 4.0 *  xb));
       rho[mod(ngp_left,n_g)] += charge * (1.0 / 12.0) * (9.0 - 4.0 * (xa * xa + xa * xb + xb * xb));
       rho[mod((ngp_left+1),n_g)] += charge * (1.0 / 24.0) * (3.0 + 4.0 * xa * xa + 6.0 * xb + 4.0 *  xb*xb + xa * (6.0 + 4.0 * xb));
-      
-      charge_run += charge * (1.0 / 24.0) * (3.0 + 4.0 * xa * xa - 6.0 * xb + 4.0 * xb * xb + xa * (-6.0 + 4.0 *  xb));
-      charge_run += charge * (1.0 / 12.0) * (9.0 - 4.0 * (xa * xa + xa * xb + xb * xb));
-      charge_run += charge * (1.0 / 24.0) * (3.0 + 4.0 * xa * xa + 6.0 * xb + 4.0 *  xb*xb + xa * (6.0 + 4.0 * xb));
     }
   }
   else {
@@ -1617,18 +1494,12 @@ void deposit_rho_sic_2_segment(std::vector<double> &rho,
     rho[mod((ngp_left-1),n_g)] += q_norm * (1.0/24.0)*(xa*(-3.0+6.0*xa-4.0*xa*xa)+xb*(3.0-6.0*xb+4.0*xb*xb));
     rho[mod(ngp_left,n_g)] += q_norm * (1.0/12.0)*(-9.0*xa+4.0*pow(xa,3)+9.0*xb-4.0*pow(xb,3));
     rho[mod((ngp_left+1),n_g)] += q_norm * (1.0/24.0)*(-1.0*xa*(3.0+6.0*xa+4.0*xa*xa)+xb*(3.0+6.0*xb+4.0*xb*xb));
-    charge_run += q_norm * (1.0/24.0)*(xa*(-3.0+6.0*xa-4.0*xa*xa)+xb*(3.0-6.0*xb+4.0*xb*xb));
-    charge_run += q_norm * (1.0/12.0)*(-9.0*xa+4.0*pow(xa,3)+9.0*xb-4.0*pow(xb,3));
-    charge_run += q_norm * (1.0/24.0)*(-1.0*xa*(3.0+6.0*xa+4.0*xa*xa)+xb*(3.0+6.0*xb+4.0*xb*xb));
     
     // Portions fully covering a cell
     for (int cell = (ngp_left+1); cell < ngp_right; cell++) {
       rho[mod((cell-1),n_g)] += q_norm * (1.0 / 6.0);
       rho[mod(cell,n_g)] += q_norm * (2.0 / 3.0);
       rho[mod((cell+1),n_g)] += q_norm * (1.0 / 6.0);
-      charge_run += q_norm * (1.0 / 6.0);
-      charge_run += q_norm * (2.0 / 3.0);
-      charge_run += q_norm * (1.0 / 6.0);
     }
     
     // Right end
@@ -1638,9 +1509,6 @@ void deposit_rho_sic_2_segment(std::vector<double> &rho,
     rho[mod((ngp_right-1),n_g)] += q_norm * (1.0/24.0)*(xa*(-3.0+6.0*xa-4.0*xa*xa)+xb*(3.0-6.0*xb+4.0*xb*xb));
     rho[mod(ngp_right,n_g)] += q_norm * (1.0/12.0)*(-9.0*xa+4.0*pow(xa,3)+9.0*xb-4.0*pow(xb,3));
     rho[mod((ngp_right+1),n_g)] += q_norm * (1.0/24.0)*(-1.0*xa*(3.0+6.0*xa+4.0*xa*xa)+xb*(3.0+6.0*xb+4.0*xb*xb));
-    charge_run += q_norm * (1.0/24.0)*(xa*(-3.0+6.0*xa-4.0*xa*xa)+xb*(3.0-6.0*xb+4.0*xb*xb));
-    charge_run += q_norm * (1.0/12.0)*(-9.0*xa+4.0*pow(xa,3)+9.0*xb-4.0*pow(xb,3));
-    charge_run += q_norm * (1.0/24.0)*(-1.0*xa*(3.0+6.0*xa+4.0*xa*xa)+xb*(3.0+6.0*xb+4.0*xb*xb));
 
   }
   return;
@@ -1759,6 +1627,8 @@ void deposit_charge_to_left_segment_2(std::vector<double> &j_x,
 
 
 void deposit_rho_sic_3_segment(std::vector<double> &rho,
+			       int ix_a,
+			       int ix_b,			       
 			       double xl,
 			       double xr,
 			       double charge,
@@ -1956,6 +1826,8 @@ void deposit_charge_to_left_segment_3(std::vector<double> &j_x,
 }
 
 void deposit_rho_sic_4_segment(std::vector<double> &rho,
+			       int ix_a,
+			       int ix_b,			       
 			       double xl,
 			       double xr,
 			       double charge,
@@ -2178,6 +2050,8 @@ void ParticleSpecies::deposit_j_x_sic_2(std::vector<double> &j_x)
   double right_max;
   for (int i = 0; i < n_p; i++) {
     // Index of right bounding gridpoint
+    right_max = find_max(ix[i], ix_old[i], ix[i+1], ix_old[i+1]);
+    
     right_max = fmax(fmax(x_old[i], x_old[i+1]),fmax(x[i],x[i+1]));
     right_max = get_nearest_gridpoint(right_max) + 2;
     
@@ -2216,42 +2090,28 @@ void ParticleSpecies::deposit_j_x_sic_4(std::vector<double> &j_x)
   return;
 }
 
-void ParticleSpecies::deposit_rho_sic_0(std::vector<double> &rho)
+void ParticleSpecies::deposit_rho_sic(std::vector<double> &rho)
 {
-  for (int i = 0; i < n_p; i++) {
-    deposit_rho_sic_0_segment(rho, x[i], x[i+1], charge[i], n_g);
-  }
-  return;
-}
-
-void ParticleSpecies::deposit_rho_sic_1(std::vector<double> &rho)
-{
-  for (int i = 0; i < n_p; i++) {
-    deposit_rho_sic_1_segment(rho, x[i], x[i+1], charge[i], n_g);
-  }
-  return;
-}
-
-void ParticleSpecies::deposit_rho_sic_2(std::vector<double> &rho)
-{
-  for (int i = 0; i < n_p; i++) {
-    deposit_rho_sic_2_segment(rho, x[i], x[i+1], charge[i], n_g);
-  }
-  return;
-}
-
-void ParticleSpecies::deposit_rho_sic_3(std::vector<double> &rho)
-{
-  for (int i = 0; i < n_p; i++) {
-    deposit_rho_sic_3_segment(rho, x[i], x[i+1], charge[i], n_g);
-  }
-  return;
-}
-
-void ParticleSpecies::deposit_rho_sic_4(std::vector<double> &rho)
-{
-  for (int i = 0; i < n_p; i++) {
-    deposit_rho_sic_4_segment(rho, x[i], x[i+1], charge[i], n_g);
+  for (int i = 0; i < n_p; i++) {  
+    switch (method) {
+    case 5 :
+      deposit_rho_sic_0_segment(rho, ix[i], ix[i+1], x[i], x[i+1], charge[i], n_g);
+      break;
+    case 6 :
+      deposit_rho_sic_1_segment(rho, ix[i], ix[i+1], x[i], x[i+1], charge[i], n_g);
+      break;
+    case 7 :
+      deposit_rho_sic_2_segment(rho, ix[i], ix[i+1], x[i], x[i+1], charge[i], n_g);
+      break;
+    case 8 :
+      deposit_rho_sic_3_segment(rho, ix[i], ix[i+1], x[i], x[i+1], charge[i], n_g);
+      break;
+    case 9 :
+      deposit_rho_sic_4_segment(rho, ix[i], ix[i+1], x[i], x[i+1], charge[i], n_g);
+      break;
+    default:
+      std::cout << "Error, selected interpolation order not implemented." << std::endl;
+    }
   }
   return;
 }
@@ -2385,21 +2245,23 @@ double j_t_4_w5_full(double xa, double xb, double va, double vb)
 }
 
 void deposit_j_t_segment_2(std::vector<double> &j_t,
-			   double xl,
+			   int ixl,
+			   int ixr,
+			   double xl, 
 			   double xr,
 			   double vl,
 			   double vr,
+			   double length,			     
 			   double charge,
 			   int n_g)
 {
-  double length, xa, xb, va, vb, delta, q_norm;
+  double xa, xb, va, vb, delta, q_norm, delta_left, delta_right;
   int ngp_left, ngp_right;
 
-  length = xr - xl;
   q_norm = charge / length;
 
-  ngp_left = get_nearest_gridpoint(xl);
-  ngp_right = get_nearest_gridpoint(xr);
+  find_ngp(ixl, xl, ngp_left, delta_left);
+  find_ngp(ixr, xr, ngp_right, delta_right);  
 
   // If tracers are in one cell
   if (ngp_left == ngp_right) {
@@ -2458,21 +2320,23 @@ void deposit_j_t_segment_2(std::vector<double> &j_t,
 }
 
 void deposit_j_t_segment_3(std::vector<double> &j_t,
-			   double xl,
+			   int ixl,
+			   int ixr,
+			   double xl, 
 			   double xr,
 			   double vl,
 			   double vr,
+			   double length,			     
 			   double charge,
 			   int n_g)
 {
-  double length, xa, xb, va, vb, delta, q_norm;
+  double xa, xb, va, vb, delta, q_norm;
   int bound_left, bound_right;
 
-  length = xr - xl;
   q_norm = charge / length;
 
-  bound_left = floor(xl);
-  bound_right = ceil(xr);
+  bound_left = ixl;
+  bound_right = ixr + 1;
 
   // If tracers are between two gridpoints
   if (bound_right == (bound_left + 1)) {
@@ -2537,21 +2401,23 @@ void deposit_j_t_segment_3(std::vector<double> &j_t,
 
 
 void deposit_j_t_segment_4(std::vector<double> &j_t,
-			   double xl,
+			   int ixl,
+			   int ixr,
+			   double xl, 
 			   double xr,
 			   double vl,
 			   double vr,
+			   double length,			     
 			   double charge,
 			   int n_g)
 {
-  double length, xa, xb, va, vb, delta, q_norm;
+  double xa, xb, va, vb, delta, q_norm, delta_left, delta_right;
   int ngp_left, ngp_right;
 
-  length = xr - xl;
   q_norm = charge / length;
 
-  ngp_left = get_nearest_gridpoint(xl);
-  ngp_right = get_nearest_gridpoint(xr);
+  find_ngp(ixl, xl, ngp_left, delta_left);
+  find_ngp(ixr, xr, ngp_right, delta_right);  
 
   // If tracers are in one cell
   if (ngp_left == ngp_right) {
@@ -2621,37 +2487,37 @@ void deposit_j_t_segment_4(std::vector<double> &j_t,
 
 void ParticleSpecies::deposit_j_y_sic(std::vector<double> &j_y)
 {
-  double x_i_tavg, x_ip1_tavg, left, right, v_y_left, v_y_right;
+  int ix_a, ix_b, ix_l, ix_r;
+  double x_a, x_b, x_l, x_r, v_a, v_b, v_l, v_r, length;
   for (int i = 0; i < n_p; i++) {
-    x_i_tavg = (x_old[i] + x[i]) / 2.0;
-    x_ip1_tavg = (x_old[i+1] + x[i+1]) / 2.0;
-    if (x_ip1_tavg >= x_i_tavg) {
-      left = x_i_tavg;
-      right = x_ip1_tavg;
-      v_y_left = u_y[i] / sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0) + pow(u_z[i], 2.0));
-      v_y_right = u_y[i+1] / sqrt(1.0 + pow(u_x[i+1], 2.0) + pow(u_y[i+1], 2.0) + pow(u_z[i+1], 2.0));
-    }
-    else {
-      left = x_ip1_tavg;
-      right = x_i_tavg;
-      v_y_left = u_y[i+1] / sqrt(1.0 + pow(u_x[i+1], 2.0) + pow(u_y[i+1], 2.0) + pow(u_z[i+1], 2.0));
-      v_y_right = u_y[i] / sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0) + pow(u_z[i], 2.0));
-    }
+    average(ix_old[i], x_old[i], ix[i], x[i], ix_a, x_a);
+    average(ix_old[i+1], x_old[i+1], ix[i+1], x[i+1], ix_b, x_b);
+    v_a = u_y[i] / sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0) + pow(u_z[i], 2.0));    
+    v_b = u_y[i+1] / sqrt(1.0 + pow(u_x[i+1], 2.0) + pow(u_y[i+1], 2.0) + pow(u_z[i+1], 2.0));
+    
+    arrange_segment_velocity(ix_a, x_a,
+			     ix_b, x_b,
+			     v_a, v_b,
+			     ix_l, x_l,
+			     ix_r, x_r,
+			     length,
+			     v_l, v_r);
+    
     switch (method) {
     case 5 :
-      deposit_j_t_segment_0(j_y, left, right, v_y_left, v_y_right, charge[i], n_g);
+      deposit_j_t_segment_0(j_y, ix_l, ix_r, x_l, x_r, v_l, v_r, length, charge[i], n_g);
       break;
     case 6 :
-      deposit_j_t_segment_1(j_y, left, right, v_y_left, v_y_right, charge[i], n_g);
+      deposit_j_t_segment_1(j_y, ix_l, ix_r, x_l, x_r, v_l, v_r, length, charge[i], n_g);
       break;      
     case 7 :
-      deposit_j_t_segment_2(j_y, left, right, v_y_left, v_y_right, charge[i], n_g);
+      deposit_j_t_segment_2(j_y, ix_l, ix_r, x_l, x_r, v_l, v_r, length, charge[i], n_g);
       break;      
     case 8 :
-      deposit_j_t_segment_3(j_y, left, right, v_y_left, v_y_right, charge[i], n_g);
+      deposit_j_t_segment_3(j_y, ix_l, ix_r, x_l, x_r, v_l, v_r, length, charge[i], n_g);
       break;      
     case 9 :
-      deposit_j_t_segment_4(j_y, left, right, v_y_left, v_y_right, charge[i], n_g);
+      deposit_j_t_segment_4(j_y, ix_l, ix_r, x_l, x_r, v_l, v_r, length, charge[i], n_g);
       break;      
     default:
       std::cout << "Error, selected interpolation order not implemented." << std::endl;
@@ -2663,42 +2529,229 @@ void ParticleSpecies::deposit_j_y_sic(std::vector<double> &j_y)
 
 void ParticleSpecies::deposit_j_z_sic(std::vector<double> &j_z)
 {
-  double x_i_tavg, x_ip1_tavg, left, right, v_z_left, v_z_right;
+  int ix_a, ix_b, ix_l, ix_r;
+  double x_a, x_b, x_l, x_r, v_a, v_b, v_l, v_r, length;
   for (int i = 0; i < n_p; i++) {
-    x_i_tavg = (x_old[i] + x[i]) / 2.0;
-    x_ip1_tavg = (x_old[i+1] + x[i+1]) / 2.0;
-    if (x_ip1_tavg >= x_i_tavg) {
-      left = x_i_tavg;
-      right = x_ip1_tavg;
-      v_z_left = u_z[i] / sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0) + pow(u_z[i], 2.0));
-      v_z_right = u_z[i+1] / sqrt(1.0 + pow(u_x[i+1], 2.0) + pow(u_y[i+1], 2.0) + pow(u_z[i+1], 2.0));
-    }
-    else {
-      left = x_ip1_tavg;
-      right = x_i_tavg;
-      v_z_left = u_z[i+1] / sqrt(1.0 + pow(u_x[i+1], 2.0) + pow(u_y[i+1], 2.0) + pow(u_z[i+1], 2.0));
-      v_z_right = u_z[i] / sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0) + pow(u_z[i], 2.0));
-    }
-
+    average(ix_old[i], x_old[i], ix[i], x[i], ix_a, x_a);
+    average(ix_old[i+1], x_old[i+1], ix[i+1], x[i+1], ix_b, x_b);
+    v_a = u_z[i] / sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0) + pow(u_z[i], 2.0));
+    v_b = u_z[i+1] / sqrt(1.0 + pow(u_x[i+1], 2.0) + pow(u_y[i+1], 2.0) + pow(u_z[i+1], 2.0));
+    arrange_segment_velocity(ix_a, x_a,
+			     ix_b, x_b,
+			     v_a, v_b,
+			     ix_l, x_l,
+			     ix_r, x_r,
+			     length,
+			     v_l, v_r);
     switch (method) {
     case 5 :
-      deposit_j_t_segment_0(j_z, left, right, v_z_left, v_z_right, charge[i], n_g);
+      deposit_j_t_segment_0(j_z, ix_l, ix_r, x_l, x_r, v_l, v_r, length, charge[i], n_g);
       break;
     case 6 :
-      deposit_j_t_segment_1(j_z, left, right, v_z_left, v_z_right, charge[i], n_g);
+      deposit_j_t_segment_1(j_z, ix_l, ix_r, x_l, x_r, v_l, v_r, length, charge[i], n_g);
       break;
     case 7 :
-      deposit_j_t_segment_2(j_z, left, right, v_z_left, v_z_right, charge[i], n_g);
+      deposit_j_t_segment_2(j_z, ix_l, ix_r, x_l, x_r, v_l, v_r, length, charge[i], n_g);
       break;
     case 8 :
-      deposit_j_t_segment_3(j_z, left, right, v_z_left, v_z_right, charge[i], n_g);
+      deposit_j_t_segment_3(j_z, ix_l, ix_r, x_l, x_r, v_l, v_r, length, charge[i], n_g);
       break;
     case 9 :
-      deposit_j_t_segment_4(j_z, left, right, v_z_left, v_z_right, charge[i], n_g);
+      deposit_j_t_segment_4(j_z, ix_l, ix_r, x_l, x_r, v_l, v_r, length, charge[i], n_g);
       break;
     default:
       std::cout << "Error, selected interpolation order not implemented." << std::endl;
     }
   }
+  return;
+}
+
+
+void ParticleSpecies::write_phase(int species_number, int t, int my_rank)
+{
+  std::string x_filename;
+  std::string u_x_filename;
+  
+  std::stringstream ss;
+  ss << "x_";
+  ss << species_number;
+  ss << "_";
+  ss << t;
+  ss << "_";
+  ss << my_rank;
+  x_filename = ss.str();
+
+  ss.str(std::string());
+  ss.clear();
+  ss << "u_x_";
+  ss << species_number;
+  ss << "_";
+  ss << t;
+  ss << "_";
+  ss << my_rank;
+  u_x_filename = ss.str();
+
+  data_to_file(x, x_filename);
+  data_to_file(u_x, u_x_filename);
+  return;
+}
+
+void ParticleSpecies::write_particle_diagnostics(int n_t, int my_rank, MPI_Comm COMM)
+{
+  sum_array_to_root(&energy_history[0], n_t, COMM, my_rank);
+  sum_array_to_root(&momentum_x_history[0], n_t, COMM, my_rank);
+  sum_array_to_root(&momentum_y_history[0], n_t, COMM, my_rank);
+  sum_array_to_root(&momentum_z_history[0], n_t, COMM, my_rank);  
+  sum_array_to_root(&n_p_history[0], n_t, COMM, my_rank);
+
+  if (my_rank==0) {
+    data_to_file(energy_history, (species_name+"_ene"));
+    data_to_file(momentum_x_history, (species_name+"_p_x"));
+    data_to_file(momentum_y_history, (species_name+"_p_y"));
+    data_to_file(momentum_z_history, (species_name+"_p_z"));
+    data_to_file(n_p_history, (species_name+"_n_p"));
+  }
+
+  return; 
+}
+
+void ParticleSpecies::advance_x()
+{
+  double gamma;
+  for (int i = 0; i < n_p; i++) {
+    gamma = sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0) + pow(u_z[i], 2.0));
+    x[i] = x[i] + (dt/dx) * u_x[i] / gamma;
+    if (x[i] >= 1.0) {
+      ix[i] = ix[i] + 1;
+      x[i] = x[i] - 1.0;
+    } else if (x[i] < 0.0) {
+      ix[i] = ix[i] - 1;
+      x[i] =  x[i] + 1.0;
+    }
+  } 
+  return;
+}
+
+double lagrange_3(double *x, double *y, double x_sample)
+{
+  double y_interpolated = 0.0;
+  double p_i;
+  for (int i = 0; i < 3; i++) {
+    p_i = 1.0;
+    for (int j = 0; j < 3; j++) {
+      if (j==i) {
+	continue;
+      } else {
+	p_i *= (x_sample - x[j]) / (x[i] - x[j]);
+      }
+    }
+    y_interpolated += y[i] * p_i;
+  }
+  return y_interpolated;
+}
+
+void ParticleSpecies::split_segment_lagrange_3(int i)
+{
+  double new_id = (lagrangian_id[i+1]+lagrangian_id[i])/2.0;
+  x.insert(x.begin()+i+1, lagrange_3(&lagrangian_id[i], &x[i], new_id));
+  // Linear interpolation on x_old to be consistent with Gauss's law
+  x_old.insert(x_old.begin()+i+1, (x_old[i+1] + x_old[i])/2.0);
+  u_x.insert(u_x.begin()+i+1, lagrange_3(&lagrangian_id[i], &u_x[i], new_id));
+  u_y.insert(u_y.begin()+i+1, lagrange_3(&lagrangian_id[i], &u_y[i], new_id));
+  u_z.insert(u_z.begin()+i+1, lagrange_3(&lagrangian_id[i], &u_z[i], new_id));
+  lagrangian_id.insert(lagrangian_id.begin()+i+1, new_id);
+  charge[i] *= 0.5;
+  charge.insert(charge.begin()+i+1, charge[i]);
+
+  n_p += 1;
+  return;
+}
+
+void ParticleSpecies::split_segment_linear(int i)
+{
+  double new_id = (lagrangian_id[i+1]+lagrangian_id[i])/2.0;
+  x.insert(x.begin()+i+1, (x[i+1] + x[i])/2.0);
+  x_old.insert(x_old.begin()+i+1, (x_old[i+1] + x_old[i])/2.0);
+  u_x.insert(u_x.begin()+i+1, (u_x[i+1] + u_x[i])/2.0);
+  u_y.insert(u_y.begin()+i+1, (u_y[i+1] + u_y[i])/2.0);
+  u_z.insert(u_z.begin()+i+1, (u_z[i+1] + u_z[i])/2.0);  
+  lagrangian_id.insert(lagrangian_id.begin()+i+1, new_id);
+  charge[i] *= 0.5;
+  charge.insert(charge.begin()+i+1, charge[i]);
+  
+  n_p += 1;
+  return;
+}
+
+void ParticleSpecies::refine_segments(double refinement_length)
+{
+  double length;
+  int i = 0;
+  double max = 0.0;
+  
+  while (i < n_p) {
+    length = fabs(x[i+1] - x[i]);
+    if (length > max) {
+      max = length;
+    }
+    if (length > refinement_length) {
+      split_segment_lagrange_3(i);
+      //split_segment_linear(i);
+    } else {
+      i+=1;
+    }
+  }
+  std::cout << max << std::endl;
+  return;
+}
+
+void ParticleSpecies::communicate_ghost_particles(MPI_Comm COMM)
+{
+  MPI_Status status;
+  int num_procs, my_rank, dest, source;
+  int tag = 0;
+  
+  MPI_Comm_size(COMM, &num_procs);
+  MPI_Comm_rank(COMM, &my_rank);
+  dest = mod(my_rank-1, num_procs);
+  source = mod(my_rank+1, num_procs);
+
+  MPI_Sendrecv(&ix[0], 2, MPI_INT, dest, tag,
+	       &ix[n_p], 2, MPI_INT,
+	       source, tag, COMM, &status);
+  MPI_Sendrecv(&ix_old[0], 2, MPI_INT, dest, tag,
+	       &ix_old[n_p], 2, MPI_INT,
+	       source, tag, COMM, &status);  
+  MPI_Sendrecv(&x[0], 2, MPI_DOUBLE, dest, tag,
+	       &x[n_p], 2, MPI_DOUBLE,
+	       source, tag, COMM, &status);
+  MPI_Sendrecv(&x_old[0], 2, MPI_DOUBLE, dest, tag,
+	       &x_old[n_p], 2, MPI_DOUBLE,
+	       source, tag, COMM, &status);
+  MPI_Sendrecv(&charge[0], 2, MPI_DOUBLE, dest, tag,
+	       &charge[n_p], 2, MPI_DOUBLE,
+	       source, tag, COMM, &status);
+  MPI_Sendrecv(&u_x[0], 2, MPI_DOUBLE, dest, tag,
+	       &u_x[n_p], 2, MPI_DOUBLE,
+	       source, tag, COMM, &status);
+  MPI_Sendrecv(&u_y[0], 2, MPI_DOUBLE, dest, tag,
+	       &u_y[n_p], 2, MPI_DOUBLE,
+	       source, tag, COMM, &status);
+  MPI_Sendrecv(&u_z[0], 2, MPI_DOUBLE, dest, tag,
+	       &u_z[n_p], 2, MPI_DOUBLE,
+	       source, tag, COMM, &status);
+  MPI_Sendrecv(&lagrangian_id[0], 2, MPI_DOUBLE, dest, tag,
+	       &lagrangian_id[n_p], 2, MPI_DOUBLE,
+	       source, tag, COMM, &status);
+  
+  lagrangian_id[n_p] += n_ppp;  // 2023 check, is the n_p+1 entry not necessary?
+  
+  if (my_rank==(num_procs-1)) {
+    ix[n_p] += n_g;
+    ix[n_p+1] += n_g;
+    ix_old[n_p] += n_g;
+    ix_old[n_p+1] += n_g;
+  }
+  
   return;
 }

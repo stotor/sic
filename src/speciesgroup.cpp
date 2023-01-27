@@ -230,19 +230,19 @@ void SpeciesGroup::deposit_rho(std::vector<double> &rho, double rho_bg, int my_r
       species[i].deposit_rho_pic_4(rho);
       break;
     case 5 :
-      species[i].deposit_rho_sic_0(rho);
+      species[i].deposit_rho_sic(rho);
       break;
     case 6 :
-      species[i].deposit_rho_sic_1(rho);
+      species[i].deposit_rho_sic(rho);
       break;
     case 7 :
-      species[i].deposit_rho_sic_2(rho);
+      species[i].deposit_rho_sic(rho);
       break;
     case 8 :
-      species[i].deposit_rho_sic_3(rho);
+      species[i].deposit_rho_sic(rho);
       break;
     case 9 :
-      species[i].deposit_rho_sic_4(rho);
+      species[i].deposit_rho_sic(rho);
       break;
     default:
     std::cout << "Error, selected interpolation order not implemented." << std::endl;
