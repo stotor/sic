@@ -1,3 +1,6 @@
+// Make sure all my routines are working for the case where ix[i] and ix[i+1] are separated by more than one.
+//  average routine doesn't, but looks like its only called in the correct limits
+
 // Check right maxs in old code
 // Big to do is fully understanding right max
 // If too high, probably doesn't make a difference just extra expense
@@ -15,17 +18,6 @@
 
 #include "particlespecies.hpp"
 #include "utilities.hpp"
-
-int get_nearest_gridpoint(double x)
-{
-  int nearest_gridpoint;
-  if ((x-floor(x)) < 0.5) {
-    nearest_gridpoint = floor(x);
-  } else {
-    nearest_gridpoint = ceil(x);
-  }
-  return nearest_gridpoint;
-}
 
 //ix: dx [0, 1)
 void find_ngp(int &ix, double &dx, int &ngp, double &delta)
@@ -2615,81 +2607,6 @@ void ParticleSpecies::advance_x()
   return;
 }
 
-double lagrange_3(double *x, double *y, double x_sample)
-{
-  double y_interpolated = 0.0;
-  double p_i;
-  for (int i = 0; i < 3; i++) {
-    p_i = 1.0;
-    for (int j = 0; j < 3; j++) {
-      if (j==i) {
-	continue;
-      } else {
-	p_i *= (x_sample - x[j]) / (x[i] - x[j]);
-      }
-    }
-    y_interpolated += y[i] * p_i;
-  }
-  return y_interpolated;
-}
-
-/////////////// MIGRATION LINE ////////////////
-
-void ParticleSpecies::split_segment_lagrange_3(int i)
-{
-  double new_id = (lagrangian_id[i+1]+lagrangian_id[i])/2.0;
-  x.insert(x.begin()+i+1, lagrange_3(&lagrangian_id[i], &x[i], new_id));
-  // Linear interpolation on x_old to be consistent with Gauss's law
-  x_old.insert(x_old.begin()+i+1, (x_old[i+1] + x_old[i])/2.0);
-  u_x.insert(u_x.begin()+i+1, lagrange_3(&lagrangian_id[i], &u_x[i], new_id));
-  u_y.insert(u_y.begin()+i+1, lagrange_3(&lagrangian_id[i], &u_y[i], new_id));
-  u_z.insert(u_z.begin()+i+1, lagrange_3(&lagrangian_id[i], &u_z[i], new_id));
-  lagrangian_id.insert(lagrangian_id.begin()+i+1, new_id);
-  charge[i] *= 0.5;
-  charge.insert(charge.begin()+i+1, charge[i]);
-
-  n_p += 1;
-  return;
-}
-
-void ParticleSpecies::split_segment_linear(int i)
-{
-  double new_id = (lagrangian_id[i+1]+lagrangian_id[i])/2.0;
-  x.insert(x.begin()+i+1, (x[i+1] + x[i])/2.0);
-  x_old.insert(x_old.begin()+i+1, (x_old[i+1] + x_old[i])/2.0);
-  u_x.insert(u_x.begin()+i+1, (u_x[i+1] + u_x[i])/2.0);
-  u_y.insert(u_y.begin()+i+1, (u_y[i+1] + u_y[i])/2.0);
-  u_z.insert(u_z.begin()+i+1, (u_z[i+1] + u_z[i])/2.0);  
-  lagrangian_id.insert(lagrangian_id.begin()+i+1, new_id);
-  charge[i] *= 0.5;
-  charge.insert(charge.begin()+i+1, charge[i]);
-  
-  n_p += 1;
-  return;
-}
-
-void ParticleSpecies::refine_segments(double refinement_length)
-{
-  double length;
-  int i = 0;
-  double max = 0.0;
-  
-  while (i < n_p) {
-    length = fabs(x[i+1] - x[i]);
-    if (length > max) {
-      max = length;
-    }
-    if (length > refinement_length) {
-      split_segment_lagrange_3(i);
-      //split_segment_linear(i);
-    } else {
-      i+=1;
-    }
-  }
-  std::cout << max << std::endl;
-  return;
-}
-
 void ParticleSpecies::communicate_ghost_particles(MPI_Comm COMM)
 {
   MPI_Status status;
@@ -2729,7 +2646,8 @@ void ParticleSpecies::communicate_ghost_particles(MPI_Comm COMM)
 	       &lagrangian_id[n_p], 2, MPI_DOUBLE,
 	       source, tag, COMM, &status);
   
-  lagrangian_id[n_p] += n_ppp;  // 2023 check, is the n_p+1 entry not necessary?
+  lagrangian_id[n_p] += n_ppp;  
+  lagrangian_id[n_p+1] += n_ppp;
   
   if (my_rank==(num_procs-1)) {
     ix[n_p] += n_g;
@@ -2738,5 +2656,122 @@ void ParticleSpecies::communicate_ghost_particles(MPI_Comm COMM)
     ix_old[n_p+1] += n_g;
   }
   
+  return;
+}
+
+double lagrange_3(double *x, double *y, double x_sample)
+{
+  double y_interpolated = 0.0;
+  double p_i;
+  for (int i = 0; i < 3; i++) {
+    p_i = 1.0;
+    for (int j = 0; j < 3; j++) {
+      if (j==i) {
+	continue;
+      } else {
+	p_i *= (x_sample - x[j]) / (x[i] - x[j]);
+      }
+    }
+    y_interpolated += y[i] * p_i;
+  }
+  return y_interpolated;
+}
+
+double lagrange_3_position(double *x, int *iy, double *y, double x_sample)
+{
+  double y_interpolated = 0.0;
+  double p_i;
+  for (int i = 0; i < 3; i++) {
+    p_i = 1.0;
+    for (int j = 0; j < 3; j++) {
+      if (j==i) {
+	continue;
+      } else {
+	p_i *= (x_sample - x[j]) / (x[i] - x[j]);
+      }
+    }
+    if (i==0) {
+      y_interpolated += y[i] * p_i;
+    } else {
+      y_interpolated += (y[i]+(iy[i]-iy[0])) * p_i;
+    }
+  }
+  return y_interpolated;
+}
+
+void ParticleSpecies::split_segment_lagrange_3(int i)
+{
+  double x_avg, x_interpolated;
+  int ix_avg, ix_interpolated;
+
+  double new_id = (lagrangian_id[i+1]+lagrangian_id[i])/2.0;  
+
+  x_interpolated = lagrange_3_position(&lagrangian_id[i], &ix[i], &x[i], new_id);
+  ix_interpolated = floor(x_interpolated);
+
+  ix.insert(ix.begin()+i+1, ix_interpolated + ix[i]);
+  x.insert(x.begin()+i+1, (x_interpolated-ix_interpolated));
+
+  // Linear interpolation on x_old to be consistent with Gauss's law
+  average(ix_old[i], x_old[i], ix_old[i+1], x_old[i+1], ix_avg, x_avg);
+  x_old.insert(x_old.begin()+i+1, x_avg);
+  ix_old.insert(ix_old.begin()+i+1, ix_avg);
+
+  u_x.insert(u_x.begin()+i+1, lagrange_3(&lagrangian_id[i], &u_x[i], new_id));
+  u_y.insert(u_y.begin()+i+1, lagrange_3(&lagrangian_id[i], &u_y[i], new_id));
+  u_z.insert(u_z.begin()+i+1, lagrange_3(&lagrangian_id[i], &u_z[i], new_id));
+  lagrangian_id.insert(lagrangian_id.begin()+i+1, new_id);
+  charge[i] *= 0.5;
+  charge.insert(charge.begin()+i+1, charge[i]);
+
+  n_p += 1;
+  return;
+}
+
+void ParticleSpecies::split_segment_linear(int i)
+{
+  int ix_avg;
+  double x_avg;  
+  double new_id = (lagrangian_id[i+1]+lagrangian_id[i])/2.0;
+
+  average(ix[i], x[i], ix[i+1], x[i+1], ix_avg, x_avg);
+  x.insert(x.begin()+i+1, x_avg);
+  ix.insert(ix.begin()+i+1, ix_avg);
+  
+  average(ix_old[i], x_old[i], ix_old[i+1], x_old[i+1], ix_avg, x_avg);
+  x_old.insert(x_old.begin()+i+1, x_avg);
+  ix_old.insert(ix_old.begin()+i+1, ix_avg);
+  
+  u_x.insert(u_x.begin()+i+1, (u_x[i+1] + u_x[i])/2.0);
+  u_y.insert(u_y.begin()+i+1, (u_y[i+1] + u_y[i])/2.0);
+  u_z.insert(u_z.begin()+i+1, (u_z[i+1] + u_z[i])/2.0);
+  lagrangian_id.insert(lagrangian_id.begin()+i+1, new_id);
+  charge[i] *= 0.5;
+  charge.insert(charge.begin()+i+1, charge[i]);
+  
+  n_p += 1;
+  return;
+}
+
+void ParticleSpecies::refine_segments(double refinement_length)
+{
+  double length;
+  int i = 0;
+  double max = 0.0;
+  
+  while (i < n_p) {
+    length = fabs(a_minus_b(ix[i+1], x[i+1], ix[i], x[i]));
+    
+    if (length > max) {
+      max = length;
+    }
+    if (length > refinement_length) {
+      split_segment_lagrange_3(i);
+      //split_segment_linear(i);
+    } else {
+      i+=1;
+    }
+  }
+  std::cout << max << std::endl;
   return;
 }
