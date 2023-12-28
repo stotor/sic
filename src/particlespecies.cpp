@@ -792,51 +792,72 @@ void ParticleSpecies::deposit_j_x_pic_4(std::vector<double> &j_x)
 }
 
 
-void ParticleSpecies::deposit_j_y_pic_0(std::vector<double> &j_y)
+void ParticleSpecies::deposit_j_t_pic_0(std::vector<double> &j_t, char axis)
 {
   int ngp, ix_tavg;
-  double x_tavg, gamma, j_y_i, delta;
+  double x_tavg, gamma, j_t_i, delta;
 
   for (int i = 0; i < n_p; i++) {
     gamma = sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0) + pow(u_z[i], 2.0));
-    j_y_i = charge[i] * u_y[i] / gamma;
+    switch (axis) {
+    case 'y':
+      j_t_i = charge[i] * u_y[i] / gamma;
+      break;
+    case 'z' :
+      j_t_i = charge[i] * u_z[i] / gamma;
+      break;
+    }
 
     average(ix[i], x[i], ix_old[i], x_old[i], ix_tavg, x_tavg);
     find_ngp(ix_tavg, x_tavg, ngp, delta);
 
-    j_y[mod(ngp,n_g)] += j_y_i;
+    j_t[mod(ngp,n_g)] += j_t_i;
   }
   return;
 }
 
-void ParticleSpecies::deposit_j_y_pic_1(std::vector<double> &j_y)
+void ParticleSpecies::deposit_j_t_pic_1(std::vector<double> &j_t, char axis)
 {
   int ix_tavg;
-  double x_tavg, w1, w2, gamma, j_y_i;
+  double x_tavg, w1, w2, gamma, j_t_i;
 
   for (int i = 0; i < n_p; i++) {
     gamma = sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0) + pow(u_z[i], 2.0));
-    j_y_i = charge[i] * u_y[i] / gamma;
+    switch (axis) {
+    case 'y':
+      j_t_i = charge[i] * u_y[i] / gamma;
+      break;
+    case 'z' :
+      j_t_i = charge[i] * u_z[i] / gamma;
+      break;
+    }
 
     average(ix[i], x[i], ix_old[i], x_old[i], ix_tavg, x_tavg);
     
     w1 = 1.0 - x_tavg;
     w2 = x_tavg;
 
-    j_y[mod(ix_tavg,n_g)] += w1 * j_y_i;
-    j_y[mod((ix_tavg+1),n_g)] += w2 * j_y_i;
+    j_t[mod(ix_tavg,n_g)] += w1 * j_t_i;
+    j_t[mod((ix_tavg+1),n_g)] += w2 * j_t_i;
   }
   return;
 }
 
-void ParticleSpecies::deposit_j_y_pic_2(std::vector<double> &j_y)
+void ParticleSpecies::deposit_j_t_pic_2(std::vector<double> &j_t, char axis)
 {
   int ngp, ix_tavg;
-  double w1, w2, w3, delta, x_tavg, gamma, j_y_i;
+  double w1, w2, w3, delta, x_tavg, gamma, j_t_i;
 
   for (int i = 0; i < n_p; i++) {
     gamma = sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0) + pow(u_z[i], 2.0));
-    j_y_i = charge[i] * u_y[i] / gamma;
+    switch (axis) {
+    case 'y':
+      j_t_i = charge[i] * u_y[i] / gamma;
+      break;
+    case 'z' :
+      j_t_i = charge[i] * u_z[i] / gamma;
+      break;
+    }
 
     average(ix[i], x[i], ix_old[i], x_old[i], ix_tavg, x_tavg);
     find_ngp(ix_tavg, x_tavg, ngp, delta);    
@@ -845,21 +866,28 @@ void ParticleSpecies::deposit_j_y_pic_2(std::vector<double> &j_y)
     w2 = 0.75 - delta * delta;
     w3 = 0.5 * pow((0.5 + delta), 2);
 
-    j_y[mod((ngp-1),n_g)] += w1 * j_y_i;
-    j_y[mod(ngp,n_g)] += w2 * j_y_i;
-    j_y[mod((ngp+1),n_g)] += w3 * j_y_i;
+    j_t[mod((ngp-1),n_g)] += w1 * j_t_i;
+    j_t[mod(ngp,n_g)] += w2 * j_t_i;
+    j_t[mod((ngp+1),n_g)] += w3 * j_t_i;
   }
   return;
 }
 
-void ParticleSpecies::deposit_j_y_pic_3(std::vector<double> &j_y)
+void ParticleSpecies::deposit_j_t_pic_3(std::vector<double> &j_t, char axis)
 {
   int ix_tavg;
-  double x_tavg, w1, w2, w3, w4, delta, gamma, j_y_i;
+  double x_tavg, w1, w2, w3, w4, delta, gamma, j_t_i;
 
   for (int i = 0; i < n_p; i++) {
     gamma = sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0) + pow(u_z[i], 2.0));
-    j_y_i = charge[i] * u_y[i] / gamma;
+    switch (axis) {
+    case 'y':
+      j_t_i = charge[i] * u_y[i] / gamma;
+      break;
+    case 'z' :
+      j_t_i = charge[i] * u_z[i] / gamma;
+      break;
+    }
     
     average(ix[i], x[i], ix_old[i], x_old[i], ix_tavg, x_tavg);
     delta = x_tavg - 0.5;
@@ -869,22 +897,29 @@ void ParticleSpecies::deposit_j_y_pic_3(std::vector<double> &j_y)
     w3 = (23.0 + 30.0*delta - 12.0*pow(delta, 2) - 24.0*pow(delta,3)) / 48.0;
     w4 = pow((0.5 + delta), 3) / 6.0;
 
-    j_y[mod((ix_tavg-1),n_g)] += w1 * j_y_i;
-    j_y[mod(ix_tavg,n_g)] += w2 * j_y_i;
-    j_y[mod((ix_tavg+1),n_g)] += w3 * j_y_i;
-    j_y[mod((ix_tavg+2),n_g)] += w4 * j_y_i;
+    j_t[mod((ix_tavg-1),n_g)] += w1 * j_t_i;
+    j_t[mod(ix_tavg,n_g)] += w2 * j_t_i;
+    j_t[mod((ix_tavg+1),n_g)] += w3 * j_t_i;
+    j_t[mod((ix_tavg+2),n_g)] += w4 * j_t_i;
   }
   return;
 }
 
-void ParticleSpecies::deposit_j_y_pic_4(std::vector<double> &j_y)
+void ParticleSpecies::deposit_j_t_pic_4(std::vector<double> &j_t, char axis)
 {
   int ngp, ix_tavg;
-  double w1, w2, w3, w4, w5, delta, x_tavg, gamma, j_y_i;
+  double w1, w2, w3, w4, w5, delta, x_tavg, gamma, j_t_i;
 
   for (int i = 0; i < n_p; i++) {
     gamma = sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0) + pow(u_z[i], 2.0));
-    j_y_i = charge[i] * u_y[i] / gamma;
+    switch (axis) {
+    case 'y':
+      j_t_i = charge[i] * u_y[i] / gamma;
+      break;
+    case 'z' :
+      j_t_i = charge[i] * u_z[i] / gamma;
+      break;
+    }
 
     average(ix[i], x[i], ix_old[i], x_old[i], ix_tavg, x_tavg);
     find_ngp(ix_tavg, x_tavg, ngp, delta);    
@@ -895,123 +930,11 @@ void ParticleSpecies::deposit_j_y_pic_4(std::vector<double> &j_y)
     w4 = (19.0 + 44.0*delta + 24.0*pow(delta, 2) - 16.0*pow(delta, 3) - 16*pow(delta,4))/96.0;
     w5 = pow((1.0 + 2.0*delta), 4) / 384.0;
 
-    j_y[mod((ngp-2),n_g)] += w1 * j_y_i;
-    j_y[mod((ngp-1),n_g)] += w2 * j_y_i;
-    j_y[mod(ngp,n_g)] += w3 * j_y_i;
-    j_y[mod((ngp+1),n_g)] += w4 * j_y_i;
-    j_y[mod((ngp+2),n_g)] += w5 * j_y_i;
-  }
-  return;
-}
-
-void ParticleSpecies::deposit_j_z_pic_0(std::vector<double> &j_z)
-{
-  int ngp, ix_tavg;
-  double x_tavg, gamma, j_z_i, delta;
-
-  for (int i = 0; i < n_p; i++) {
-    gamma = sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0) + pow(u_z[i], 2.0));
-    j_z_i = charge[i] * u_z[i] / gamma;
-
-    average(ix[i], x[i], ix_old[i], x_old[i], ix_tavg, x_tavg);
-    find_ngp(ix_tavg, x_tavg, ngp, delta);
-    
-    j_z[mod(ngp,n_g)] += j_z_i;
-  }
-  return;
-}
-
-void ParticleSpecies::deposit_j_z_pic_1(std::vector<double> &j_z)
-{
-  int ix_tavg;
-  double x_tavg, w1, w2, gamma, j_z_i;
-
-  for (int i = 0; i < n_p; i++) {
-    gamma = sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0) + pow(u_z[i], 2.0));
-    j_z_i = charge[i] * u_z[i] / gamma;
-
-    average(ix[i], x[i], ix_old[i], x_old[i], ix_tavg, x_tavg);
-
-    w1 = 1.0 - x_tavg;
-    w2 = x_tavg;
-
-    j_z[mod(ix_tavg,n_g)] += w1 * j_z_i;
-    j_z[mod((ix_tavg+1),n_g)] += w2 * j_z_i;
-  }
-  return;
-}
-
-void ParticleSpecies::deposit_j_z_pic_2(std::vector<double> &j_z)
-{
-  int ngp, ix_tavg;
-  double w1, w2, w3, delta, x_tavg, gamma, j_z_i;
-
-  for (int i = 0; i < n_p; i++) {
-    gamma = sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0) + pow(u_z[i], 2.0));
-    j_z_i = charge[i] * u_z[i] / gamma;
-
-    average(ix[i], x[i], ix_old[i], x_old[i], ix_tavg, x_tavg);
-    find_ngp(ix_tavg, x_tavg, ngp, delta);
-
-    w1 = 0.5 * pow((0.5 - delta), 2);
-    w2 = 0.75 - delta * delta;
-    w3 = 0.5 * pow((0.5 + delta), 2);
-
-    j_z[mod((ngp-1),n_g)] += w1 * j_z_i;
-    j_z[mod(ngp,n_g)] += w2 * j_z_i;
-    j_z[mod((ngp+1),n_g)] += w3 * j_z_i;
-  }
-  return;
-}
-
-void ParticleSpecies::deposit_j_z_pic_3(std::vector<double> &j_z)
-{
-  int ix_tavg;
-  double w1, w2, w3, w4, delta, x_tavg, gamma, j_z_i;
-
-  for (int i = 0; i < n_p; i++) {
-    gamma = sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0) + pow(u_z[i], 2.0));
-    j_z_i = charge[i] * u_z[i] / gamma;
-
-    average(ix[i], x[i], ix_old[i], x_old[i], ix_tavg, x_tavg);
-    delta = x_tavg - 0.5;    
-
-    w1 = -1.0 * pow((-0.5 + delta), 3) / 6.0;
-    w2 = (4.0 - 6.0 * pow((0.5 + delta), 2) + 3.0 * pow((0.5 + delta), 3)) / 6.0;
-    w3 = (23.0 + 30.0*delta - 12.0*pow(delta, 2) - 24.0*pow(delta,3)) / 48.0;
-    w4 = pow((0.5 + delta), 3) / 6.0;
-
-    j_z[mod((ix_tavg-1),n_g)] += w1 * j_z_i;
-    j_z[mod(ix_tavg,n_g)] += w2 * j_z_i;
-    j_z[mod((ix_tavg+1),n_g)] += w3 * j_z_i;
-    j_z[mod((ix_tavg+2),n_g)] += w4 * j_z_i;
-  }
-  return;
-}
-
-void ParticleSpecies::deposit_j_z_pic_4(std::vector<double> &j_z)
-{
-  int ngp, ix_tavg;
-  double w1, w2, w3, w4, w5, delta, x_tavg, gamma, j_z_i;
-
-  for (int i = 0; i < n_p; i++) {
-    gamma = sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0) + pow(u_z[i], 2.0));
-    j_z_i = charge[i] * u_z[i] / gamma;
-
-    average(ix[i], x[i], ix_old[i], x_old[i], ix_tavg, x_tavg);
-    find_ngp(ix_tavg, x_tavg, ngp, delta);
-
-    w1 = pow((1.0 - 2.0*delta), 4) / 384.0;
-    w2 = (19.0 - 44.0*delta + 24.0*pow(delta, 2) + 16.0*pow(delta,3) - 16.0*pow(delta, 4))/96.0;
-    w3 = 0.5989583333333334 - (5.0*pow(delta, 2))/8.0 + pow(delta, 4)/4.0;
-    w4 = (19.0 + 44.0*delta + 24.0*pow(delta, 2) - 16.0*pow(delta, 3) - 16*pow(delta,4))/96.0;
-    w5 = pow((1.0 + 2.0*delta), 4) / 384.0;
-
-    j_z[mod((ngp-2),n_g)] += w1 * j_z_i;
-    j_z[mod((ngp-1),n_g)] += w2 * j_z_i;
-    j_z[mod(ngp,n_g)] += w3 * j_z_i;
-    j_z[mod((ngp+1),n_g)] += w4 * j_z_i;
-    j_z[mod((ngp+2),n_g)] += w5 * j_z_i;
+    j_t[mod((ngp-2),n_g)] += w1 * j_t_i;
+    j_t[mod((ngp-1),n_g)] += w2 * j_t_i;
+    j_t[mod(ngp,n_g)] += w3 * j_t_i;
+    j_t[mod((ngp+1),n_g)] += w4 * j_t_i;
+    j_t[mod((ngp+2),n_g)] += w5 * j_t_i;
   }
   return;
 }

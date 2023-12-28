@@ -80,25 +80,26 @@ void SpeciesGroup::deposit_j_x(std::vector<double> &j_x, int my_rank, MPI_Comm C
 
 void SpeciesGroup::deposit_j_y(std::vector<double> &j_y, int my_rank, MPI_Comm COMM)
 {
+  char axis = 'y';
   for (int i = 0; i < n_g; i++) {
     j_y[i] = 0.0;
   }
   for (int i = 0; i < n_species; i++) {
     switch (species[i].method) {
     case 0 :
-      species[i].deposit_j_y_pic_0(j_y);
+      species[i].deposit_j_t_pic_0(j_y, axis);
       break;
     case 1 :
-      species[i].deposit_j_y_pic_1(j_y);
+      species[i].deposit_j_t_pic_1(j_y, axis);
       break;
     case 2 :
-      species[i].deposit_j_y_pic_2(j_y);
+      species[i].deposit_j_t_pic_2(j_y, axis);
       break;
     case 3 :
-      species[i].deposit_j_y_pic_3(j_y);
+      species[i].deposit_j_t_pic_3(j_y, axis);
       break;
     case 4 :
-      species[i].deposit_j_y_pic_4(j_y);
+      species[i].deposit_j_t_pic_4(j_y, axis);
       break;
     case 5 :
       species[i].deposit_j_y_sic(j_y);
@@ -125,25 +126,26 @@ void SpeciesGroup::deposit_j_y(std::vector<double> &j_y, int my_rank, MPI_Comm C
 
 void SpeciesGroup::deposit_j_z(std::vector<double> &j_z, int my_rank, MPI_Comm COMM)
 {
+  char axis = 'z';
   for (int i = 0; i < n_g; i++) {
     j_z[i] = 0.0;
   }
   for (int i = 0; i < n_species; i++) {
     switch (species[i].method) {
     case 0 :
-      species[i].deposit_j_z_pic_0(j_z);
+      species[i].deposit_j_t_pic_0(j_z, axis);
       break;
     case 1 :
-      species[i].deposit_j_z_pic_1(j_z);
+      species[i].deposit_j_t_pic_1(j_z, axis);
       break;
     case 2 :
-      species[i].deposit_j_z_pic_2(j_z);
+      species[i].deposit_j_t_pic_2(j_z, axis);
       break;
     case 3 :
-      species[i].deposit_j_z_pic_3(j_z);
+      species[i].deposit_j_t_pic_3(j_z, axis);
       break;
     case 4 :
-      species[i].deposit_j_z_pic_4(j_z);
+      species[i].deposit_j_t_pic_4(j_z, axis);
       break;
     case 5 :
       species[i].deposit_j_z_sic(j_z);

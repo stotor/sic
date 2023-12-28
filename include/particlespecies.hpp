@@ -78,18 +78,13 @@ public:
   void deposit_j_x_pic_4(std::vector<double> &j_x);
   void deposit_j_x_sic(std::vector<double> &j_x);
 
-  void deposit_j_y_pic_0(std::vector<double> &j_y);
-  void deposit_j_y_pic_1(std::vector<double> &j_y);
-  void deposit_j_y_pic_2(std::vector<double> &j_y);
-  void deposit_j_y_pic_3(std::vector<double> &j_y);
-  void deposit_j_y_pic_4(std::vector<double> &j_y);
+  void deposit_j_t_pic_0(std::vector<double> &j_t, char axis);
+  void deposit_j_t_pic_1(std::vector<double> &j_t, char axis);
+  void deposit_j_t_pic_2(std::vector<double> &j_t, char axis);
+  void deposit_j_t_pic_3(std::vector<double> &j_t, char axis);
+  void deposit_j_t_pic_4(std::vector<double> &j_t, char axis);
   void deposit_j_y_sic(std::vector<double> &j_y);
 
-  void deposit_j_z_pic_0(std::vector<double> &j_z);
-  void deposit_j_z_pic_1(std::vector<double> &j_z);
-  void deposit_j_z_pic_2(std::vector<double> &j_z);
-  void deposit_j_z_pic_3(std::vector<double> &j_z);
-  void deposit_j_z_pic_4(std::vector<double> &j_z);
   void deposit_j_z_sic(std::vector<double> &j_z);
 
   void write_phase(int species_number, int t, int my_rank);
