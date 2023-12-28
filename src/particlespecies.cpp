@@ -791,11 +791,10 @@ void ParticleSpecies::deposit_j_x_pic_4(std::vector<double> &j_x)
   return;
 }
 
-
 void ParticleSpecies::deposit_j_t_pic_0(std::vector<double> &j_t, char axis)
 {
-  int ngp, ix_tavg;
-  double x_tavg, gamma, j_t_i, delta;
+  int ngp0, ngp1, shift;
+  double xa, xb, x0, x1, delta0, delta1, gamma, j_t_i;
 
   for (int i = 0; i < n_p; i++) {
     gamma = sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0) + pow(u_z[i], 2.0));
@@ -808,18 +807,35 @@ void ParticleSpecies::deposit_j_t_pic_0(std::vector<double> &j_t, char axis)
       break;
     }
 
-    average(ix[i], x[i], ix_old[i], x_old[i], ix_tavg, x_tavg);
-    find_ngp(ix_tavg, x_tavg, ngp, delta);
+    find_ngp(ix_old[i], x_old[i], ngp0, delta0);
+    find_ngp(ix[i], x[i], ngp1, delta1);
+    shift = ngp1 - ngp0;
+    x0 = delta0;
+    x1 = delta1 + shift;
 
-    j_t[mod(ngp,n_g)] += j_t_i;
+    if (shift==0) {
+      j_t[mod(ngp0,n_g)] += j_t_i;
+    } 
+    else {
+      xa = x0;
+      xb = shift * 0.5;
+
+      j_t[mod(ngp0,n_g)] += j_t_i * (xb-xa)/(x1-x0);
+
+      xa = -1.0 * xb;
+      xb = x1 - shift;
+
+      j_t[mod(ngp1,n_g)] += j_t_i * (xb-xa)/(x1-x0);
+    }
+  
   }
   return;
 }
 
 void ParticleSpecies::deposit_j_t_pic_1(std::vector<double> &j_t, char axis)
 {
-  int ix_tavg;
-  double x_tavg, w1, w2, gamma, j_t_i;
+  int ix0, ix1, shift;
+  double xa, xb, x0, x1, w1, w2, delta0, delta1, gamma, j_t_i;
 
   for (int i = 0; i < n_p; i++) {
     gamma = sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0) + pow(u_z[i], 2.0));
@@ -832,21 +848,50 @@ void ParticleSpecies::deposit_j_t_pic_1(std::vector<double> &j_t, char axis)
       break;
     }
 
-    average(ix[i], x[i], ix_old[i], x_old[i], ix_tavg, x_tavg);
-    
-    w1 = 1.0 - x_tavg;
-    w2 = x_tavg;
+    ix0 = ix_old[i];
+    delta0 = x_old[i];
+    ix1 = ix[i];
+    delta1 = x[i];
+      
+    shift = ix1 - ix0;
+    x0 = delta0;
+    x1 = delta1 + shift;
 
-    j_t[mod(ix_tavg,n_g)] += w1 * j_t_i;
-    j_t[mod((ix_tavg+1),n_g)] += w2 * j_t_i;
+    if (shift==0) {
+      xa = x0;
+      xb = x1;
+
+      w1 = 1.0-0.5*(xa+xb);
+      w2 = 0.5*(xa+xb);
+      j_t[mod(ix0,n_g)] += w1 * j_t_i;
+      j_t[mod((ix0+1),n_g)] += w2 * j_t_i;
+    } 
+    else {
+      xa = x0;
+      xb = (shift+1)/2;
+
+      w1 = 1.0-0.5*(xa+xb);
+      w2 = 0.5*(xa+xb);
+      j_t[mod(ix0,n_g)] += w1 * j_t_i*(xb-xa)/(x1-x0);
+      j_t[mod((ix0+1),n_g)] += w2 * j_t_i*(xb-xa)/(x1-x0);
+
+      xa = (-(shift-1))/2;
+      xb = x1 - shift;
+
+      w1 = 1.0-0.5*(xa+xb);
+      w2 = 0.5*(xa+xb);
+      j_t[mod(ix1,n_g)] += w1 * j_t_i*(xb-xa)/(x1-x0);
+      j_t[mod((ix1+1),n_g)] += w2 * j_t_i*(xb-xa)/(x1-x0);
+    }
+  
   }
   return;
 }
 
 void ParticleSpecies::deposit_j_t_pic_2(std::vector<double> &j_t, char axis)
 {
-  int ngp, ix_tavg;
-  double w1, w2, w3, delta, x_tavg, gamma, j_t_i;
+  int ngp0, ngp1, shift;
+  double xa, xb, x0, x1, w1, w2, w3, delta0, delta1, gamma, j_t_i;
 
   for (int i = 0; i < n_p; i++) {
     gamma = sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0) + pow(u_z[i], 2.0));
@@ -859,24 +904,56 @@ void ParticleSpecies::deposit_j_t_pic_2(std::vector<double> &j_t, char axis)
       break;
     }
 
-    average(ix[i], x[i], ix_old[i], x_old[i], ix_tavg, x_tavg);
-    find_ngp(ix_tavg, x_tavg, ngp, delta);    
-    
-    w1 = 0.5 * pow((0.5 - delta), 2);
-    w2 = 0.75 - delta * delta;
-    w3 = 0.5 * pow((0.5 + delta), 2);
+    find_ngp(ix_old[i], x_old[i], ngp0, delta0);
+    find_ngp(ix[i], x[i], ngp1, delta1);
+    shift = ngp1 - ngp0;
+    x0 = delta0;
+    x1 = delta1 + shift;
 
-    j_t[mod((ngp-1),n_g)] += w1 * j_t_i;
-    j_t[mod(ngp,n_g)] += w2 * j_t_i;
-    j_t[mod((ngp+1),n_g)] += w3 * j_t_i;
+    if (shift==0) {
+      xa = x0;
+      xb = x1;
+      
+      w1 = (1.0/24.0)*(3.0+4.0*xa*xa-6.0*xb+4.0*xb*xb+xa*(-6.0+4.0*xb));
+      w2 = 0.75 - (1.0/3.0)*(xa*xa+xa*xb+xb*xb);
+      w3 = (1.0/24.0)*(3.0+4.0*xa*xa+6.0*xb+4.0*xb*xb+xa*(6.0+4.0*xb));
+
+      j_t[mod((ngp0-1),n_g)] += w1 * j_t_i;
+      j_t[mod(ngp0,n_g)] += w2 * j_t_i;
+      j_t[mod((ngp0+1),n_g)] += w3 * j_t_i;
+    } 
+    else {
+      xa = x0;
+      xb = shift * 0.5;
+
+      w1 = (1.0/24.0)*(3.0+4.0*xa*xa-6.0*xb+4.0*xb*xb+xa*(-6.0+4.0*xb));
+      w2 = 0.75 - (1.0/3.0)*(xa*xa+xa*xb+xb*xb);
+      w3 = (1.0/24.0)*(3.0+4.0*xa*xa+6.0*xb+4.0*xb*xb+xa*(6.0+4.0*xb));
+
+      j_t[mod((ngp0-1),n_g)] += w1 * j_t_i * (xb-xa)/(x1-x0);
+      j_t[mod(ngp0,n_g)] += w2 * j_t_i * (xb-xa)/(x1-x0);
+      j_t[mod((ngp0+1),n_g)] += w3 * j_t_i * (xb-xa)/(x1-x0);
+
+      xa = -1.0 * xb;
+      xb = x1 - shift;
+
+      w1 = (1.0/24.0)*(3.0+4.0*xa*xa-6.0*xb+4.0*xb*xb+xa*(-6.0+4.0*xb));
+      w2 = 0.75 - (1.0/3.0)*(xa*xa+xa*xb+xb*xb);      
+      w3 = (1.0/24.0)*(3.0+4.0*xa*xa+6.0*xb+4.0*xb*xb+xa*(6.0+4.0*xb));
+
+      j_t[mod((ngp1-1),n_g)] += w1 * j_t_i * (xb-xa)/(x1-x0);
+      j_t[mod(ngp1,n_g)] += w2 * j_t_i * (xb-xa)/(x1-x0);
+      j_t[mod((ngp1+1),n_g)] += w3 * j_t_i * (xb-xa)/(x1-x0);
+    }
+  
   }
   return;
 }
 
 void ParticleSpecies::deposit_j_t_pic_3(std::vector<double> &j_t, char axis)
 {
-  int ix_tavg;
-  double x_tavg, w1, w2, w3, w4, delta, gamma, j_t_i;
+  int ix0, ix1, shift;
+  double xa, xb, x0, x1, w1, w2, w3, w4, delta0, delta1, gamma, j_t_i;
 
   for (int i = 0; i < n_p; i++) {
     gamma = sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0) + pow(u_z[i], 2.0));
@@ -888,27 +965,66 @@ void ParticleSpecies::deposit_j_t_pic_3(std::vector<double> &j_t, char axis)
       j_t_i = charge[i] * u_z[i] / gamma;
       break;
     }
-    
-    average(ix[i], x[i], ix_old[i], x_old[i], ix_tavg, x_tavg);
-    delta = x_tavg - 0.5;
 
-    w1 = -1.0 * pow((-0.5 + delta), 3) / 6.0;
-    w2 = (4.0 - 6.0 * pow((0.5 + delta), 2) + 3.0 * pow((0.5 + delta), 3)) / 6.0;
-    w3 = (23.0 + 30.0*delta - 12.0*pow(delta, 2) - 24.0*pow(delta,3)) / 48.0;
-    w4 = pow((0.5 + delta), 3) / 6.0;
+    ix0 = ix_old[i];
+    delta0 = x_old[i];
+    ix1 = ix[i];
+    delta1 = x[i];
+      
+    shift = ix1 - ix0;
+    x0 = delta0;
+    x1 = delta1 + shift;
 
-    j_t[mod((ix_tavg-1),n_g)] += w1 * j_t_i;
-    j_t[mod(ix_tavg,n_g)] += w2 * j_t_i;
-    j_t[mod((ix_tavg+1),n_g)] += w3 * j_t_i;
-    j_t[mod((ix_tavg+2),n_g)] += w4 * j_t_i;
+    if (shift==0) {
+      xa = x0 - 0.5;
+      xb = x1 - 0.5;
+
+      w1 = (1.0-xa-xb)*(1.0+2.0*xa*(xa-1.0)+2.0*xb*(xb-1.0))/48.0;
+      w2 = (23.0+6.0*pow(xa,3)+xa*xa*(6.0*xb-4.0)+xa*(-15.0-4.0*xb+6.0*xb*xb)+xb*(-15.0-4.0*xb+6.0*xb*xb))/48.0;
+      w3 = (23.0-6.0*pow(xa,3)-2.0*xa*xa*(2.0+3.0*xb)+xa*(15.0-2.0*xb*(2.0+3.0*xb))+xb*(15.0-2.0*xb*(2.0+3.0*xb)))/48.0;
+      w4 = (1.0+xa+xb)*(1.0+2.0*xa*(xa+1.0)+2.0*xb*(xb+1.0))/48.0;
+
+      j_t[mod((ix0-1),n_g)] += w1 * j_t_i;
+      j_t[mod(ix0,n_g)] += w2 * j_t_i;
+      j_t[mod((ix0+1),n_g)] += w3 * j_t_i;
+      j_t[mod((ix0+2),n_g)] += w4 * j_t_i;
+    } 
+    else {
+      xa = x0 - 0.5;
+      xb = shift*0.5;
+
+      w1 = (1.0-xa-xb)*(1.0+2.0*xa*(xa-1.0)+2.0*xb*(xb-1.0))/48.0;
+      w2 = (23.0+6.0*pow(xa,3)+xa*xa*(6.0*xb-4.0)+xa*(-15.0-4.0*xb+6.0*xb*xb)+xb*(-15.0-4.0*xb+6.0*xb*xb))/48.0;
+      w3 = (23.0-6.0*pow(xa,3)-2.0*xa*xa*(2.0+3.0*xb)+xa*(15.0-2.0*xb*(2.0+3.0*xb))+xb*(15.0-2.0*xb*(2.0+3.0*xb)))/48.0;
+      w4 = (1.0+xa+xb)*(1.0+2.0*xa*(xa+1.0)+2.0*xb*(xb+1.0))/48.0;
+
+      j_t[mod((ix0-1),n_g)] += w1 * j_t_i * (xb-xa)/(x1-x0);
+      j_t[mod(ix0,n_g)] += w2 * j_t_i * (xb-xa)/(x1-x0);
+      j_t[mod((ix0+1),n_g)] += w3 * j_t_i * (xb-xa)/(x1-x0);
+      j_t[mod((ix0+2),n_g)] += w4 * j_t_i * (xb-xa)/(x1-x0);
+
+      xa = -shift*0.5;
+      xb = x1 - shift - 0.5;
+
+      w1 = (1.0-xa-xb)*(1.0+2.0*xa*(xa-1.0)+2.0*xb*(xb-1.0))/48.0;
+      w2 = (23.0+6.0*pow(xa,3)+xa*xa*(6.0*xb-4.0)+xa*(-15.0-4.0*xb+6.0*xb*xb)+xb*(-15.0-4.0*xb+6.0*xb*xb))/48.0;
+      w3 = (23.0-6.0*pow(xa,3)-2.0*xa*xa*(2.0+3.0*xb)+xa*(15.0-2.0*xb*(2.0+3.0*xb))+xb*(15.0-2.0*xb*(2.0+3.0*xb)))/48.0;
+      w4 = (1.0+xa+xb)*(1.0+2.0*xa*(xa+1.0)+2.0*xb*(xb+1.0))/48.0;
+
+      j_t[mod((ix1-1),n_g)] += w1 * j_t_i * (xb-xa)/(x1-x0);
+      j_t[mod(ix1,n_g)] += w2 * j_t_i * (xb-xa)/(x1-x0);
+      j_t[mod((ix1+1),n_g)] += w3 * j_t_i * (xb-xa)/(x1-x0);
+      j_t[mod((ix1+2),n_g)] += w4 * j_t_i * (xb-xa)/(x1-x0);
+    }
+  
   }
   return;
 }
 
 void ParticleSpecies::deposit_j_t_pic_4(std::vector<double> &j_t, char axis)
 {
-  int ngp, ix_tavg;
-  double w1, w2, w3, w4, w5, delta, x_tavg, gamma, j_t_i;
+  int ngp0, ngp1, shift;
+  double xa, xb, x0, x1, w1, w2, w3, w4, w5, delta0, delta1, gamma, j_t_i;
 
   for (int i = 0; i < n_p; i++) {
     gamma = sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0) + pow(u_z[i], 2.0));
@@ -921,23 +1037,210 @@ void ParticleSpecies::deposit_j_t_pic_4(std::vector<double> &j_t, char axis)
       break;
     }
 
-    average(ix[i], x[i], ix_old[i], x_old[i], ix_tavg, x_tavg);
-    find_ngp(ix_tavg, x_tavg, ngp, delta);    
+    find_ngp(ix_old[i], x_old[i], ngp0, delta0);
+    find_ngp(ix[i], x[i], ngp1, delta1);
+    shift = ngp1 - ngp0;
+    x0 = delta0;
+    x1 = delta1 + shift;
 
-    w1 = pow((1.0 - 2.0*delta), 4) / 384.0;
-    w2 = (19.0 - 44.0*delta + 24.0*pow(delta, 2) + 16.0*pow(delta,3) - 16.0*pow(delta, 4))/96.0;
-    w3 = 0.5989583333333334 - (5.0*pow(delta, 2))/8.0 + pow(delta, 4)/4.0;
-    w4 = (19.0 + 44.0*delta + 24.0*pow(delta, 2) - 16.0*pow(delta, 3) - 16*pow(delta,4))/96.0;
-    w5 = pow((1.0 + 2.0*delta), 4) / 384.0;
+    if (shift==0) {
+      xa = x0;
+      xb = x1;
 
-    j_t[mod((ngp-2),n_g)] += w1 * j_t_i;
-    j_t[mod((ngp-1),n_g)] += w2 * j_t_i;
-    j_t[mod(ngp,n_g)] += w3 * j_t_i;
-    j_t[mod((ngp+1),n_g)] += w4 * j_t_i;
-    j_t[mod((ngp+2),n_g)] += w5 * j_t_i;
+      w1 = (pow((2.0*xb-1.0),5)-pow((2.0*xa-1.0),5))/(3840.0*(xb-xa));
+      w2 = (-19.0*xa+22.0*xa*xa-8.0*pow(xa,3)-4.0*pow(xa,4) + (16.0*pow(xa,5))/5.0+19.0*xb-22.0*xb*xb+8.0*pow(xb,3) + 4.0*pow(xb,4) - (16.0*pow(xb,5))/5.0)/ (96.0*(xb-xa));
+      w3 = (575.0+8.0*(6.0*pow(xa,4)+6.0*pow(xa,3)*xb+(xa*xa+xa*xb+xb*xb)*(6.0*xb*xb-25.0)))/960.0;
+      w4 = (-19.0*xa-22.0*xa*xa-8.0*pow(xa,3)+4.0*pow(xa,4) +(16.0*pow(xa,5))/5.0+19.0*xb+22.0*xb*xb+8.0*pow(xb,3) - 4.0*pow(xb,4) - (16.0*pow(xb,5))/5.0)/ (96.0*(xb-xa));
+      w5 = (pow((2.0*xb+1.0),5)-pow((2.0*xa+1.0),5))/(3840.0*(xb-xa));
+
+      j_t[mod((ngp0-2),n_g)] += w1 * j_t_i;
+      j_t[mod((ngp0-1),n_g)] += w2 * j_t_i;
+      j_t[mod(ngp0,n_g)] += w3 * j_t_i;
+      j_t[mod((ngp0+1),n_g)] += w4 * j_t_i;
+      j_t[mod((ngp0+2),n_g)] += w5 * j_t_i;
+    } 
+    else {
+      xa = x0;
+      xb = shift * 0.5;
+
+      w1 = (pow((2.0*xb-1.0),5)-pow((2.0*xa-1.0),5))/(3840.0*(xb-xa));      
+      w2 = (-19.0*xa+22.0*xa*xa-8.0*pow(xa,3)-4.0*pow(xa,4) + (16.0*pow(xa,5))/5.0+19.0*xb-22.0*xb*xb+8.0*pow(xb,3) + 4.0*pow(xb,4) - (16.0*pow(xb,5))/5.0)/ (96.0*(xb-xa));
+      w3 = (575.0+8.0*(6.0*pow(xa,4)+6.0*pow(xa,3)*xb+(xa*xa+xa*xb+xb*xb)*(6.0*xb*xb-25.0)))/960.0;
+      w4 = (-19.0*xa-22.0*xa*xa-8.0*pow(xa,3)+4.0*pow(xa,4) +(16.0*pow(xa,5))/5.0+19.0*xb+22.0*xb*xb+8.0*pow(xb,3) - 4.0*pow(xb,4) - (16.0*pow(xb,5))/5.0)/ (96.0*(xb-xa));
+      w5 = (pow((2.0*xb+1.0),5)-pow((2.0*xa+1.0),5))/(3840.0*(xb-xa));
+
+      j_t[mod((ngp0-2),n_g)] += w1 * j_t_i * (xb-xa)/(x1-x0);
+      j_t[mod((ngp0-1),n_g)] += w2 * j_t_i * (xb-xa)/(x1-x0);
+      j_t[mod(ngp0,n_g)] += w3 * j_t_i * (xb-xa)/(x1-x0);
+      j_t[mod((ngp0+1),n_g)] += w4 * j_t_i * (xb-xa)/(x1-x0);
+      j_t[mod((ngp0+2),n_g)] += w5 * j_t_i * (xb-xa)/(x1-x0);
+      
+      xa = -1.0 * xb;
+      xb = x1 - shift;
+
+      w1 = (pow((2.0*xb-1.0),5)-pow((2.0*xa-1.0),5))/(3840.0*(xb-xa));      
+      w2 = (-19.0*xa+22.0*xa*xa-8.0*pow(xa,3)-4.0*pow(xa,4) + (16.0*pow(xa,5))/5.0+19.0*xb-22.0*xb*xb+8.0*pow(xb,3) + 4.0*pow(xb,4) - (16.0*pow(xb,5))/5.0)/ (96.0*(xb-xa));
+      w3 = (575.0+8.0*(6.0*pow(xa,4)+6.0*pow(xa,3)*xb+(xa*xa+xa*xb+xb*xb)*(6.0*xb*xb-25.0)))/960.0;
+      w4 = (-19.0*xa-22.0*xa*xa-8.0*pow(xa,3)+4.0*pow(xa,4) +(16.0*pow(xa,5))/5.0+19.0*xb+22.0*xb*xb+8.0*pow(xb,3) - 4.0*pow(xb,4) - (16.0*pow(xb,5))/5.0)/ (96.0*(xb-xa));
+      w5 = (pow((2.0*xb+1.0),5)-pow((2.0*xa+1.0),5))/(3840.0*(xb-xa));
+
+      j_t[mod((ngp1-2),n_g)] += w1 * j_t_i * (xb-xa)/(x1-x0);
+      j_t[mod((ngp1-1),n_g)] += w2 * j_t_i * (xb-xa)/(x1-x0);
+      j_t[mod(ngp1,n_g)] += w3 * j_t_i * (xb-xa)/(x1-x0);
+      j_t[mod((ngp1+1),n_g)] += w4 * j_t_i * (xb-xa)/(x1-x0);
+      j_t[mod((ngp1+2),n_g)] += w5 * j_t_i * (xb-xa)/(x1-x0);
+    }
+  
   }
   return;
 }
+
+// void ParticleSpecies::deposit_j_t_pic_0(std::vector<double> &j_t, char axis)
+// {
+//   int ngp, ix_tavg;
+//   double x_tavg, gamma, j_t_i, delta;
+
+//   for (int i = 0; i < n_p; i++) {
+//     gamma = sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0) + pow(u_z[i], 2.0));
+//     switch (axis) {
+//     case 'y':
+//       j_t_i = charge[i] * u_y[i] / gamma;
+//       break;
+//     case 'z' :
+//       j_t_i = charge[i] * u_z[i] / gamma;
+//       break;
+//     }
+
+//     average(ix[i], x[i], ix_old[i], x_old[i], ix_tavg, x_tavg);
+//     find_ngp(ix_tavg, x_tavg, ngp, delta);
+
+//     j_t[mod(ngp,n_g)] += j_t_i;
+//   }
+//   return;
+// }
+
+// void ParticleSpecies::deposit_j_t_pic_1(std::vector<double> &j_t, char axis)
+// {
+//   int ix_tavg;
+//   double x_tavg, w1, w2, gamma, j_t_i;
+
+//   for (int i = 0; i < n_p; i++) {
+//     gamma = sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0) + pow(u_z[i], 2.0));
+//     switch (axis) {
+//     case 'y':
+//       j_t_i = charge[i] * u_y[i] / gamma;
+//       break;
+//     case 'z' :
+//       j_t_i = charge[i] * u_z[i] / gamma;
+//       break;
+//     }
+
+//     average(ix[i], x[i], ix_old[i], x_old[i], ix_tavg, x_tavg);
+    
+//     w1 = 1.0 - x_tavg;
+//     w2 = x_tavg;
+
+//     j_t[mod(ix_tavg,n_g)] += w1 * j_t_i;
+//     j_t[mod((ix_tavg+1),n_g)] += w2 * j_t_i;
+//   }
+//   return;
+// }
+
+// void ParticleSpecies::deposit_j_t_pic_2(std::vector<double> &j_t, char axis)
+// {
+//   int ngp, ix_tavg;
+//   double w1, w2, w3, delta, x_tavg, gamma, j_t_i;
+
+//   for (int i = 0; i < n_p; i++) {
+//     gamma = sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0) + pow(u_z[i], 2.0));
+//     switch (axis) {
+//     case 'y':
+//       j_t_i = charge[i] * u_y[i] / gamma;
+//       break;
+//     case 'z' :
+//       j_t_i = charge[i] * u_z[i] / gamma;
+//       break;
+//     }
+
+//     average(ix[i], x[i], ix_old[i], x_old[i], ix_tavg, x_tavg);
+//     find_ngp(ix_tavg, x_tavg, ngp, delta);    
+    
+//     w1 = 0.5 * pow((0.5 - delta), 2);
+//     w2 = 0.75 - delta * delta;
+//     w3 = 0.5 * pow((0.5 + delta), 2);
+
+//     j_t[mod((ngp-1),n_g)] += w1 * j_t_i;
+//     j_t[mod(ngp,n_g)] += w2 * j_t_i;
+//     j_t[mod((ngp+1),n_g)] += w3 * j_t_i;
+//   }
+//   return;
+// }
+
+// void ParticleSpecies::deposit_j_t_pic_3(std::vector<double> &j_t, char axis)
+// {
+//   int ix_tavg;
+//   double x_tavg, w1, w2, w3, w4, delta, gamma, j_t_i;
+
+//   for (int i = 0; i < n_p; i++) {
+//     gamma = sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0) + pow(u_z[i], 2.0));
+//     switch (axis) {
+//     case 'y':
+//       j_t_i = charge[i] * u_y[i] / gamma;
+//       break;
+//     case 'z' :
+//       j_t_i = charge[i] * u_z[i] / gamma;
+//       break;
+//     }
+    
+//     average(ix[i], x[i], ix_old[i], x_old[i], ix_tavg, x_tavg);
+//     delta = x_tavg - 0.5;
+
+//     w1 = -1.0 * pow((-0.5 + delta), 3) / 6.0;
+//     w2 = (4.0 - 6.0 * pow((0.5 + delta), 2) + 3.0 * pow((0.5 + delta), 3)) / 6.0;
+//     w3 = (23.0 + 30.0*delta - 12.0*pow(delta, 2) - 24.0*pow(delta,3)) / 48.0;
+//     w4 = pow((0.5 + delta), 3) / 6.0;
+
+//     j_t[mod((ix_tavg-1),n_g)] += w1 * j_t_i;
+//     j_t[mod(ix_tavg,n_g)] += w2 * j_t_i;
+//     j_t[mod((ix_tavg+1),n_g)] += w3 * j_t_i;
+//     j_t[mod((ix_tavg+2),n_g)] += w4 * j_t_i;
+//   }
+//   return;
+// }
+
+// void ParticleSpecies::deposit_j_t_pic_4(std::vector<double> &j_t, char axis)
+// {
+//   int ngp, ix_tavg;
+//   double w1, w2, w3, w4, w5, delta, x_tavg, gamma, j_t_i;
+
+//   for (int i = 0; i < n_p; i++) {
+//     gamma = sqrt(1.0 + pow(u_x[i], 2.0) + pow(u_y[i], 2.0) + pow(u_z[i], 2.0));
+//     switch (axis) {
+//     case 'y':
+//       j_t_i = charge[i] * u_y[i] / gamma;
+//       break;
+//     case 'z' :
+//       j_t_i = charge[i] * u_z[i] / gamma;
+//       break;
+//     }
+
+//     average(ix[i], x[i], ix_old[i], x_old[i], ix_tavg, x_tavg);
+//     find_ngp(ix_tavg, x_tavg, ngp, delta);    
+
+//     w1 = pow((1.0 - 2.0*delta), 4) / 384.0;
+//     w2 = (19.0 - 44.0*delta + 24.0*pow(delta, 2) + 16.0*pow(delta,3) - 16.0*pow(delta, 4))/96.0;
+//     w3 = 0.5989583333333334 - (5.0*pow(delta, 2))/8.0 + pow(delta, 4)/4.0;
+//     w4 = (19.0 + 44.0*delta + 24.0*pow(delta, 2) - 16.0*pow(delta, 3) - 16*pow(delta,4))/96.0;
+//     w5 = pow((1.0 + 2.0*delta), 4) / 384.0;
+
+//     j_t[mod((ngp-2),n_g)] += w1 * j_t_i;
+//     j_t[mod((ngp-1),n_g)] += w2 * j_t_i;
+//     j_t[mod(ngp,n_g)] += w3 * j_t_i;
+//     j_t[mod((ngp+1),n_g)] += w4 * j_t_i;
+//     j_t[mod((ngp+2),n_g)] += w5 * j_t_i;
+//   }
+//   return;
+// }
 
 void arrange_segment(int &ix_a, double &x_a,
 		     int &ix_b, double &x_b,
