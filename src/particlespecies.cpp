@@ -2762,6 +2762,8 @@ void ParticleSpecies::write_phase(int species_number, int t, int my_rank)
   std::string ix_filename;  
   std::string x_filename;
   std::string u_x_filename;
+  std::string u_y_filename;
+  std::string u_z_filename;  
   
   std::stringstream ss;
   ss << "ix_";
@@ -2791,10 +2793,32 @@ void ParticleSpecies::write_phase(int species_number, int t, int my_rank)
   ss << "_";
   ss << my_rank;
   u_x_filename = ss.str();
+
+  ss.str(std::string());
+  ss.clear();
+  ss << "u_y_";
+  ss << species_number;
+  ss << "_";
+  ss << t;
+  ss << "_";
+  ss << my_rank;
+  u_y_filename = ss.str();
+
+  ss.str(std::string());
+  ss.clear();
+  ss << "u_z_";
+  ss << species_number;
+  ss << "_";
+  ss << t;
+  ss << "_";
+  ss << my_rank;
+  u_z_filename = ss.str();
   
   data_to_file_int(ix, ix_filename);
   data_to_file(x, x_filename);
   data_to_file(u_x, u_x_filename);
+  data_to_file(u_y, u_y_filename);
+  data_to_file(u_z, u_z_filename);  
   return;
 }
 

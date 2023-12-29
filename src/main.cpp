@@ -187,9 +187,6 @@ int main(int argc, char *argv[])
 
   for (int t = 0; t < n_t; t++) {
     particles.deposit_rho(rho.field, rho_bg, my_rank, MPI_COMM_WORLD);
-    //    if (t%10==0) {
-    //      particles.write_phase(t, my_rank);
-    //    }
 
     if (my_rank==0) {
       e_x.write_field();
@@ -209,6 +206,12 @@ int main(int argc, char *argv[])
     }
 
     particles.advance_velocity(e_x.field, e_y.field, e_z.field, b_x.field, b_y.field, b_z.field);
+    particles.write_phase(t, my_rank);
+
+    //    if (t%10==0) {
+    //      particles.write_phase(t, my_rank);
+    //    }
+    
 
     particles.save_x_old();
     particles.advance_x();
@@ -250,6 +253,7 @@ int main(int argc, char *argv[])
       std::cout << t << std::endl;
     }
   }
+  particles.write_phase(n_t, my_rank);  
   
   particles.write_particle_diagnostics(n_t, my_rank, MPI_COMM_WORLD);
   
